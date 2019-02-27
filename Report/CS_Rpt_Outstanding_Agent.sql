@@ -161,14 +161,14 @@ BEGIN
 								'' AS Name,
 								COUNT(TransID) AS Wagers,
 								SUM(Actual_stake) AS Stake,
-								SUM(ABS(winlost - actual_stake)) ValidStake,
+								0 AS ValidStake,
 								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
 
 								SUM(Winlost - actual_stake + Playercomm) AS AgentCurrency,										
 								SUM(Winlost - actual_stake + Playercomm) AS Agent,
 								SUM(AWinlost + Comm - Playercomm) AS AgentIncome,	
 								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm)) AS AgentResult,  --- Member Income + Agent Income
-								SUM(ABS(winlost - actual_stake) * (1 - apositiontaking)) AS AgentStock,
+								SUM(CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END * (1 - apositiontaking)) AS AgentStock,
 								
 								SUM(MWinlost + AComm - Comm) AS MasterIncome,								
 								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm)) AS MasterResult

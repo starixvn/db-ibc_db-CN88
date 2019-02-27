@@ -190,7 +190,7 @@ BEGIN
 								'' AS Name,
 								COUNT(TransID) AS Wagers,
 								SUM(Actual_stake) AS Stake,
-								SUM(CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END) ValidStake,
+								0 AS ValidStake,
 								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
 										
 								SUM(Winlost - actual_stake + Playercomm) AS Agent,
@@ -201,7 +201,7 @@ BEGIN
 								
 								SUM(SWinlost + SComm - Acomm) AS SuperIncome,
 								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm) + (SWinlost + SComm - Acomm)) AS SuperResult,
-								SUM(CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END * (1 - tpositiontaking)) AS SuperStock,		
+								SUM(CASE WHEN StatusId IN (112, 113) THEN CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END ELSE 0 END * (1 - tpositiontaking)) AS SuperStock,		
 								
 								MAX(e.ExtraPT) AS HeadlinePoss,
 								SUM (-1 * (CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT) AS HeadlineIncome,  --- MSH Win Loss + MSH Sharing Comm 
@@ -209,7 +209,7 @@ BEGIN
 										((CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT)
 										+ ((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm) + (SWinlost + SComm - Acomm)) 
 									) AS HeadlineResult,
-								SUM (CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END * (1 - tpositiontaking - e.ExtraPT)) AS HeadlineStock		
+								SUM (CASE WHEN StatusId IN (112, 113) THEN CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END ELSE 0 END * (1 - tpositiontaking - e.ExtraPT)) AS HeadlineStock		
 										
 			FROM	dbo.bettrans b WITH (NOLOCK)		
 				INNER JOIN @BettypeList bt
