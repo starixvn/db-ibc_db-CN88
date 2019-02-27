@@ -190,25 +190,27 @@ BEGIN
 								'' AS Name,
 								COUNT(TransID) AS Wagers,
 								SUM(Actual_stake) AS Stake,
-								SUM(CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END) ValidStake,
+								SUM(ABS(winlost - actual_stake)) ValidStake,
 								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
 										
-								SUM(Winlost - actual_stake + Playercomm) AS Agent,
+								SUM((Winlost - actual_stake)  + (ABS(winlost - actual_stake) * discount) ) AS Agent,
 								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm)) AS AgentResult,  --- Member Income + Agent Income
-								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm)) AS Master,
+								SUM(((Winlost - actual_stake) * (1-apositiontaking)) + ABS(winlost - actual_stake) * (1 - apositiontaking) * adiscount) AS Master,
 									 
-								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm)) AS Super,		  ---	Master Income + Agent Result 
+								SUM( (Winlost - actual_stake)* (1 - apositiontaking - mpositiontaking) 
+									 +  ABS(winlost - actual_stake) * (1 - apositiontaking - mpositiontaking) * sdiscount
+									 ) AS Super,
 								
 								SUM(SWinlost + SComm - Acomm) AS SuperIncome,
 								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm) + (SWinlost + SComm - Acomm)) AS SuperResult,
-								SUM(CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END * (1 - tpositiontaking)) AS SuperStock,		
+								SUM(ABS(winlost - actual_stake) * (1 - tpositiontaking)) AS SuperStock,		
 								
 								SUM (-1 * (CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT) AS HeadlineIncome,  --- MSH Win Loss + MSH Sharing Comm 
 								SUM ( 								
 										((CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT)
 										+ ((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm) + (SWinlost + SComm - Acomm)) 
 									) AS HeadlineResult,
-								SUM (CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END * (1 - tpositiontaking - e.ExtraPT)) AS HeadlineStock		
+								SUM (ABS(winlost - actual_stake) * (1 - tpositiontaking - e.ExtraPT)) AS HeadlineStock		
 										
 			FROM	dbo.bettrans b WITH (NOLOCK)		
 				INNER JOIN @BettypeList bt

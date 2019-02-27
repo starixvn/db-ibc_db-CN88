@@ -9,7 +9,6 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Winloss_Master]
 	@ToDate				SMALLDATETIME,	
 	@BalanceUpDay		SMALLDATETIME,
 	@MoveBetsDay		SMALLDATETIME,
-	@ProductId			SMALLINT = 1,
 	@SporttypeGroup		SMALLINT = 0, -- all
 	@BettypeGroup		SMALLINT = 0, -- all
 	@IsLive				TINYINT = 2 -- all
@@ -161,8 +160,7 @@ BEGIN
 										MasterResult,
 										MasterStock,
 
-										Super,	
-										SuperPoss,
+										Super,	 
 										SuperIncome,
 										SuperResult	,
 										SuperStock)		
@@ -172,26 +170,28 @@ BEGIN
 								'' AS Name,
 								COUNT(TransID) AS Wagers,
 								SUM(Actual_stake) AS Stake,
-								SUM(CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END) ValidStake,
+								SUM(ABS(winlost - actual_stake)) ValidStake,
 								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
 										
-								SUM(Winlost - actual_stake + Playercomm) AS Agent,
+								SUM((Winlost - actual_stake)  + (ABS(winlost - actual_stake) * discount) ) AS Agent,
 								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm)) AS AgentResult,  --- Member Income + Agent Income
 								
 								SUM(MWinlost + AComm - Comm) AS MasterIncome,								
 								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm)) AS MasterResult, ---	Master Income + Agent Result 		 
-								SUM(CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END * (1 - apositiontaking - mpositiontaking)) AS MasterStock,	
+								SUM(ABS(winlost - actual_stake) * (1 - apositiontaking - mpositiontaking)) AS MasterStock,	
 
-								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm)) AS Super,		  ---	Master Income + Agent Result 
-								0 AS SuperPoss,
+								SUM( (Winlost - actual_stake)* (1 - apositiontaking - mpositiontaking) 
+									 +  ABS(winlost - actual_stake) * (1 - apositiontaking - mpositiontaking) * sdiscount
+									 ) AS Super,		 
+								 
 								SUM(SWinlost + SComm - Acomm) AS SuperIncome,
 								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm) + (SWinlost + SComm - Acomm)) AS SuperResult,
-								SUM(CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END * (1 - tpositiontaking)) AS SuperStock	
+								SUM(ABS(winlost - actual_stake) * (1 - tpositiontaking)) AS SuperStock	
 			
 			FROM	dbo.bettrans b WITH (NOLOCK)							
 			WHERE	b.winlostdate BETWEEN @FDate AND @TDate
 				AND b.StatusID IN (111,112,113)
-				AND EXISTS (SELECT 1 FROM #MasterList sl WHERE sl.MasterID = b.recommend)	
+				AND EXISTS (SELECT 1 FROM #MasterList sl WHERE sl.MasterID = b.mrecommend)	
 				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.Bettype)	
 				AND (
 					EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
@@ -286,8 +286,7 @@ BEGIN
 			SUM (MasterResult) AS MasterResult,
 			SUM (MasterStock) AS MasterStock,
 										
-			SUM (Super) AS Super,
-			MAX (SuperPoss) AS SuperPoss,
+			SUM (Super) AS Super, 
 			SUM (SuperIncome) AS SuperIncome,
 			SUM (SuperResult) AS SuperResult,
 			SUM (SuperStock) AS SuperStock 

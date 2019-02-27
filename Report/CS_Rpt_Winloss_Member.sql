@@ -8,8 +8,7 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Winloss_Member]
 	@FromDate			SMALLDATETIME,
 	@ToDate				SMALLDATETIME,	
 	@BalanceUpDay		SMALLDATETIME,
-	@MoveBetsDay		SMALLDATETIME,
-	@ProductId			SMALLINT = 1,
+	@MoveBetsDay		SMALLDATETIME, 
 	@SporttypeGroup		SMALLINT = 0, -- all
 	@BettypeGroup		SMALLINT = 0, -- all
 	@IsLive				TINYINT = 2 -- all
@@ -62,7 +61,7 @@ BEGIN
 		MemberIncome	MONEY,
 		 				
 		AgentIncome		MONEY,
-		AgentResult		MONEY		 
+		AgentResultA		MONEY		 
 	) 
  	
 	
@@ -137,7 +136,7 @@ BEGIN
 										ValidStake, 
 										MemberIncome,		 				
 										AgentIncome,
-										AgentResult	 
+										AgentResultA	 
 										) 
 									 	
 			SELECT
@@ -146,11 +145,11 @@ BEGIN
 								'' AS Name,
 								COUNT(TransID) AS Wagers,
 								SUM(Actual_stake) AS Stake,
-								SUM(CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END) ValidStake,
+								SUM(ABS(winlost - actual_stake)) ValidStake,
 								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
 
 								SUM(AWinlost + Comm - Playercomm) AS AgentIncome,	
-								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm)) AS AgentResult
+								SUM((Winlost - actual_stake + Playercomm)* (1 - APositiontaking)) AS AgentResultA 
 
 			FROM	dbo.bettrans b WITH (NOLOCK)							
 			WHERE	b.winlostdate BETWEEN @FDate AND @TDate
@@ -244,7 +243,7 @@ BEGIN
 			SUM (ValidStake) AS ValidStake,
 			SUM (MemberIncome) AS MemberIncome, 
 			SUM (AgentIncome) AS AgentIncome,
-			SUM (AgentResult) AS AgentResultA
+			SUM (AgentResultA) AS AgentResultA
 	FROM #MemberWinLoss m
 		INNER JOIN CustInfo c WITH (NOLOCK) 
 			ON c.CustID = m.CustID

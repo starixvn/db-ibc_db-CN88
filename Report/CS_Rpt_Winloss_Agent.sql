@@ -9,7 +9,6 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Winloss_Agent]
 	@ToDate				SMALLDATETIME,	
 	@BalanceUpDay		SMALLDATETIME,
 	@MoveBetsDay		SMALLDATETIME,
-	@ProductId			SMALLINT = 1,
 	@SporttypeGroup		SMALLINT = 0, -- all
 	@BettypeGroup		SMALLINT = 0, -- all
 	@IsLive				TINYINT = 2 
@@ -161,14 +160,14 @@ BEGIN
 								'' AS Name,
 								COUNT(TransID) AS Wagers,
 								SUM(Actual_stake) AS Stake,
-								SUM(CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END) ValidStake,
+								SUM(ABS(winlost - actual_stake)) ValidStake,
 								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
 
 								SUM(Winlost - actual_stake + Playercomm) AS AgentCurrency,										
-								SUM(Winlost - actual_stake + Playercomm) AS Agent,
+								SUM((Winlost - actual_stake)  + (ABS(winlost - actual_stake) * discount) ) AS Agent,
 								SUM(AWinlost + Comm - Playercomm) AS AgentIncome,	
-								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm)) AS AgentResult,  --- Member Income + Agent Income
-								SUM(CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END * (1 - apositiontaking)) AS AgentStock,
+								SUM((Winlost - actual_stake + PlayerComm) + (Awinlost + Comm - PlayerComm)) AS AgentResult,  --- Member Income + Agent Income
+								SUM(ABS(winlost - actual_stake) * (1 - apositiontaking)) AS AgentStock,
 								
 								SUM(MWinlost + AComm - Comm) AS MasterIncome,								
 								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm)) AS MasterResult
