@@ -172,7 +172,7 @@ BEGIN
 								'' AS Name,
 								COUNT(TransID) AS Wagers,
 								SUM(Actual_stake) AS Stake,
-								SUM(ABS(winlost - actual_stake)) ValidStake,
+								SUM(CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END) ValidStake,
 								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
 										
 								SUM(Winlost - actual_stake + Playercomm) AS Agent,
@@ -180,13 +180,13 @@ BEGIN
 								
 								SUM(MWinlost + AComm - Comm) AS MasterIncome,								
 								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm)) AS MasterResult, ---	Master Income + Agent Result 		 
-								SUM(ABS(winlost - actual_stake) * (1 - apositiontaking - mpositiontaking)) AS MasterStock,	
+								SUM(CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END * (1 - apositiontaking - mpositiontaking)) AS MasterStock,	
 
 								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm)) AS Super,		  ---	Master Income + Agent Result 
 								0 AS SuperPoss,
 								SUM(SWinlost + SComm - Acomm) AS SuperIncome,
 								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm) + (SWinlost + SComm - Acomm)) AS SuperResult,
-								SUM(ABS(winlost - actual_stake) * (1 - tpositiontaking)) AS SuperStock	
+								SUM(CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END * (1 - tpositiontaking)) AS SuperStock	
 			
 			FROM	dbo.bettrans b WITH (NOLOCK)							
 			WHERE	b.winlostdate BETWEEN @FDate AND @TDate
