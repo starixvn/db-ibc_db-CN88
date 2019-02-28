@@ -7,13 +7,12 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Cancelled_Member]
 	@IsOwner			BIT = 1,
 	@FromDate			SMALLDATETIME,
 	@ToDate				SMALLDATETIME,	
-	@BalanceUpDay		SMALLDATETIME,
-	@MoveBetsDay		SMALLDATETIME,
-	@ProductId			SMALLINT = 1,
+	@ArchiveDate		SMALLDATETIME,
+	@MoveBetsDay		SMALLDATETIME, 
 	@SporttypeGroup		SMALLINT = 0, -- all
-	@Bettype			SMALLINT = 0, -- all
+	@BettypeGroup		SMALLINT = 0, -- all
 	@IsLive				TINYINT = 2, -- all
-	@ReportType			TINYINT = 1 
+	@ReportType 		TINYINT = 1	
 
 AS
 
@@ -31,10 +30,7 @@ AS
 		- @SporttypeGroup: default = 0: All
 		- @IsLive: default = 2: All
 						= 1: Live
-						= 0: Dead
-		- @ReportType : type of report 
-						= 1: Cancelled Report
-						= 2: Abnormal Bets
+						= 0: Dead 
 	Sample:
 
   EXEC [CS_Rpt_Cancelled_Member]
@@ -42,13 +38,12 @@ AS
 	@IsOwner			= 0,
 	@FromDate			= '2019-01-01',
 	@ToDate				= '2019-03-01',	
-	@BalanceUpDay		= '2019-02-03',
+	@ArchiveDate		= '2019-02-03',
 	@MoveBetsDay		= '2019-02-10',
 	@ProductId			= 1,
 	@SporttypeGroup		= 0, -- all
-	@Bettype			= 0, -- all
-	@IsLive				= 2, -- all
-	@ReportType			= 1 
+	@BettypeGroup			= 0, -- all
+	@IsLive				= 2 
 	   
 
 */
@@ -67,7 +62,7 @@ BEGIN
 		MemberIncome	MONEY,
 		 				
 		AgentIncome		MONEY,
-		AgentResult		MONEY		 
+		AgentResultA		MONEY		 
 	) 
  	
 	
@@ -85,51 +80,46 @@ BEGIN
 	END
 	
 	
-	--- 2. Get MatchID by Sports
+	
+	--- 2. Get Bettype
+	------ Check SP Version
+	DECLARE @isTest BIT = 0
+	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
 
-	DECLARE @SporttypeList AS TABLE (Sporttype SMALLINT PRIMARY KEY)
+	------ Get Bettype Matrix------	
+	DECLARE @BettypeList TABLE (ProductID INT, Bettype SMALLINT)
+	INSERT INTO @BettypeList
+	SELECT ProductID, Bettype FROM bodb02.dbo.f_CS_BettypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
+	--- End get Bettype 
+
+
+	--- 3. Get Sporttype
+	DECLARE @SporttypeList AS TABLE (Sporttype SMALLINT PRIMARY KEY, ProductID INT)	
+		 
+	INSERT INTO @SporttypeList
+	SELECT DISTINCT Sporttype, ProductID FROM bodb02.dbo.f_CS_SporttypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
+	
+	--- 4. get Outright by sports	
 	DECLARE @OutrightList AS TABLE (MatchID INT)
-	
-	INSERT INTO @SporttypeList (Sporttype)   --- List Sporrtype by @SporttypeGroup 
-	SELECT	DISTINCT Sporttype 
-	FROM	dbo.CS_SportbettypeMatrix WITH (NOLOCK)
-	WHERE	SporttypeGroup = @SporttypeGroup OR @SporttypeGroup = 0 
-	  		
-	
-	IF @Bettype IN (10, 0) --- bettype is Outright or ALL
+
+	IF @BettypeGroup IN (10, 0) --- bettype is Outright or ALL
 	BEGIN 
 		INSERT INTO @OutrightList (MatchID) 
 		SELECT m.orid			
 		FROM dbo.Outright m WITH (NOLOCK)
 		INNER JOIN dbo.League l WITH (NOLOCK) ON m.LeagueId = l.LeagueId
-		WHERE l.Sporttype IN (SELECT Sporttype FROM @SporttypeList)
+		WHERE (l.Sporttype IN (SELECT Sporttype FROM @SporttypeList) OR @BettypeGroup = 0 )
 			AND m.eventdate BETWEEN @FromDate AND @ToDate			
-	END 	
- 	 
-
-	--- 3. Get Bettype 	
-	DECLARE @BettypeList AS TABLE (Bettype SMALLINT) 
-	
-	IF @Bettype = 0  --- All bettype 
-	BEGIN 
-		INSERT INTO @BettypeList(Bettype)
-		SELECT	DISTINCT Bettype 
-		FROM	dbo.CS_SportbettypeMatrix WITH (NOLOCK)
-		WHERE	(SporttypeGroup = @SporttypeGroup OR @SporttypeGroup = 0)
-	END 
-	ELSE 
-	BEGIN 
-		INSERT INTO @BettypeList(Bettype)
-		VALUES (@Bettype)
-	END
-	
-  		
+	END 		 
+		
+  	
 	--- 5. Get report
+	------5.1. bettrans range
 	DECLARE @FDate SMALLDATETIME, @TDate SMALLDATETIME;
 
 	SELECT  @FDate = @FromDate, @TDate = @ToDate;
 
-	IF @ToDate >= @BalanceUpDay 
+	IF @ToDate >= @ArchiveDate 
 	BEGIN
 		IF @ToDate > @MoveBetsDay
 		BEGIN
@@ -137,8 +127,7 @@ BEGIN
 			BEGIN
 				SET @FDate = DATEADD(DD, 1, @MoveBetsDay);
 			END
-		
-		---- all
+		 		 
 			INSERT INTO	#MemberCancelled (
 										CustId,
 										Username,
@@ -148,7 +137,7 @@ BEGIN
 										ValidStake, 
 										MemberIncome,		 				
 										AgentIncome,
-										AgentResult	 
+										AgentResultA	 
 										) 
 									 	
 			SELECT
@@ -161,89 +150,108 @@ BEGIN
 								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
 
 								SUM(AWinlost + Comm - Playercomm) AS AgentIncome,	
-								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm)) AS AgentResult
+								SUM((Winlost - actual_stake + Playercomm)* (1 - APositiontaking)) AS AgentResultA 
 
-			FROM	dbo.bettrans b WITH(NOLOCK)		
-				INNER JOIN dbo.Match m WITH (NOLOCK) ON m.MatchID = b.matchID					
+			FROM	dbo.bettrans b WITH (NOLOCK)							
 			WHERE	b.winlostdate BETWEEN @FDate AND @TDate
-				AND b.StatusID IN (0,1)
-				AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustId = b.CustID)					
-				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.Bettype)
+				AND b.StatusID IN (101,102,103)
+				AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)	
+				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.Bettype)	
 				AND (
 					EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
 					OR
-					(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@Bettype IN (10,0)))
-					OR @Bettype = 29
+					(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
+					OR @SporttypeGroup = 10  --- Parlay (sport)
 					)
 				AND (   @IsLive = 2   --- all
 						OR
-						(@Bettype <> 29 AND b.Liveindicator = @IsLive)
+						(@SporttypeGroup <> 10 AND b.Liveindicator = @IsLive)
 						OR 
-						(@Bettype = 29 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
+						(@SporttypeGroup = 10 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
 																UNION 
 																SELECT 2 AS IsLive WHERE @IsLive = 0
 																UNION 
 																SELECT 1 AS IsLive WHERE @IsLive = 1																		
 																)
 						)
-					)  				  	
+					)					  	
 			GROUP BY CustId
-
-
-			 
-
-		--SET @FDate = @FromDate;
+		END 
 		
-		--IF @FromDate <= @MoveBetsDay
-		--BEGIN
-		--	IF @ToDate > @MoveBetsDay
-		--	BEGIN
-		--		SET @TDate = @MoveBetsDay;
-		--	END
+		-- 5.2: sum table range
+		SET @FDate = @FromDate;
+		
+		IF @FromDate <= @MoveBetsDay
+		BEGIN
+		
+			IF @ArchiveDate < @FromDate
+			BEGIN
+				SET @FDate = @FromDate;
+			END
+			ELSE
+			BEGIN
+				SET @FDate = @ArchiveDate;
+			END		
+		
+			IF @ToDate > @MoveBetsDay
+			BEGIN
+				SET @TDate = @MoveBetsDay;
+			END		 
+			
+			INSERT INTO	#MemberCancelled (
+									CustId,
+									Username,
+									Name,
+									Wagers,
+									Stake 
+									) 		
+			SELECT
+								CustID,
+								'' AS Username,
+								'' AS Name,
+								SUM(Wagers) AS Wagers,
+								SUM(Stake) AS Stake															
+										
+			FROM	bodb_Summary.dbo.CS_Sum_Cancelled b WITH (NOLOCK)						
+			WHERE	b.winlostdate BETWEEN @FDate AND @TDate				
+				AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)						
+				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
+				AND EXISTS (SELECT 1 FROM @SporttypeList st WHERE st.Sporttype = b.Sporttype)
+			GROUP BY CustID
+			
+			---5.3: range archive table 
+			SELECT	@FDate = @FromDate,
+					@TDate = @ToDate;
 
-	--		INSERT INTO #SAgCancelled(ProductID, bettype, SportType, liveindicator, GrossComm, Turnover, MAgTotal, SAgCancelled, SAgComm, NumberOfTickets)
-	--		SELECT  s.ProductID,
-	--				s.GroupTypeId,
-	--				CASE s.ProductID
-	--					WHEN 5 THEN m.sporttype
-	--					WHEN 22 THEN s.SportType
-	--					WHEN 23 THEN s.SportType
-	--				END AS SportType,
-	--				CASE s.ProductID
-	--					WHEN 3 THEN b.liveindicator
-	--					ELSE 0
-	--				END AS liveindicator,
-	--				SUM(CASE
-	--					WHEN b.bettype = 1000 THEN oddsspread
-	--					WHEN b.bettype BETWEEN 1401 AND 1499 THEN scomm
-	--					ELSE CASE WHEN tpositiontaking = 1 THEN 0 ELSE scomm / (1 - tpositiontaking) END END) AS GrossComm,
-	--				SUM(CASE WHEN winlostdate >= @ABSDate THEN 
-	--							CASE WHEN b.bettype IN (33, 43) AND b.liveawayscore = 0 THEN ABS(stake) / 2
-	--								ELSE ABS(stake) END
-	--						ELSE 
-	--							CASE WHEN b.bettype IN (33, 43) AND b.liveawayscore = 0 THEN stake / 2
-	--								ELSE stake END
-	--					END) AS Turnover,
-	--				SUM(mwinlost + awinlost + acomm + winlost - actual_stake) AS MAgTotal,
-	--				SUM(swinlost) AS SAgCancelled,
-	--				ISNULL(SUM(scomm), 0) - ISNULL(SUM(acomm), 0) AS SAgComm,
-	--				COUNT(transid) AS NumberOfTickets
-	--		FROM dbo.bettrans14 b WITH(NOLOCK)
-	--			INNER JOIN #SportBettype s ON (b.bettype = s.Bettype AND (ProductID <> 5 OR EventType <> 3))
-	--			LEFT JOIN dbo.match14 m WITH(NOLOCK) ON b.matchid = m.matchid AND s.ProductID = 5
-	--		WHERE winlostdate BETWEEN @FDate AND @TDate
-	--			AND statusID NOT IN (0, 1, 101, 102, 103)	
-	--			AND b.ruben = 1			
-	--			AND b.srecommend = @CustID
-	--		GROUP BY s.ProductID, s.GroupTypeId,
-	--				CASE s.ProductID
-	--					WHEN 5 THEN m.sporttype
-	--					WHEN 22 THEN s.SportType
-	--					WHEN 23 THEN s.SportType
-	--				END,
-	--				CASE s.ProductID
-	--					WHEN 3 THEN b.liveindicator
-	--					ELSE 0 END;
+			IF @FromDate < @ArchiveDate 
+			BEGIN
+				IF @ToDate >= DATEADD(dd, -1, @ArchiveDate)
+				BEGIN
+					SELECT @TDate = DATEADD(dd, -1, @ArchiveDate);
+				END
+				
+				INSERT INTO	#MemberCancelled (
+									CustId,
+									Username,
+									Name,
+									Wagers,
+									Stake 
+									) 		
+				SELECT
+									CustID,
+									'' AS Username,
+									'' AS Name,
+									SUM(Wagers) AS Wagers,
+									SUM(Stake) AS Stake														
+											
+				FROM	bodb_Summary.dbo.CS_Sum_Cancelled_Old b WITH (NOLOCK)						
+				WHERE	b.winlostdate BETWEEN @FDate AND @TDate				
+					AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)						
+					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
+					AND EXISTS (SELECT 1 FROM @SporttypeList st WHERE st.Sporttype = b.Sporttype)
+				GROUP BY CustID
+			
+			END
 
 		END
 	END
@@ -256,7 +264,7 @@ BEGIN
 			SUM (ValidStake) AS ValidStake,
 			SUM (MemberIncome) AS MemberIncome, 
 			SUM (AgentIncome) AS AgentIncome,
-			SUM (AgentResult) AS AgentResultA
+			SUM (AgentResultA) AS AgentResultA
 	FROM #MemberCancelled m
 		INNER JOIN CustInfo c WITH (NOLOCK) 
 			ON c.CustID = m.CustID
@@ -267,6 +275,4 @@ BEGIN
 	SET NOCOUNT OFF
 END
 GO
-
-GRANT EXECUTE ON [CS_Rpt_Cancelled_Member] TO bodbDownlineNet 
-GO
+ 

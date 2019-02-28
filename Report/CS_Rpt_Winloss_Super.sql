@@ -7,7 +7,7 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Winloss_Super]
 	@IsOwner			BIT = 1, 
 	@FromDate			SMALLDATETIME,
 	@ToDate				SMALLDATETIME,	
-	@BalanceUpDay		SMALLDATETIME,
+	@ArchiveDate		SMALLDATETIME,
 	@MoveBetsDay		SMALLDATETIME,
 	@SporttypeGroup		SMALLINT = 0, -- all
 	@BettypeGroup		SMALLINT = 0, -- all
@@ -38,7 +38,7 @@ AS
 			@IsOwner			= 1, 
 			@FromDate			= '2019-01-01',
 			@ToDate				= '2019-03-01',	
-			@BalanceUpDay		= '2019-02-03',
+			@ArchiveDate		= '2019-02-03',
 			@MoveBetsDay		= '2019-02-08',
 			@ProductId			= 1,
 			@SporttypeGroup		= 0, -- all
@@ -153,7 +153,7 @@ BEGIN
 
 	SELECT  @FDate = @FromDate, @TDate = @ToDate;
 
-	IF @ToDate >= @BalanceUpDay 
+	IF @ToDate >= @ArchiveDate 
 	BEGIN
 		IF @ToDate > @MoveBetsDay
 		BEGIN
@@ -161,8 +161,7 @@ BEGIN
 			BEGIN
 				SET @FDate = DATEADD(DD, 1, @MoveBetsDay);
 			END
-		
-			---- all
+		 
 			INSERT INTO	#SuperWinLoss (
 								CustId,
 								Username,
@@ -241,13 +240,23 @@ BEGIN
 						)
 					)
 			GROUP BY srecommend
-
+		END
 
 		-- 5.2: sum table range
-		/*SET @FDate = @FromDate;
+		SET @FDate = @FromDate;
 		
 		IF @FromDate <= @MoveBetsDay
 		BEGIN
+		
+			IF @ArchiveDate < @FromDate
+			BEGIN
+				SET @FDate = @FromDate;
+			END
+			ELSE
+			BEGIN
+				SET @FDate = @ArchiveDate;
+			END		
+		
 			IF @ToDate > @MoveBetsDay
 			BEGIN
 				SET @TDate = @MoveBetsDay;
@@ -275,7 +284,7 @@ BEGIN
 								HeadlineResult,
 								HeadlineStock )		
 			SELECT
-			  					srecommend,
+			  					CustId,
 								'' AS Username,
 								'' AS Name,
 								SUM(Wagers) AS Wagers,
@@ -284,16 +293,16 @@ BEGIN
 								SUM(MemberWinloss + MemberComm) AS MemberIncome,
 										
 								SUM(Agent) AS Agent,
-								SUM((MemberWinloss +MemberComm) + (AgentWinloss + AgentComm)) AS AgentResult,  --- Member Income + Agent Income
+								SUM((MemberWinloss + MemberComm) + (AgentWinloss + AgentComm)) AS AgentResult,  --- Member Income + Agent Income
 								SUM(Master) AS Master,
 									 
-								SUM(Super) AS Super,		  ---	Master Income + Agent Result 
+								SUM(Super) AS Super,		 
 								
 								SUM(SuperWinloss + SuperComm) AS SuperIncome,
 								SUM((MemberWinloss +MemberComm) + (AgentWinloss + AgentComm) + (MasterWinloss + MasterComm) + (SuperWinloss + SuperComm)) AS SuperResult,
 								SUM(SuperStock) AS SuperStock,		
 								
-								SUM ((HeadlineWinloss + HeadlineComm) AS HeadlineIncome,  --- MSH Win Loss + MSH Sharing Comm 
+								SUM (HeadlineWinloss + HeadlineComm) AS HeadlineIncome,  --- MSH Win Loss + MSH Sharing Comm 
 								SUM (	(HeadlineWinloss + HeadlineComm)
 										+(MemberWinloss +MemberComm) 
 										+ (AgentWinloss + AgentComm) 
@@ -303,14 +312,84 @@ BEGIN
 								SUM (HeadlineStock) AS HeadlineStock	
 										
 			FROM	bodb_Summary.dbo.CS_Sum_Winloss b WITH (NOLOCK)						
-			WHERE	b.winlostdate BETWEEN @FDate AND @TDate				
-				AND EXISTS (SELECT 1 FROM #SuperList sl WHERE sl.SuperID = b.srecommend)		
+			WHERE	b.winlostdate BETWEEN @FDate AND @TDate		
+				AND EXISTS (SELECT 1 FROM #SuperList sl WHERE sl.SuperID = b.CustID)					 
 				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
 				AND EXISTS (SELECT 1 FROM @SporttypeList st WHERE st.Sporttype = b.Sporttype)
-			GROUP BY srecommend
-			*/
+			GROUP BY CustId
+		 	
+			
+			---5.3: range archive table 
+			SELECT	@FDate = @FromDate,
+					@TDate = @ToDate;
 
-		END
+			IF @FromDate < @ArchiveDate 
+			BEGIN
+				IF @ToDate >= DATEADD(dd, -1, @ArchiveDate)
+				BEGIN
+					SELECT @TDate = DATEADD(dd, -1, @ArchiveDate);
+				END
+			
+				INSERT INTO	#SuperWinLoss (
+									CustId,
+									Username,
+									Name,
+									Wagers,
+									Stake,
+									ValidStake,
+									MemberIncome,
+											
+									Agent,
+									AgentResult,	
+									Master,
+											
+									Super,
+									SuperIncome,
+									SuperResult,
+									SuperStock, 
+									
+									HeadlineIncome,
+									HeadlineResult,
+									HeadlineStock )		
+				SELECT
+									CustId,
+									'' AS Username,
+									'' AS Name,
+									SUM(Wagers) AS Wagers,
+									SUM(Stake) AS Stake,
+									SUM(ValidStake) ValidStake,
+									SUM(MemberWinloss + MemberComm) AS MemberIncome,
+											
+									SUM(Agent) AS Agent,
+									SUM((MemberWinloss + MemberComm) + (AgentWinloss + AgentComm)) AS AgentResult,  --- Member Income + Agent Income
+									SUM(Master) AS Master,
+										 
+									SUM(Super) AS Super,		 
+									
+									SUM(SuperWinloss + SuperComm) AS SuperIncome,
+									SUM((MemberWinloss +MemberComm) + (AgentWinloss + AgentComm) + (MasterWinloss + MasterComm) + (SuperWinloss + SuperComm)) AS SuperResult,
+									SUM(SuperStock) AS SuperStock,		
+									
+									SUM (HeadlineWinloss + HeadlineComm) AS HeadlineIncome,  --- MSH Win Loss + MSH Sharing Comm 
+									SUM (	(HeadlineWinloss + HeadlineComm)
+											+(MemberWinloss +MemberComm) 
+											+ (AgentWinloss + AgentComm) 
+											+ (MasterWinloss + MasterComm) 
+											+ (SuperWinloss + SuperComm)
+										) AS HeadlineResult,
+									SUM (HeadlineStock) AS HeadlineStock	
+											
+				FROM	bodb_Summary.dbo.CS_Sum_Winloss_Old b WITH (NOLOCK)						
+				WHERE	b.winlostdate BETWEEN @FDate AND @TDate		
+					AND EXISTS (SELECT 1 FROM #SuperList sl WHERE sl.SuperID = b.CustID)					 
+					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
+					AND EXISTS (SELECT 1 FROM @SporttypeList st WHERE st.Sporttype = b.Sporttype)
+				GROUP BY CustId
+			
+			END		
+	 
+		END		
+		 
 	END
 
 	SELECT	c.CustId,

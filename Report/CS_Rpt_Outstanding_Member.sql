@@ -6,9 +6,7 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Outstanding_Member]
 	@CustId				INT = 0,	 
 	@IsOwner			BIT = 1,
 	@FromDate			SMALLDATETIME,
-	@ToDate				SMALLDATETIME,	
-	@BalanceUpDay		SMALLDATETIME,
-	@MoveBetsDay		SMALLDATETIME,
+	@ToDate				SMALLDATETIME,
 	@ProductId			SMALLINT = 1,
 	@SporttypeGroup		SMALLINT = 0, -- all
 	@BettypeGroup		SMALLINT = 0, -- all
@@ -32,18 +30,17 @@ AS
 						= 1: Live
 						= 0: Dead 
 	Sample:
-
-  EXEC [CS_Rpt_Outstanding_Member]
-	@CustId				= 13884934,	
+  
+	 EXEC [CS_Rpt_Outstanding_Member]
+	@CustId				= 34109297,	--- agent view member
 	@IsOwner			= 0,
 	@FromDate			= '2019-01-01',
-	@ToDate				= '2019-03-01',	
-	@BalanceUpDay		= '2019-02-03',
-	@MoveBetsDay		= '2019-02-10',
+	@ToDate				= '2019-03-01',	 
 	@ProductId			= 1,
 	@SporttypeGroup		= 0, -- all
 	@BettypeGroup			= 0, -- all
-	@IsLive				= 2 
+	@IsLive				= 2	   
+
 	   
 
 */
@@ -117,16 +114,7 @@ BEGIN
 	DECLARE @FDate SMALLDATETIME, @TDate SMALLDATETIME;
 
 	SELECT  @FDate = @FromDate, @TDate = @ToDate;
-
-	IF @ToDate >= @BalanceUpDay 
-	BEGIN
-		IF @ToDate > @MoveBetsDay
-		BEGIN
-			IF @FromDate <= @MoveBetsDay
-			BEGIN
-				SET @FDate = DATEADD(DD, 1, @MoveBetsDay);
-			END
-		
+ 
 		---- all
 			INSERT INTO	#MemberOutstanding (
 										CustId,
@@ -177,64 +165,6 @@ BEGIN
 					)					  	
 			GROUP BY CustId
 
-
-			 
-
-		--SET @FDate = @FromDate;
-		
-		--IF @FromDate <= @MoveBetsDay
-		--BEGIN
-		--	IF @ToDate > @MoveBetsDay
-		--	BEGIN
-		--		SET @TDate = @MoveBetsDay;
-		--	END
-
-	--		INSERT INTO #SAgOutstanding(ProductID, bettype, SportType, liveindicator, GrossComm, Turnover, MAgTotal, SAgOutstanding, SAgComm, NumberOfTickets)
-	--		SELECT  s.ProductID,
-	--				s.GroupTypeId,
-	--				CASE s.ProductID
-	--					WHEN 5 THEN m.sporttype
-	--					WHEN 22 THEN s.SportType
-	--					WHEN 23 THEN s.SportType
-	--				END AS SportType,
-	--				CASE s.ProductID
-	--					WHEN 3 THEN b.liveindicator
-	--					ELSE 0
-	--				END AS liveindicator,
-	--				SUM(CASE
-	--					WHEN b.bettype = 1000 THEN oddsspread
-	--					WHEN b.bettype BETWEEN 1401 AND 1499 THEN scomm
-	--					ELSE CASE WHEN tpositiontaking = 1 THEN 0 ELSE scomm / (1 - tpositiontaking) END END) AS GrossComm,
-	--				SUM(CASE WHEN winlostdate >= @ABSDate THEN 
-	--							CASE WHEN b.bettype IN (33, 43) AND b.liveawayscore = 0 THEN ABS(stake) / 2
-	--								ELSE ABS(stake) END
-	--						ELSE 
-	--							CASE WHEN b.bettype IN (33, 43) AND b.liveawayscore = 0 THEN stake / 2
-	--								ELSE stake END
-	--					END) AS Turnover,
-	--				SUM(mwinlost + awinlost + acomm + winlost - actual_stake) AS MAgTotal,
-	--				SUM(swinlost) AS SAgOutstanding,
-	--				ISNULL(SUM(scomm), 0) - ISNULL(SUM(acomm), 0) AS SAgComm,
-	--				COUNT(transid) AS NumberOfTickets
-	--		FROM dbo.bettrans14 b WITH(NOLOCK)
-	--			INNER JOIN #SportBettype s ON (b.bettype = s.Bettype AND (ProductID <> 5 OR EventType <> 3))
-	--			LEFT JOIN dbo.match14 m WITH(NOLOCK) ON b.matchid = m.matchid AND s.ProductID = 5
-	--		WHERE winlostdate BETWEEN @FDate AND @TDate
-	--			AND statusID NOT IN (0, 1, 101, 102, 103)	
-	--			AND b.ruben = 1			
-	--			AND b.srecommend = @CustID
-	--		GROUP BY s.ProductID, s.GroupTypeId,
-	--				CASE s.ProductID
-	--					WHEN 5 THEN m.sporttype
-	--					WHEN 22 THEN s.SportType
-	--					WHEN 23 THEN s.SportType
-	--				END,
-	--				CASE s.ProductID
-	--					WHEN 3 THEN b.liveindicator
-	--					ELSE 0 END;
-
-		END
-	END
 
 	SELECT	c.CustId,
 			c.Username,
