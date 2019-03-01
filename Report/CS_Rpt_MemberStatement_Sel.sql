@@ -80,15 +80,23 @@ BEGIN
 		FROM CTE_WinlostDate
 		WHERE WinlostDate < @ToDate
 	)
+	,CTE_Statement AS
+	(
+		SELECT
+			WinlostDate
+			,SUM(ISNULL(Stake, 0)) AS Stake
+			,SUM(ISNULL(ValidStake, 0)) AS ValidStake
+			,SUM(ISNULL(Winloss, 0)) AS Winloss
+		FROM #Statement
+		GROUP BY WinlostDate
+	)
 	SELECT
 		wld.WinlostDate
-		,SUM(ISNULL(s.Stake, 0)) AS Stake
-		,SUM(ISNULL(s.ValidStake, 0)) AS ValidStake
-		,SUM(ISNULL(s.Winloss, 0)) AS Winloss
+		,s.Stake
+		,s.ValidStake
+		,s.Winloss
 	FROM CTE_WinlostDate wld
 		LEFT JOIN #Statement s ON wld.WinlostDate = s.WinlostDate
-	GROUP BY
-		wld.WinlostDate
 	ORDER BY
 		WinlostDate DESC
 

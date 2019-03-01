@@ -51,7 +51,16 @@ BEGIN
 		RETURN
 	END
 
-	IF @RoleId = 3
+	IF @RoleId = 4
+	BEGIN
+		SELECT	@UsedCredit	= SUM(ISNULL(credit, 0))
+		FROM dbo.custInfo WITH (NOLOCK)
+		WHERE srecommend = @srecommend
+			AND roleId = 3
+
+		SELECT	@MinCredit = ISNULL(@UsedCredit, 0)
+	END
+	ELSE IF @RoleId = 3
 	BEGIN
 		SELECT	@UplineCredit		= SUM(CASE WHEN roleId = 4 THEN ISNULL(credit, 0) ELSE 0 END),
 				@UplineUsedCredit	= SUM(CASE WHEN roleId = 3 THEN ISNULL(credit, 0) ELSE 0 END),
@@ -75,9 +84,7 @@ BEGIN
 	END
 	ELSE IF @RoleId = 1
 	BEGIN
-		DECLARE @Amount MONEY
-
-		-- 1st -- Prevent user from decreasing given credit due to processing data
+		-- Prevent user from decreasing given credit due to processing data
 		IF ISNULL(@Credit, 0) > ISNULL(@UpdCredit, 0)
 		BEGIN
 			EXEC DBTXN.bodb02.dbo.Acc_Core_IsMainProcessRunning
@@ -90,45 +97,17 @@ BEGIN
 			IF @ErrCode <> 0
 			BEGIN
 				-- Data processing is in progress, thus Given Credit cannot be reduced. Please try again in a few minutes.
-				SELECT @ErrCode = 101, @ErrMsg = dbo.f_Get_MsgNamebyMsgID (70022, @Language)
+				SELECT @ErrCode = 102, @ErrMsg = dbo.f_Get_MsgNamebyMsgID (70022, @Language)
 				RETURN
 			END
 		END
-
-		EXEC DBTXN.bodb02.dbo.Age_CS_Customer_TotalAmount_Sel @CustId = @CustId, @Amount = @Amount OUTPUT
-
-		-- 2nd -- Prevent user from decreasing given credit due to processing data
-		IF ISNULL(@Credit, 0) > ISNULL(@UpdCredit, 0)
-		BEGIN
-			EXEC DBTXN.bodb02.dbo.Acc_Core_IsMainProcessRunning
-				@CustId				= @CustId,
-				@UplineId			= @recommend,
-				@IsDepositMember	= 0,
-				@ErrCode			= @ErrCode OUTPUT,
-				@ErrMsg				= @ErrMsg OUTPUT
-
-			IF @ErrCode <> 0
-			BEGIN
-				-- Data processing is in progress, thus Given Credit cannot be reduced. Please try again in a few minutes.
-				SELECT @ErrCode = 101, @ErrMsg = dbo.f_Get_MsgNamebyMsgID (70022, @Language)
-				RETURN
-			END
-		END
-
-		SELECT @BetCredit = ISNULL(@Amount, 0) + ISNULL(@Credit, 0)
-
-		SELECT	@UplineCredit		= SUM(CASE WHEN roleId = 2 THEN ISNULL(credit, 0) ELSE 0 END),
-				@UplineUsedCredit	= SUM(CASE WHEN roleId = 1 THEN ISNULL(credit, 0) ELSE 0 END)
-		FROM dbo.custInfo WITH (NOLOCK)
-		WHERE recommend = @recommend
-
-		SELECT	@MinCredit = CASE WHEN @BetCredit < 0 THEN 0 ELSE - @BetCredit END,
-				@MaxCredit = ISNULL(@UplineCredit, 0) - ISNULL(@UplineUsedCredit, 0) + ISNULL(@Credit, 0)
 	END
 
-	IF @UpdCredit NOT BETWEEN @MinCredit AND @MaxCredit
+	-- SP check on SMA/MA/Agent, web check Member
+	IF (@RoleId IN (2,3) AND @UpdCredit NOT BETWEEN @MinCredit AND @MaxCredit)
+		OR (@RoleId = 4 AND @UpdCredit < @MinCredit) -- SMA not have MaxCredit
 	BEGIN
-		SELECT @ErrCode = 100, @ErrMsg = ''
+		SELECT @ErrCode = 103, @ErrMsg = ''
 
 		RETURN
 	END
@@ -139,7 +118,7 @@ BEGIN
 		WHERE custId = @custId
 	END TRY
 	BEGIN CATCH
-		SELECT @ErrCode = 100, @ErrMsg = ''
+		SELECT @ErrCode = 104, @ErrMsg = ''
 		RETURN
 	END CATCH
 

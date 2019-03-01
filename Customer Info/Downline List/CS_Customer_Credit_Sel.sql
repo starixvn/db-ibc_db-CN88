@@ -44,8 +44,7 @@ BEGIN
 		FROM dbo.custInfo WITH (NOLOCK)
 		WHERE srecommend = @srecommend
 
-		SELECT	@MinCredit = ISNULL(@UsedCredit, 0),
-				@MaxCredit = ISNULL(@UplineCredit, 0) - ISNULL(@UplineUsedCredit, 0) + ISNULL(@Credit, 0)
+		
 	END
 	ELSE IF @RoleId = 2
 	BEGIN
@@ -55,31 +54,23 @@ BEGIN
 		FROM dbo.custInfo WITH (NOLOCK)
 		WHERE mrecommend = @mrecommend
 
-		SELECT	@MinCredit = ISNULL(@UsedCredit, 0),
-				@MaxCredit = ISNULL(@UplineCredit, 0) - ISNULL(@UplineUsedCredit, 0) + ISNULL(@Credit, 0)
+		SELECT	@MinCredit = ISNULL(@UsedCredit, 0)
 	END
 	ELSE IF @RoleId = 1
 	BEGIN
-		DECLARE @Amount MONEY
-
-		EXEC DBTXN.bodb02.dbo.Age_CS_Customer_TotalAmount_Sel @CustId = @CustId, @Amount = @Amount OUTPUT
-
-		SELECT @BetCredit = ISNULL(@Amount, 0) + ISNULL(@Credit, 0)
-
 		SELECT	@UplineCredit		= SUM(CASE WHEN roleId = 2 THEN ISNULL(credit, 0) ELSE 0 END),
 				@UplineUsedCredit	= SUM(CASE WHEN roleId = 1 THEN ISNULL(credit, 0) ELSE 0 END)
 		FROM dbo.custInfo WITH (NOLOCK)
 		WHERE recommend = @recommend
-
-		SELECT	@MinCredit = CASE WHEN @BetCredit > 0 THEN 0 ELSE - @BetCredit END,
-				@MaxCredit = ISNULL(@UplineCredit, 0) - ISNULL(@UplineUsedCredit, 0) + ISNULL(@Credit, 0)
 	END
 
-	SELECT	@CustId		AS CustId,
-			@UsedCredit AS UsedCredit, -- for SMA level
-			@BetCredit	AS BetCredit, -- for Member level
-			@MinCredit	AS MinCredit,
-			@MaxCredit	AS MaxCredit -- NULL for Super = unlimitted
+	SELECT  @MinCredit = ISNULL(@UsedCredit, 0)
+			,@MaxCredit = ISNULL(@UplineCredit, 0) - ISNULL(@UplineUsedCredit, 0) + ISNULL(@Credit, 0)
+
+	SELECT	@Credit				AS GivenCredit
+			,@UsedCredit		AS UsedCredit -- for SMA/MA/Agent
+			,@MinCredit			AS MinCredit -- for SMA/MA/Agent
+			,@MaxCredit			AS MaxCredit --  -- for SMA/MA/Agent -- NULL for Super = unlimitted
 END
 GO
 

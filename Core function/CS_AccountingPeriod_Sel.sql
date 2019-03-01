@@ -1,4 +1,4 @@
-/*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBPRO-bodb02" executers="bodbAdminNet,bodbDownlineNet,bodbDownlineNetView" isFunction="0" isNested="0"></info>*/
 USE [bodb02]
 GO
 
@@ -7,7 +7,7 @@ AS
 
 /*
 	Created: 20190214@Percy
-	DB: DBAGE.bodb02
+	DB: DBPRO.bodb02
 	Task: Get Accounting Period
 
 	Revisions:
@@ -16,7 +16,7 @@ AS
 
 BEGIN
 	SELECT [Year], PeriodId, FromDate, ToDate
-	FROM dbo.CS_f_Get_AccountingPeriod()
+	FROM dbo.CS_AccountingPeriod WITH (NOLOCK)
 	ORDER BY [Year], PeriodId
 END
 GO
