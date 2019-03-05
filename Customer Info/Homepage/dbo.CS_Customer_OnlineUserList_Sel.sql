@@ -4,7 +4,7 @@ ALTER PROCEDURE [dbo].[CS_Customer_OnlineUserList_Sel]
 	@CustId INT,
 	@pageSize INT = 50,
 	@pageIndex INT = 0,
-	@totalPages INT = 0 OUTPUT
+	@totalRows INT = 0 OUTPUT
 AS
 /*
 	Created: 20190304@Johnson
@@ -62,7 +62,7 @@ BEGIN
 		@RowStart = @PageSize * @PageIndex + 1, 
 		@RowEnd = @RowStart + @PageSize - 1   
 
-	SELECT @TotalPages = count(c.custid),@TotalPages=@TotalPages/@PageSize + CASE WHEN @TotalPages%@PageSize > 0 THEN 1 ELSE 0 END 
+	SELECT @TotalRows = count(1)
 	FROM #tblOnlineList c
 	
 	SELECT custid,username,name,lastlogin
