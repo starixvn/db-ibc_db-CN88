@@ -294,7 +294,7 @@ BEGIN
 								'' AS Name,
 								SUM(Wagers) AS Wagers,
 								SUM(Stake) AS Stake										
-			FROM	bodb_Summary.dbo.CS_Sum_Cancelled b WITH (NOLOCK)						
+			FROM	bodb_Summary.dbo.CS_SumCancelled b WITH (NOLOCK)						
 			WHERE	b.winlostdate BETWEEN @FDate AND @TDate	
 				AND b.CancelType = @ReportType			
 				AND EXISTS (SELECT 1 FROM #SuperList sl WHERE sl.SuperID = b.CustID)					 
@@ -327,7 +327,7 @@ BEGIN
 									SUM(Wagers) AS Wagers,
 									SUM(Stake) AS Stake
 									
-				FROM	bodb_Summary.dbo.CS_Sum_Cancelled_Old b WITH (NOLOCK)						
+				FROM	bodb_Summary.dbo.CS_SumCancelled_Old b WITH (NOLOCK)						
 				WHERE	b.winlostdate BETWEEN @FDate AND @TDate		
 					AND b.CancelType = @ReportType
 					AND EXISTS (SELECT 1 FROM #SuperList sl WHERE sl.SuperID = b.CustID)					 

@@ -254,7 +254,7 @@ BEGIN
 								SUM(MasterWinloss + MasterComm) AS MasterIncome,
 								SUM((MemberWinloss +MemberComm) + (AgentWinloss + AgentComm) + (MasterWinloss + MasterComm)) AS MasterResult																	
 										
-			FROM	bodb_Summary.dbo.CS_Sum_Winloss b WITH (NOLOCK)						
+			FROM	bodb_Summary.dbo.CS_SumWinloss b WITH (NOLOCK)						
 			WHERE	b.winlostdate BETWEEN @FDate AND @TDate				
 				AND EXISTS (SELECT 1 FROM #AgentList sl WHERE sl.AgentID = b.CustID)						
 				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
@@ -308,7 +308,7 @@ BEGIN
 									SUM(MasterWinloss + MasterComm) AS MasterIncome,
 									SUM((MemberWinloss +MemberComm) + (AgentWinloss + AgentComm) + (MasterWinloss + MasterComm)) AS MasterResult																	
 											
-				FROM	bodb_Summary.dbo.CS_Sum_Winloss_Old b WITH (NOLOCK)						
+				FROM	bodb_Summary.dbo.CS_SumWinloss_Old b WITH (NOLOCK)						
 				WHERE	b.winlostdate BETWEEN @FDate AND @TDate				
 					AND EXISTS (SELECT 1 FROM #AgentList sl WHERE sl.AgentID = b.CustID)						
 					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)

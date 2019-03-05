@@ -311,7 +311,7 @@ BEGIN
 									) AS HeadlineResult,
 								SUM (HeadlineStock) AS HeadlineStock	
 										
-			FROM	bodb_Summary.dbo.CS_Sum_Winloss b WITH (NOLOCK)						
+			FROM	bodb_Summary.dbo.CS_SumWinloss b WITH (NOLOCK)						
 			WHERE	b.winlostdate BETWEEN @FDate AND @TDate		
 				AND EXISTS (SELECT 1 FROM #SuperList sl WHERE sl.SuperID = b.CustID)					 
 				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
@@ -379,7 +379,7 @@ BEGIN
 										) AS HeadlineResult,
 									SUM (HeadlineStock) AS HeadlineStock	
 											
-				FROM	bodb_Summary.dbo.CS_Sum_Winloss_Old b WITH (NOLOCK)						
+				FROM	bodb_Summary.dbo.CS_SumWinloss_Old b WITH (NOLOCK)						
 				WHERE	b.winlostdate BETWEEN @FDate AND @TDate		
 					AND EXISTS (SELECT 1 FROM #SuperList sl WHERE sl.SuperID = b.CustID)					 
 					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
