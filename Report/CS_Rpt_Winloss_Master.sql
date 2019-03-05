@@ -78,7 +78,7 @@ BEGIN
 	
 	--- 1. Get MasterList
 	
-	CREATE TABLE #MasterList (MasterId INT)
+	CREATE TABLE #MasterList (MasterId INT PRIMARY KEY)
 	
 	IF @IsOwner = 1  --- Master view Master
 	BEGIN 

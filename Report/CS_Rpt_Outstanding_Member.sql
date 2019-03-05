@@ -65,7 +65,7 @@ BEGIN
 	
 	--- 1. Get AgentList
 	
-	CREATE TABLE #MemberList (CustId INT)	
+	CREATE TABLE #MemberList (CustId INT PRIMARY KEY)	
 	
 	---- Upline view Member
 	BEGIN 

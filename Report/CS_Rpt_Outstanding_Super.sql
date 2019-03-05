@@ -73,7 +73,7 @@ BEGIN
 	
 	--- 1. Get Superlist
 	
-	CREATE TABLE #SuperList (SuperID INT)
+	CREATE TABLE #SuperList (SuperID INT PRIMARY KEY)
 	
 	IF @IsOwner = 1  --- Super view super
 	BEGIN 

@@ -68,7 +68,7 @@ BEGIN
 	
 	--- 1. Get AgentList
 	
-	CREATE TABLE #MemberList (CustId INT)	
+	CREATE TABLE #MemberList (CustId INT PRIMARY KEY)	
 	
 	---- Upline view Member
 	BEGIN 
@@ -127,55 +127,98 @@ BEGIN
 			BEGIN
 				SET @FDate = DATEADD(DD, 1, @MoveBetsDay);
 			END
-		 		 
-			INSERT INTO	#MemberCancelled (
-										CustId,
-										Username,
-										Name,
-										Wagers,
-										Stake, 
-										ValidStake, 
-										MemberIncome,		 				
-										AgentIncome,
-										AgentResultA	 
-										) 
-									 	
-			SELECT
-			  					CustId,
-								'' AS Username,
-								'' AS Name,
-								COUNT(TransID) AS Wagers,
-								SUM(Actual_stake) AS Stake,
-								SUM(ABS(winlost - actual_stake)) ValidStake,
-								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
-
-								SUM(AWinlost + Comm - Playercomm) AS AgentIncome,	
-								SUM((Winlost - actual_stake + Playercomm)* (1 - APositiontaking)) AS AgentResultA 
-
-			FROM	dbo.bettrans b WITH (NOLOCK)							
-			WHERE	b.winlostdate BETWEEN @FDate AND @TDate
-				AND b.StatusID IN (101,102,103)
-				AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)	
-				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.Bettype)	
-				AND (
-					EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
-					OR
-					(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
-					OR @SporttypeGroup = 10  --- Parlay (sport)
-					)
-				AND (   @IsLive = 2   --- all
+		 	
+			IF @ReportType = 1  --- Cencelled Bets
+			BEGIN 			
+				INSERT INTO	#MemberCancelled (
+											CustId,
+											Username,
+											Name,
+											Wagers,
+											Stake 
+											) 
+											
+				SELECT
+									CustId,
+									'' AS Username,
+									'' AS Name,
+									COUNT(TransID) AS Wagers,
+									SUM(Actual_stake) AS Stake
+				FROM	dbo.bettrans b WITH (NOLOCK)							
+				WHERE	b.winlostdate BETWEEN @FDate AND @TDate
+					AND b.StatusID IN (101,102,103)
+					AND CASE WHEN b.ExtraInfo LIKE '%p1%' THEN
+										ISNULL(CAST(('<xml>' + b.ExtraInfo + '</xml>') AS XML).value('data(/xml/p1/@ab)[1]','TINYINT'), 0)
+									ELSE 0
+								END <> 1
+					AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)	
+					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.Bettype)	
+					AND (
+						EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
 						OR
-						(@SporttypeGroup <> 10 AND b.Liveindicator = @IsLive)
-						OR 
-						(@SporttypeGroup = 10 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
-																UNION 
-																SELECT 2 AS IsLive WHERE @IsLive = 0
-																UNION 
-																SELECT 1 AS IsLive WHERE @IsLive = 1																		
-																)
+						(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
+						OR @SporttypeGroup = 10  --- Parlay (sport)
 						)
-					)					  	
-			GROUP BY CustId
+					AND (   @IsLive = 2   --- all
+							OR
+							(@SporttypeGroup <> 10 AND b.Liveindicator = @IsLive)
+							OR 
+							(@SporttypeGroup = 10 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
+																	UNION 
+																	SELECT 2 AS IsLive WHERE @IsLive = 0
+																	UNION 
+																	SELECT 1 AS IsLive WHERE @IsLive = 1																		
+																	)
+							)
+						)					  	
+				GROUP BY CustId
+			END
+			ELSE
+			BEGIN 
+				INSERT INTO	#MemberCancelled (
+											CustId,
+											Username,
+											Name,
+											Wagers,
+											Stake
+											) 
+											
+				SELECT
+									CustId,
+									'' AS Username,
+									'' AS Name,
+									COUNT(TransID) AS Wagers,
+									SUM(Actual_stake) AS Stake
+
+				FROM	dbo.bettrans b WITH (NOLOCK)							
+				WHERE	b.winlostdate BETWEEN @FDate AND @TDate
+					AND b.StatusID = 102
+					AND CASE WHEN b.ExtraInfo LIKE '%p1%' THEN
+										ISNULL(CAST(('<xml>' + b.ExtraInfo + '</xml>') AS XML).value('data(/xml/p1/@ab)[1]','TINYINT'), 0)
+									ELSE 0
+								END = 1
+					AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)	
+					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.Bettype)	
+					AND (
+						EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
+						OR
+						(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
+						OR @SporttypeGroup = 10  --- Parlay (sport)
+						)
+					AND (   @IsLive = 2   --- all
+							OR
+							(@SporttypeGroup <> 10 AND b.Liveindicator = @IsLive)
+							OR 
+							(@SporttypeGroup = 10 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
+																	UNION 
+																	SELECT 2 AS IsLive WHERE @IsLive = 0
+																	UNION 
+																	SELECT 1 AS IsLive WHERE @IsLive = 1																		
+																	)
+							)
+						)					  	
+				GROUP BY CustId
+			END
 		END 
 		
 		-- 5.2: sum table range
@@ -213,7 +256,8 @@ BEGIN
 								SUM(Stake) AS Stake															
 										
 			FROM	bodb_Summary.dbo.CS_Sum_Cancelled b WITH (NOLOCK)						
-			WHERE	b.winlostdate BETWEEN @FDate AND @TDate				
+			WHERE	b.winlostdate BETWEEN @FDate AND @TDate		
+				AND b.CancelType = @ReportType			
 				AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)						
 				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
 				AND EXISTS (SELECT 1 FROM @SporttypeList st WHERE st.Sporttype = b.Sporttype)
@@ -245,7 +289,8 @@ BEGIN
 									SUM(Stake) AS Stake														
 											
 				FROM	bodb_Summary.dbo.CS_Sum_Cancelled_Old b WITH (NOLOCK)						
-				WHERE	b.winlostdate BETWEEN @FDate AND @TDate				
+				WHERE	b.winlostdate BETWEEN @FDate AND @TDate	
+					AND b.CancelType = @ReportType
 					AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)						
 					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
 					AND EXISTS (SELECT 1 FROM @SporttypeList st WHERE st.Sporttype = b.Sporttype)

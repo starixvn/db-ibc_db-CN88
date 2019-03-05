@@ -72,7 +72,7 @@ BEGIN
 	
 	--- 1. Get AgentList
 	
-	CREATE TABLE #AgentList (AgentId INT)
+	CREATE TABLE #AgentList (AgentId INT PRIMARY KEY)
 	
 	IF @IsOwner = 1  --- Agent view Agent
 	BEGIN 

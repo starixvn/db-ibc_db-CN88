@@ -73,7 +73,7 @@ BEGIN
 	
 	--- 1. Get AgentList
 	
-	CREATE TABLE #AgentList (AgentId INT)
+	CREATE TABLE #AgentList (AgentId INT PRIMARY KEY)
 	
 	IF @IsOwner = 1  --- Agent view Agent
 	BEGIN 
@@ -136,67 +136,96 @@ BEGIN
 				SET @FDate = DATEADD(DD, 1, @MoveBetsDay);
 			END
 		
-		 
-			INSERT INTO	#AgentCancelled (
-										CustId,
-										Username,
-										Name,
-										Wagers,
-										Stake,
-										ValidStake,
-										MemberIncome,
+			IF @ReportType = 1  --- Cencelled Bets
+			BEGIN 
+				INSERT INTO	#AgentCancelled (
+											CustId,
+											Username,
+											Name,
+											Wagers,
+											Stake		
+											)		
+				SELECT
+									recommend,
+									'' AS Username,
+									'' AS Name,
+									COUNT(TransID) AS Wagers,
+									SUM(Actual_stake) AS Stake
 
-										AgentCurrency,					
-										Agent, 
-										AgentIncome,
-										AgentResult,	
-										AgentStock,
-					
-										MasterIncome,
-										MasterResult		
-										)		
-			SELECT
-			  					recommend,
-								'' AS Username,
-								'' AS Name,
-								COUNT(TransID) AS Wagers,
-								SUM(Actual_stake) AS Stake,
-								SUM(ABS(winlost - actual_stake)) ValidStake,
-								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
-
-								SUM(Winlost - actual_stake + Playercomm) AS AgentCurrency,										
-								SUM((Winlost - actual_stake)  + (ABS(winlost - actual_stake) * discount) ) AS Agent,
-								SUM(AWinlost + Comm - Playercomm) AS AgentIncome,	
-								SUM((Winlost - actual_stake + PlayerComm) + (Awinlost + Comm - PlayerComm)) AS AgentResult,  --- Member Income + Agent Income
-								SUM(ABS(winlost - actual_stake) * (1 - apositiontaking)) AS AgentStock,
-								
-								SUM(MWinlost + AComm - Comm) AS MasterIncome,								
-								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm)) AS MasterResult
-
-			FROM	dbo.bettrans b WITH (NOLOCK)							
-			WHERE	b.winlostdate BETWEEN @FDate AND @TDate
-				AND b.StatusID IN (101,102,103)
-				AND EXISTS (SELECT 1 FROM #AgentList sl WHERE sl.AgentID = b.recommend)	
-				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.Bettype)	
-				AND (
-					EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
-					OR
-					(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
-					OR @SporttypeGroup = 10  --- Parlay (sport)
-					)
-				AND (   @IsLive = 2   --- all
+				FROM	dbo.bettrans b WITH (NOLOCK)							
+				WHERE	b.winlostdate BETWEEN @FDate AND @TDate
+					AND b.StatusID IN (101,102,103)
+					AND CASE WHEN b.ExtraInfo LIKE '%p1%' THEN
+									ISNULL(CAST(('<xml>' + b.ExtraInfo + '</xml>') AS XML).value('data(/xml/p1/@ab)[1]','TINYINT'), 0)
+								ELSE 0
+							END <> 1
+					AND EXISTS (SELECT 1 FROM #AgentList sl WHERE sl.AgentID = b.recommend)	
+					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.Bettype)	
+					AND (
+						EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
 						OR
-						(@SporttypeGroup <> 10 AND b.Liveindicator = @IsLive)
-						OR 
-						(@SporttypeGroup = 10 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
-																UNION 
-																SELECT 2 AS IsLive WHERE @IsLive = 0
-																UNION 
-																SELECT 1 AS IsLive WHERE @IsLive = 1																		
-																)
+						(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
+						OR @SporttypeGroup = 10  --- Parlay (sport)
 						)
-					)			  	
-			GROUP BY recommend
+					AND (   @IsLive = 2   --- all
+							OR
+							(@SporttypeGroup <> 10 AND b.Liveindicator = @IsLive)
+							OR 
+							(@SporttypeGroup = 10 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
+																	UNION 
+																	SELECT 2 AS IsLive WHERE @IsLive = 0
+																	UNION 
+																	SELECT 1 AS IsLive WHERE @IsLive = 1																		
+																	)
+							)
+						)			  	
+				GROUP BY recommend
+			END 
+			ELSE
+			BEGIN 
+				INSERT INTO	#AgentCancelled (
+											CustId,
+											Username,
+											Name,
+											Wagers,
+											Stake
+											)		
+				SELECT
+									recommend,
+									'' AS Username,
+									'' AS Name,
+									COUNT(TransID) AS Wagers,
+									SUM(Actual_stake) AS Stake 
+
+				FROM	dbo.bettrans b WITH (NOLOCK)							
+				WHERE	b.winlostdate BETWEEN @FDate AND @TDate
+					AND b.StatusID = 102
+					AND CASE WHEN b.ExtraInfo LIKE '%p1%' THEN
+									ISNULL(CAST(('<xml>' + b.ExtraInfo + '</xml>') AS XML).value('data(/xml/p1/@ab)[1]','TINYINT'), 0)
+								ELSE 0
+							END = 1
+					AND EXISTS (SELECT 1 FROM #AgentList sl WHERE sl.AgentID = b.recommend)	
+					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.Bettype)	
+					AND (
+						EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
+						OR
+						(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
+						OR @SporttypeGroup = 10  --- Parlay (sport)
+						)
+					AND (   @IsLive = 2   --- all
+							OR
+							(@SporttypeGroup <> 10 AND b.Liveindicator = @IsLive)
+							OR 
+							(@SporttypeGroup = 10 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
+																	UNION 
+																	SELECT 2 AS IsLive WHERE @IsLive = 0
+																	UNION 
+																	SELECT 1 AS IsLive WHERE @IsLive = 1																		
+																	)
+							)
+						)			  	
+				GROUP BY recommend
+			END 
 		END
 				
 		-- 5.2: sum table range
@@ -233,7 +262,8 @@ BEGIN
 								SUM(Wagers) AS Wagers,
 								SUM(Stake) AS Stake 
 			FROM	bodb_Summary.dbo.CS_Sum_Cancelled b WITH (NOLOCK)						
-			WHERE	b.winlostdate BETWEEN @FDate AND @TDate				
+			WHERE	b.winlostdate BETWEEN @FDate AND @TDate			
+				AND b.CancelType = @ReportType			
 				AND EXISTS (SELECT 1 FROM #AgentList sl WHERE sl.AgentID = b.CustID)						
 				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
 				AND EXISTS (SELECT 1 FROM @SporttypeList st WHERE st.Sporttype = b.Sporttype)
@@ -264,7 +294,8 @@ BEGIN
 									SUM(Wagers) AS Wagers,
 									SUM(Stake) AS Stake 
 				FROM	bodb_Summary.dbo.CS_Sum_Cancelled_Old b WITH (NOLOCK)						
-				WHERE	b.winlostdate BETWEEN @FDate AND @TDate				
+				WHERE	b.winlostdate BETWEEN @FDate AND @TDate
+					AND b.CancelType = @ReportType
 					AND EXISTS (SELECT 1 FROM #AgentList sl WHERE sl.AgentID = b.CustID)						
 					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
 					AND EXISTS (SELECT 1 FROM @SporttypeList st WHERE st.Sporttype = b.Sporttype)

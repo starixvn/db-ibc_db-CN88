@@ -78,7 +78,7 @@ BEGIN
 	
 	--- 1. Get MasterList
 	
-	CREATE TABLE #MasterList (MasterId INT)
+	CREATE TABLE #MasterList (MasterId INT PRIMARY KEY)
 	
 	IF @IsOwner = 1  --- Master view Master
 	BEGIN 
@@ -144,75 +144,93 @@ BEGIN
 				SET @FDate = DATEADD(DD, 1, @MoveBetsDay);
 			END
 		
-		 
-			INSERT INTO	#MasterCancelled (
-										CustId,
-										Username,
-										Name,
-										Wagers,
-										Stake,
-										ValidStake,
-										MemberIncome,
-				
-										Agent,
-										AgentResult,
+			IF @ReportType = 1  --- Cencelled Bets
+			BEGIN 
 			
-										MasterIncome,
-										MasterResult,
-										MasterStock,
-
-										Super,	 
-										SuperIncome,
-										SuperResult	,
-										SuperStock)		
-			SELECT
-			  					mrecommend,
-								'' AS Username,
-								'' AS Name,
-								COUNT(TransID) AS Wagers,
-								SUM(Actual_stake) AS Stake,
-								SUM(ABS(winlost - actual_stake)) ValidStake,
-								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
-										
-								SUM((Winlost - actual_stake)  + (ABS(winlost - actual_stake) * discount) ) AS Agent,
-								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm)) AS AgentResult,  --- Member Income + Agent Income
-								
-								SUM(MWinlost + AComm - Comm) AS MasterIncome,								
-								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm)) AS MasterResult, ---	Master Income + Agent Result 		 
-								SUM(ABS(winlost - actual_stake) * (1 - apositiontaking - mpositiontaking)) AS MasterStock,	
-
-								SUM( (Winlost - actual_stake)* (1 - apositiontaking - mpositiontaking) 
-									 +  ABS(winlost - actual_stake) * (1 - apositiontaking - mpositiontaking) * sdiscount
-									 ) AS Super,		 
-								 
-								SUM(SWinlost + SComm - Acomm) AS SuperIncome,
-								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm) + (SWinlost + SComm - Acomm)) AS SuperResult,
-								SUM(ABS(winlost - actual_stake) * (1 - tpositiontaking)) AS SuperStock	
-			
-			FROM	dbo.bettrans b WITH (NOLOCK)							
-			WHERE	b.winlostdate BETWEEN @FDate AND @TDate
-				AND b.StatusID IN (101,102,103)
-				AND EXISTS (SELECT 1 FROM #MasterList sl WHERE sl.MasterID = b.mrecommend)	
-				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.Bettype)	
-				AND (
-					EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
-					OR
-					(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
-					OR @SporttypeGroup = 10  --- Parlay (sport)
-					)
-				AND (   @IsLive = 2   --- all
+				INSERT INTO	#MasterCancelled (
+											CustId,
+											Username,
+											Name,
+											Wagers,
+											Stake)		
+				SELECT
+							mrecommend,
+							'' AS Username,
+							'' AS Name,
+							COUNT(TransID) AS Wagers,
+							SUM(Actual_stake) AS Stake			
+				FROM	dbo.bettrans b WITH (NOLOCK)							
+				WHERE	b.winlostdate BETWEEN @FDate AND @TDate
+					AND b.StatusID IN (101,102,103)
+					AND CASE WHEN b.ExtraInfo LIKE '%p1%' THEN
+									ISNULL(CAST(('<xml>' + b.ExtraInfo + '</xml>') AS XML).value('data(/xml/p1/@ab)[1]','TINYINT'), 0)
+								ELSE 0
+							END <> 1
+					AND EXISTS (SELECT 1 FROM #MasterList sl WHERE sl.MasterID = b.mrecommend)	
+					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.Bettype)	
+					AND (
+						EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
 						OR
-						(@SporttypeGroup <> 10 AND b.Liveindicator = @IsLive)
-						OR 
-						(@SporttypeGroup = 10 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
-																UNION 
-																SELECT 2 AS IsLive WHERE @IsLive = 0
-																UNION 
-																SELECT 1 AS IsLive WHERE @IsLive = 1																		
-																)
+						(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
+						OR @SporttypeGroup = 10  --- Parlay (sport)
 						)
-					)		
-			GROUP BY mrecommend		
+					AND (   @IsLive = 2   --- all
+							OR
+							(@SporttypeGroup <> 10 AND b.Liveindicator = @IsLive)
+							OR 
+							(@SporttypeGroup = 10 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
+																	UNION 
+																	SELECT 2 AS IsLive WHERE @IsLive = 0
+																	UNION 
+																	SELECT 1 AS IsLive WHERE @IsLive = 1																		
+																	)
+							)
+						)		
+				GROUP BY mrecommend		
+			END
+			ELSE --- Abnormal Bet
+			BEGIN 
+				INSERT INTO	#MasterCancelled (
+											CustId,
+											Username,
+											Name,
+											Wagers,
+											Stake)		
+				SELECT
+							mrecommend,
+							'' AS Username,
+							'' AS Name,
+							COUNT(TransID) AS Wagers,
+							SUM(Actual_stake) AS Stake			
+				FROM	dbo.bettrans b WITH (NOLOCK)							
+				WHERE	b.winlostdate BETWEEN @FDate AND @TDate
+					AND b.StatusID = 102
+					AND CASE WHEN b.ExtraInfo LIKE '%p1%' THEN
+									ISNULL(CAST(('<xml>' + b.ExtraInfo + '</xml>') AS XML).value('data(/xml/p1/@ab)[1]','TINYINT'), 0)
+								ELSE 0
+							END = 1
+					AND EXISTS (SELECT 1 FROM #MasterList sl WHERE sl.MasterID = b.mrecommend)	
+					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.Bettype)	
+					AND (
+						EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
+						OR
+						(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
+						OR @SporttypeGroup = 10  --- Parlay (sport)
+						)
+					AND (   @IsLive = 2   --- all
+							OR
+							(@SporttypeGroup <> 10 AND b.Liveindicator = @IsLive)
+							OR 
+							(@SporttypeGroup = 10 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
+																	UNION 
+																	SELECT 2 AS IsLive WHERE @IsLive = 0
+																	UNION 
+																	SELECT 1 AS IsLive WHERE @IsLive = 1																		
+																	)
+							)
+						)		
+				GROUP BY mrecommend		
+			END
 			
 		END
 		
@@ -250,7 +268,8 @@ BEGIN
 								SUM(Stake) AS Stake 							
 										
 			FROM	bodb_Summary.dbo.CS_Sum_Cancelled b WITH (NOLOCK)						
-			WHERE	b.winlostdate BETWEEN @FDate AND @TDate				
+			WHERE	b.winlostdate BETWEEN @FDate AND @TDate	
+				AND b.CancelType = @ReportType
 				AND EXISTS (SELECT 1 FROM #MasterList sl WHERE sl.MasterID = b.CustID)						
 				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
 				AND EXISTS (SELECT 1 FROM @SporttypeList st WHERE st.Sporttype = b.Sporttype)
@@ -281,7 +300,8 @@ BEGIN
 									SUM(Stake) AS Stake 								
 											
 				FROM	bodb_Summary.dbo.CS_Sum_Cancelled_Old b WITH (NOLOCK)						
-				WHERE	b.winlostdate BETWEEN @FDate AND @TDate				
+				WHERE	b.winlostdate BETWEEN @FDate AND @TDate			
+					AND b.CancelType = @ReportType				
 					AND EXISTS (SELECT 1 FROM #MasterList sl WHERE sl.MasterID = b.CustID)						
 					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
 					AND EXISTS (SELECT 1 FROM @SporttypeList st WHERE st.Sporttype = b.Sporttype)

@@ -30,7 +30,7 @@ ALTER FUNCTION [dbo].[f_CS_SporttypeMatrix_Sel]
 RETURNS TABLE
 RETURN
 SELECT DISTINCT
-	 ma.SportType
+	 CASE WHEN ma.Bettype = 29 THEN 0 ELSE ma.SportType END AS SportType
 	,ma.ProductID
 	,p.CasinoType
 	,p.ProductPrefix
@@ -42,5 +42,6 @@ WHERE   (@ProductID		 = 0  OR  ma.ProductID	= @ProductID)
 	AND (@SportTypeGroup = 0  OR  ma.SportTypeGroup = @SportTypeGroup)
 	AND (@BettypeGroup	 = 0  OR  ma.BettypeGroup = @BettypeGroup)
 	AND (ma.IsTest		 = 0  OR  ma.IsTest = @IsTest)
+	
 
 GO
