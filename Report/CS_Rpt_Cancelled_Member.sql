@@ -89,7 +89,7 @@ BEGIN
 	------ Get Bettype Matrix------	
 	DECLARE @BettypeList TABLE (ProductID INT, Bettype SMALLINT)
 	INSERT INTO @BettypeList
-	SELECT ProductID, Bettype FROM bodb02.dbo.f_CS_BettypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
+	SELECT ProductID, Bettype FROM bodb02.dbo.CS_f_BettypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
 	--- End get Bettype 
 
 
@@ -97,7 +97,7 @@ BEGIN
 	DECLARE @SporttypeList AS TABLE (Sporttype SMALLINT PRIMARY KEY, ProductID INT)	
 		 
 	INSERT INTO @SporttypeList
-	SELECT DISTINCT Sporttype, ProductID FROM bodb02.dbo.f_CS_SporttypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
+	SELECT DISTINCT Sporttype, ProductID FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
 	
 	--- 4. get Outright by sports	
 	DECLARE @OutrightList AS TABLE (MatchID INT)

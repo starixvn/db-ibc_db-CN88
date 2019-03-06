@@ -86,7 +86,7 @@ BEGIN
 	------ Get Bettype Matrix------	
 	DECLARE @BettypeList TABLE (ProductID INT, Bettype SMALLINT)
 	INSERT INTO @BettypeList
-	SELECT ProductID, Bettype FROM bodb02.dbo.f_CS_BettypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
+	SELECT ProductID, Bettype FROM bodb02.dbo.CS_f_BettypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
 	--- End get Bettype 
 
 
@@ -94,7 +94,7 @@ BEGIN
 	DECLARE @SporttypeList AS TABLE (Sporttype SMALLINT PRIMARY KEY, ProductID INT)	
 		 
 	INSERT INTO @SporttypeList
-	SELECT DISTINCT Sporttype, ProductID FROM bodb02.dbo.f_CS_SporttypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
+	SELECT DISTINCT Sporttype, ProductID FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
 	
 	--- 4. get Outright by sports	
 	DECLARE @OutrightList AS TABLE (MatchID INT)
@@ -121,11 +121,7 @@ BEGIN
 										Username,
 										Name,
 										Wagers,
-										Stake, 
-										ValidStake, 
-										MemberIncome,		 				
-										AgentIncome,
-										AgentResult	 
+										Stake  
 										) 
 									 	
 			SELECT
@@ -133,12 +129,7 @@ BEGIN
 								'' AS Username,
 								'' AS Name,
 								COUNT(TransID) AS Wagers,
-								SUM(Actual_stake) AS Stake,
-								0 AS ValidStake,
-								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
-
-								SUM(AWinlost + Comm - Playercomm) AS AgentIncome,	
-								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm)) AS AgentResult
+								SUM(Actual_stake) AS Stake 
 
 			FROM	dbo.bettrans b WITH (NOLOCK)							
 			WHERE	b.winlostdate BETWEEN @FDate AND @TDate

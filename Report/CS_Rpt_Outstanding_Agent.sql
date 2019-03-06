@@ -94,7 +94,7 @@ BEGIN
 	------ Get Bettype Matrix------	
 	DECLARE @BettypeList TABLE (ProductID INT, Bettype SMALLINT)
 	INSERT INTO @BettypeList
-	SELECT ProductID, Bettype FROM bodb02.dbo.f_CS_BettypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
+	SELECT ProductID, Bettype FROM bodb02.dbo.CS_f_BettypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
 	--- End get Bettype 
 
 
@@ -102,7 +102,7 @@ BEGIN
 	DECLARE @SporttypeList AS TABLE (Sporttype SMALLINT PRIMARY KEY, ProductID INT)	
 		 
 	INSERT INTO @SporttypeList
-	SELECT DISTINCT Sporttype, ProductID FROM bodb02.dbo.f_CS_SporttypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
+	SELECT DISTINCT Sporttype, ProductID FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
 	
 	--- 4. get Outright by sports	
 	DECLARE @OutrightList AS TABLE (MatchID INT)
@@ -128,36 +128,14 @@ BEGIN
 										Username,
 										Name,
 										Wagers,
-										Stake,
-										ValidStake,
-										MemberIncome,
-
-										AgentCurrency,					
-										Agent, 
-										AgentIncome,
-										AgentResult,	
-										AgentStock,
-					
-										MasterIncome,
-										MasterResult		
+										Stake 
 										)		
 			SELECT
 			  					recommend,
 								'' AS Username,
 								'' AS Name,
 								COUNT(TransID) AS Wagers,
-								SUM(Actual_stake) AS Stake,
-								0 AS ValidStake,
-								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
-
-								SUM(Winlost - actual_stake + Playercomm) AS AgentCurrency,										
-								SUM(Winlost - actual_stake + Playercomm) AS Agent,
-								SUM(AWinlost + Comm - Playercomm) AS AgentIncome,	
-								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm)) AS AgentResult,  --- Member Income + Agent Income
-								SUM(CASE WHEN StatusId IN (112, 113) THEN ABS(winlost - actual_stake) ELSE 0 END * (1 - apositiontaking)) AS AgentStock,
-								
-								SUM(MWinlost + AComm - Comm) AS MasterIncome,								
-								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm)) AS MasterResult
+								SUM(Actual_stake) AS Stake 
 
 			FROM	dbo.bettrans b WITH (NOLOCK)							
 			WHERE	b.winlostdate BETWEEN @FDate AND @TDate

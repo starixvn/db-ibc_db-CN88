@@ -2,7 +2,7 @@
 USE [bodb02]
 GO
 
-ALTER FUNCTION [dbo].[f_CS_SporttypeMatrix_Sel]
+ALTER FUNCTION [dbo].[CS_f_SporttypeMatrix_Sel]
 (
 	 @ProductID			SMALLINT = 0
 	,@SportTypeGroup	SMALLINT = 0
