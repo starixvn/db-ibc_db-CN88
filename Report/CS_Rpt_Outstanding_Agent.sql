@@ -146,13 +146,13 @@ BEGIN
 					EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
 					OR
 					(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
-					OR @SporttypeGroup = 10  --- Parlay (sport)
+					OR @SporttypeGroup IN(0,10)  --- Parlay (sport)
 					)
 				AND (   @IsLive = 2   --- all
 						OR
-						(@SporttypeGroup <> 10 AND b.Liveindicator = @IsLive)
+						(b.bettype <> 29 AND b.Liveindicator = @IsLive)
 						OR 
-						(@SporttypeGroup = 10 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
+						(b.bettype = 29 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
 																UNION 
 																SELECT 2 AS IsLive WHERE @IsLive = 0
 																UNION 
@@ -168,17 +168,17 @@ BEGIN
 			c.Username AS Name,
 			SUM (Wagers) AS Wagers,
 			SUM (Stake) AS Stake,
-			SUM (ValidStake) AS ValidStake,
-			SUM (MemberIncome) AS MemberIncome,
+			0 AS ValidStake,
+			0 AS MemberIncome,
 
-			SUM (AgentCurrency) AS AgentCurrency,										
-			SUM (Agent) AS Agent,
-			SUM (AgentIncome) AS AgentIncome,
-			SUM (AgentResult) AS AgentResult,
-			SUM (AgentStock) AS MasterStock,
+			0 AS AgentCurrency,										
+			0 AS Agent,
+			0 AS AgentIncome,
+			0 AS AgentResult,
+			0 AS MasterStock,
 				
-			SUM (MasterIncome) AS MasterIncome,
-			SUM (MasterResult) AS MasterResult
+			0 AS MasterIncome,
+			0 AS MasterResult
 	FROM #AgentOutstanding m
 		INNER JOIN CustInfo c WITH (NOLOCK) 
 			ON c.CustID = m.CustID
