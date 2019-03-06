@@ -1,5 +1,6 @@
 /*<info serverAlias="DBCUST-CustDB" executers="bodbDownlineNet, bodbDownlineNetView" viewers="" isFunction="0"></info>*/
 
+
 ALTER PROCEDURE [dbo].[CS_Customer_CheckBelonging_Sel]
 	@SessionCustID INT, --uplineID	
 	@custid INT = NULL,	
@@ -33,8 +34,9 @@ BEGIN
 			@isActive = CASE WHEN closed = 1 OR Enabled = 0 THEN 0 ELSE 1 END
 	FROM custinfo WITH(NOLOCK)
 	WHERE custID = @SessionCustID
-
-	IF ISNULL(@sessionRoleid ,0) = 0 RETURN
+	
+	--if not headline then return
+	IF @sessionRoleid <> 0 RETURN
 
 	SELECT	@roleid = roleid, @username = username		
 	FROM custinfo c WITH (NOLOCK)
@@ -48,5 +50,5 @@ BEGIN
 			OR @SessionRoleID >= 5)
 
 	SELECT	@roleid = ISNULL(@roleid, 0), 
-			@isActive = ISNULL(@isActive,0
+			@isActive = ISNULL(@isActive,0)
 END
