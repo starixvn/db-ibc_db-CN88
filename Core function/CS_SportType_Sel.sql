@@ -22,8 +22,8 @@ BEGIN
 	SELECT
 		SportTypeGroup	= s.SportTypeGroup
 		,DisplaySport	= CASE
-							WHEN s.SportTypeGroup = 6 THEN CONVERT(VARCHAR(20), 99) -- Other Sports
-							WHEN s.SportTypeGroup = 10 THEN '' -- Parlay
+							WHEN s.SportTypeGroup = 99 THEN '99' -- Other Sports
+							WHEN s.SportTypeGroup = 9 THEN '' -- Parlay
 							ELSE STUFF((SELECT N',' + CONVERT(VARCHAR(5), SportType) FROM CTE_Sports WHERE SportTypeGroup = s.SportTypeGroup FOR XML PATH('')), 1, 1, '') END
 	FROM CTE_Sports AS s
 	GROUP BY s.SportTypeGroup
