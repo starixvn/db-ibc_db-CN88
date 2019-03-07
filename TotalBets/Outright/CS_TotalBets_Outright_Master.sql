@@ -77,6 +77,7 @@ BEGIN
 			GROUP BY m.leagueid, 
 				m.MatchId,
 				m.HomeId
+								  AND l.sporttype NOT IN (151,152,153) --- racing
 			) A
 	
 	

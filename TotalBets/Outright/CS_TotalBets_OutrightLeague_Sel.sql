@@ -35,8 +35,11 @@ BEGIN
 
 	SELECT l.leagueid		
 	FROM dbo.League l WITH (NOLOCK)  
-	WHERE EXISTS ( SELECt 1 FROM  dbo.outright o WITH (NOLOCK) WHERE o.oddsstatus IN ('Running','closed','suspend') AND l.leagueid = o.leagueid)
+	WHERE EXISTS (  SELECT 1 
+					FROM  dbo.outright o WITH (NOLOCK) 
+					WHERE o.oddsstatus IN ('Running','closed','suspend', 'closePrice') AND l.leagueid = o.leagueid)
 		AND l.sporttype IN (SELECT sporttype FROM @SporttypeList) 
+		AND l.sporttype NOT IN (151,152,153) --- racing
 		AND l.isTest <= @isTest
 	
 	
