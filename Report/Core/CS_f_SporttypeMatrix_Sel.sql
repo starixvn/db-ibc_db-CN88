@@ -42,6 +42,7 @@ WHERE   (@ProductID		 = 0  OR  ma.ProductID	= @ProductID)
 	AND (@SportTypeGroup = 0  OR  ma.SportTypeGroup = @SportTypeGroup)
 	AND (@BettypeGroup	 = 0  OR  ma.BettypeGroup = @BettypeGroup)
 	AND (ma.IsTest		 = 0  OR  ma.IsTest = @IsTest)
+	AND (ma.Enabled = 1)
 	
 
 GO

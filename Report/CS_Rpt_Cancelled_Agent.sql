@@ -165,7 +165,7 @@ BEGIN
 						EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
 						OR
 						(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
-						OR @SporttypeGroup IN(0,10)  --- Parlay (sport)
+						OR @SporttypeGroup IN(0,9)  --- Parlay (sport)
 						)
 					AND (   @IsLive = 2   --- all
 							OR
@@ -210,7 +210,7 @@ BEGIN
 						EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
 						OR
 						(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
-						OR @SporttypeGroup IN(0,10)  --- Parlay (sport)
+						OR @SporttypeGroup IN(0,9)  --- Parlay (sport)
 						)
 					AND (   @IsLive = 2   --- all
 							OR
@@ -308,7 +308,7 @@ BEGIN
 	
 	SELECT	c.CustId,
 			c.Username,
-			c.Username AS Name,
+			c.FirstName AS Name,
 			SUM (Wagers) AS Wagers,
 			SUM (Stake) AS Stake,
 			SUM (ValidStake) AS ValidStake,
@@ -323,11 +323,12 @@ BEGIN
 			SUM (MasterIncome) AS MasterIncome,
 			SUM (MasterResult) AS MasterResult
 	FROM #AgentCancelled m
-		INNER JOIN CustInfo c WITH (NOLOCK) 
+		INNER JOIN Customer c WITH (NOLOCK) 
 			ON c.CustID = m.CustID
 	WHERE C.RoleID = 2
 	GROUP BY c.CustId,
-			c.Username
+			c.Username,
+			c.FirstName
 
 	SET NOCOUNT OFF
 END
