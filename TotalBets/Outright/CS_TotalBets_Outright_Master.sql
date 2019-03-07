@@ -61,7 +61,6 @@ BEGIN
 				COUNT(b.TransId) AS Wager,  
 				SUM (b.Stake) AS Stake0,
 				SUM (b.Stake * (mpositiontaking)) AS Stake3,
-				SUM (b.Stake * (apositiontaking)) AS Stake4,
 				SUM (b.Stake * (mpositiontaking + apositiontaking)) AS Stake7
 			FROM bettrans b WITH (NOLOCK)
 				INNER JOIN dbo.CS_f_TotalBets_Event_Sel (4, @isTest, @LeagueId, @SporttypeList) AS m ON m.matchid = b.matchid 	

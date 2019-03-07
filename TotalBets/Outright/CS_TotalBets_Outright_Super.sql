@@ -29,11 +29,10 @@ Param's Explanation:
 				= 1:	Company %: Shown on SMA
 				= 2:	SMA %: Shown on SMA
 				= 3:	MA%: Shown on SMA, MA
-				= 4:	Agent%: Shown on SMA, MA, Agent
+				= 4:	Agent%
 				= 5:	SMA + MA + Agent%: Shown on SMA
 				= 6:	SMA + MA %: Shown on SMA
 				= 7:	MA + Agent %: Shown on SMA, MA
-	-@CustID : SuperId
 */
 BEGIN
 	SET NOCOUNT ON
@@ -42,11 +41,14 @@ BEGIN
 	DECLARE @isTest BIT = 0
 	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
 
-	DECLARE @SporttypeList VARCHAR(MAX)	
-	SELECT @SporttypeList = COALESCE (@SporttypeList + ',', '') + CONVERT(VARCHAR(5),Sporttype) FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)	
-		
-	SELECT  leagueid, MatchID, HomeId AS TeamId, 
-			Wager, 
+	--- Get Sporttype
+	
+	DECLARE @SporttypeList AS TABLE (Sporttype SMALLINT PRIMARY KEY, ProductID INT)	
+		 
+	INSERT INTO @SporttypeList
+	SELECT DISTINCT Sporttype, ProductID FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)	
+	
+	SELECT  leagueid, TeamId, Wager, 
 			CASE @PossType WHEN 0 THEN Stake0	
 						   WHEN 1 THEN Stake1
 						   WHEN 2 THEN Stake2
@@ -58,9 +60,8 @@ BEGIN
 			END	AS Stake										
 	FROM  (
 			SELECT 
-				m.leagueid, 
-				m.MatchId,
-				m.HomeId,	
+				o.leagueid, 	
+				o.TeamId,	
 				COUNT(b.TransId) AS Wager,  
 				SUM (b.Stake) AS Stake0,
 				SUM (b.Stake * ( 1 - tpositiontaking)) AS Stake1,
@@ -71,7 +72,7 @@ BEGIN
 				SUM (b.Stake * (spositiontaking + mpositiontaking)) AS Stake6,
 				SUM (b.Stake * (mpositiontaking + apositiontaking)) AS Stake7
 			FROM bettrans b WITH (NOLOCK)
-				INNER JOIN dbo.CS_f_TotalBets_Event_Sel (4, @isTest, @LeagueId, @SporttypeList) AS m ON m.matchid = b.matchid 		 
+				INNER JOIN outright o WITH (NOLOCK) ON o.orid = b.matchid 	 
 			WHERE  	
 				b.srecommend = @CustId 
 				AND b.statusID IN (0,1) 
@@ -80,10 +81,18 @@ BEGIN
 						(@StakeCondition = 0 AND b.Stake = @Stake) 
 						OR (@StakeCondition = 1 AND b.Stake > @Stake)
 						OR (@StakeCondition = 2 AND b.Stake < @Stake)
-					)			
-			GROUP BY m.leagueid, 
-					m.MatchId,
-					m.HomeId
+					)				
+				AND (EXISTS (SELECT 1 
+							FROM dbo.League l WITH (NOLOCK) 
+							WHERE l.LeagueId = o.LeagueId 
+								  AND l.sporttype IN (SELECT sporttype FROM @SporttypeList)  
+								  AND l.isTest <= @isTest
+								  AND (l.leagueid = @LeagueId OR @leagueid = 0) 
+								  AND l.sporttype NOT IN (151,152,153) --- racing
+							)
+					)
+				AND (o.leagueid = @LeagueId OR @leagueid = 0) 
+			GROUP BY o.leagueid, o.TeamId
 			) A
 	
 	
