@@ -41,8 +41,15 @@ BEGIN
 		m.EventDate
 		,s.SportTypeGroup
 
-	SELECT EventDate, SportTypeGroup, CompletedEvent, IncompletedEvent
-	FROM #tmpMatch m
+	;WITH CTE_Sports AS (
+		SELECT DISTINCT e.EventDate, s.SportTypeGroup
+		FROM #Sports s
+			CROSS JOIN (SELECT @yesterday AS EventDate UNION ALL SELECT @today) AS e
+		WHERE s.SportTypeGroup <> 9 -- exclude Parlay Sport
+	)
+	SELECT s.EventDate, s.SportTypeGroup, ISNULL(m.CompletedEvent, 0) AS CompletedEvent, ISNULL(m.IncompletedEvent, 0) AS IncompletedEvent
+	FROM CTE_Sports s
+		LEFT JOIN #tmpMatch m ON s.SportTypeGroup = m.SportTypeGroup AND s.EventDate = m.EventDate
 
 	DROP TABLE #Sports
 	DROP TABLE #tmpMatch
