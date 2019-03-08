@@ -58,8 +58,7 @@ BEGIN
 		Stake			MONEY, 
 		ValidStake		MONEY, 
 		MemberIncome	MONEY,
-		 
-		AgentCurrency	MONEY,					
+		  				
 		Agent			MONEY, 
 		AgentIncome		MONEY,
 		AgentResult		MONEY,	
@@ -144,8 +143,7 @@ BEGIN
 										Stake,
 										ValidStake,
 										MemberIncome,
-
-										AgentCurrency,					
+ 					
 										Agent, 
 										AgentIncome,
 										AgentResult,	
@@ -162,8 +160,7 @@ BEGIN
 								SUM(Actual_stake) AS Stake,
 								SUM(ABS(winlost - actual_stake)) ValidStake,
 								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
-
-								SUM(Winlost - actual_stake + Playercomm) AS AgentCurrency,										
+ 									
 								SUM((Winlost - actual_stake)  + (ABS(winlost - actual_stake) * discount) ) AS Agent,
 								SUM(AWinlost + Comm - Playercomm) AS AgentIncome,	
 								SUM((Winlost - actual_stake + PlayerComm) + (Awinlost + Comm - PlayerComm)) AS AgentResult,  --- Member Income + Agent Income
@@ -226,8 +223,7 @@ BEGIN
 									Stake,
 									ValidStake,
 									MemberIncome,
-
-									AgentCurrency,					
+ 				
 									Agent, 
 									AgentIncome,
 									AgentResult,	
@@ -244,8 +240,7 @@ BEGIN
 								SUM(Stake) AS Stake,
 								SUM(ValidStake) ValidStake,
 								SUM(MemberWinloss + MemberComm) AS MemberIncome,
-								
-								SUM(Agent) AS AgentCurrency,									
+								 								
 								SUM(Agent) AS Agent,
 								SUM(AgentWinloss + AgentComm) AS AgentIncome,  
 								SUM((MemberWinloss +MemberComm) + (AgentWinloss + AgentComm)) AS AgentResult,
@@ -280,8 +275,7 @@ BEGIN
 									Stake,
 									ValidStake,
 									MemberIncome,
-
-									AgentCurrency,					
+ 				
 									Agent, 
 									AgentIncome,
 									AgentResult,	
@@ -298,8 +292,7 @@ BEGIN
 									SUM(Stake) AS Stake,
 									SUM(ValidStake) ValidStake,
 									SUM(MemberWinloss + MemberComm) AS MemberIncome,
-									
-									SUM(Agent) AS AgentCurrency,									
+									 									
 									SUM(Agent) AS Agent,
 									SUM(AgentWinloss + AgentComm) AS AgentIncome,  
 									SUM((MemberWinloss +MemberComm) + (AgentWinloss + AgentComm)) AS AgentResult,
@@ -327,8 +320,7 @@ BEGIN
 			SUM (Stake) AS Stake,
 			SUM (ValidStake) AS ValidStake,
 			SUM (MemberIncome) AS MemberIncome,
-
-			SUM (AgentCurrency) AS AgentCurrency,										
+ 									
 			SUM (Agent) AS Agent,
 			SUM (AgentIncome) AS AgentIncome,
 			SUM (AgentResult) AS AgentResult,
