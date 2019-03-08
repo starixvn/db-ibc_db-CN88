@@ -324,7 +324,7 @@ BEGIN
 			SUM (Agent) AS Agent,
 			SUM (AgentIncome) AS AgentIncome,
 			SUM (AgentResult) AS AgentResult,
-			SUM (AgentStock) AS MasterStock,
+			SUM (AgentStock) AS AgentStock,
 				
 			SUM (MasterIncome) AS MasterIncome,
 			SUM (MasterResult) AS MasterResult
