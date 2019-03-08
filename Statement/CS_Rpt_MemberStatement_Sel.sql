@@ -31,7 +31,7 @@ BEGIN
 	DECLARE @SportTypeList TABLE (SportType SMALLINT PRIMARY KEY, ProductID INT)
      
 	INSERT INTO @SportTypeList (SportType, ProductID)
-	SELECT DISTINCT SportType, ProductID FROM bodb02.dbo.f_CS_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)
+	SELECT DISTINCT SportType, ProductID FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)
 	-- End Get Sport List
 
 	-- Get data

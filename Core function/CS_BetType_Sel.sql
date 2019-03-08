@@ -3,7 +3,6 @@ USE [bodb02]
 GO
 
 ALTER PROCEDURE [dbo].[CS_BetType_Sel]
-	@SportTypeGroup SMALLINT = 0
 AS
 
 /*
@@ -16,10 +15,9 @@ AS
 */
 
 BEGIN
-	SELECT DISTINCT sbm.BettypeGroup, b.typenamee AS TypeName
+	SELECT DISTINCT sbm.SportTypeGroup, sbm.BettypeGroup, b.typenamee AS TypeName
 	FROM dbo.BetType b WITH (NOLOCK)
 		INNER JOIN dbo.CS_SportBettypeMatrix sbm WITH (NOLOCK) ON b.TypeId = sbm.BettypeGroup
-	WHERE (@SportTypeGroup = 0 OR sbm.SportType = @SportTypeGroup)
-		AND sbm.Enabled = 1 AND sbm.SubProduct = ''
+	WHERE sbm.Enabled = 1
 END
 GO

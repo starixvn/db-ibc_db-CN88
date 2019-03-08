@@ -20,6 +20,7 @@ CREATE TABLE dbo.CS_SportBettypeMatrix
 	SubProduct		VARCHAR(500),
 	RefTable		TINYINT,
 	SportTypeGroup	SMALLINT,
+	BetTypeGroup	SMALLINT
 	CONSTRAINT [PK_CS_SportBettypeMatrix] PRIMARY KEY CLUSTERED
 	(
 		SportType ASC,

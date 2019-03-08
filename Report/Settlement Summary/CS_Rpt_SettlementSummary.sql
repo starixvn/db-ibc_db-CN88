@@ -22,7 +22,7 @@ BEGIN
 
 	CREATE TABLE #Sports (SportTypeGroup INT, SportType INT)
 	INSERT INTO #Sports (SportTypeGroup, SportType)
-	SELECT DISTINCT SportTypeGroup, SportType FROM dbo.CS_SportBettypeMatrix WITH (NOLOCK)
+	SELECT DISTINCT SportTypeGroup, SportType FROM dbo.CS_SportBettypeMatrix WITH (NOLOCK) WHERE SportTypeGroup <> 9 -- Exclude Parlay
 
 	CREATE TABLE #tmpMatch (EventDate SMALLDATETIME, SportTypeGroup INT, CompletedEvent INT, IncompletedEvent INT)
 
