@@ -74,6 +74,7 @@ BEGIN
 							)
 					)
 				AND (o.leagueid = @LeagueId OR @leagueid = 0) 
+				AND o.oddsstatus IN ('Running','closed','suspend', 'closePrice')
 			GROUP BY b.mrecommend
 			) A
 		INNER JOIN bodb02.dbo.Customer c WITH (NOLOCK) 
