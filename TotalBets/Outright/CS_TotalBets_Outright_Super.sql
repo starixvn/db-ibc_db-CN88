@@ -87,8 +87,7 @@ BEGIN
 							WHERE l.LeagueId = o.LeagueId 
 								  AND l.sporttype IN (SELECT sporttype FROM @SporttypeList)  
 								  AND l.isTest <= @isTest
-								  AND (l.leagueid = @LeagueId OR @leagueid = 0) 
-								  AND l.sporttype NOT IN (151,152,153) --- racing
+								  AND (l.leagueid = @LeagueId OR @leagueid = 0) 								
 							)
 					)
 				AND (o.leagueid = @LeagueId OR @leagueid = 0) 
