@@ -2,18 +2,17 @@
 USE bodb02
 GO 
 
-ALTER PROCEDURE [dbo].[CS_TotalBets_Outright_Master]
+ALTER PROCEDURE [dbo].[CS_TotalBets_WagerAccount_Master]
 	@CustID INT ,
 	@SporttypeGroup INT = 0,
 	@LeagueId INT = 0,
 	@StakeCondition TINYINT = 1,
-	@Stake MONEY = 0,
-	@PossType TINYINT = 0 
+	@Stake MONEY = 0 
 AS
  
 /*
 Created: 20190307@Sophia
-Task : CN88 Retrieve Total Bet for outright: Super view downline
+Task : CN88 Agent Wager Account of Total Bet Outright 
 DB: DB042.bodb02
 Original:
 
@@ -29,7 +28,7 @@ Param's Explanation:
 				= 1:	Company %: Shown on SMA
 				= 2:	SMA %: Shown on SMA
 				= 3:	MA%: Shown on SMA, MA
-				= 4:	Agent%
+				= 4:	Agent%: Shown on SMA, MA, Agent
 				= 5:	SMA + MA + Agent%: Shown on SMA
 				= 6:	SMA + MA %: Shown on SMA
 				= 7:	MA + Agent %: Shown on SMA, MA
@@ -48,19 +47,12 @@ BEGIN
 	INSERT INTO @SporttypeList
 	SELECT DISTINCT Sporttype, ProductID FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)	
 	
-	SELECT  leagueid, TeamId, Wager, 
-			CASE @PossType WHEN 0 THEN Stake0							  
-						   WHEN 3 THEN Stake3						  
-						   WHEN 7 THEN Stake7
-			END	AS Stake										
+	SELECT  C.Username, C.Firstname, A.Wager, A.Stake										
 	FROM  (
 			SELECT 
-				o.leagueid, 	
-				o.TeamId,	
+				b.mrecommend,
 				COUNT(b.TransId) AS Wager,  
-				SUM (b.Stake) AS Stake0,
-				SUM (b.Stake * (mpositiontaking)) AS Stake3,
-				SUM (b.Stake * (mpositiontaking + apositiontaking)) AS Stake7
+				SUM (b.Stake) AS Stake 				
 			FROM bettrans b WITH (NOLOCK)
 				INNER JOIN outright o WITH (NOLOCK) ON o.orid = b.matchid 	 
 			WHERE  	
@@ -82,14 +74,17 @@ BEGIN
 							)
 					)
 				AND (o.leagueid = @LeagueId OR @leagueid = 0) 
-			GROUP BY o.leagueid, o.TeamId
+			GROUP BY b.mrecommend
 			) A
+		INNER JOIN bodb02.dbo.Customer c WITH (NOLOCK) 
+				ON c.CustId = A.mrecommend
+		WHERE c.RoleID = 3
 	
 	
 	 
 END
 GO
-GRANT EXECUTE ON [dbo].[CS_TotalBets_Outright_Master] TO [bodbDownlineNet]
+GRANT EXECUTE ON [dbo].[CS_TotalBets_WagerAccount_Master] TO [bodbDownlineNet]
 GO
-GRANT EXECUTE ON [dbo].[CS_TotalBets_Outright_Master] TO [bodbDownlineNetView]
+GRANT EXECUTE ON [dbo].[CS_TotalBets_WagerAccount_Master] TO [bodbDownlineNetView]
 GO 

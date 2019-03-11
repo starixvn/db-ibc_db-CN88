@@ -29,7 +29,7 @@ Param's Explanation:
 				= 1:	Company %: Shown on SMA
 				= 2:	SMA %: Shown on SMA
 				= 3:	MA%: Shown on SMA, MA
-				= 4:	Agent%
+				= 4:	Agent%: Shown on SMA, MA, Agent
 				= 5:	SMA + MA + Agent%: Shown on SMA
 				= 6:	SMA + MA %: Shown on SMA
 				= 7:	MA + Agent %: Shown on SMA, MA

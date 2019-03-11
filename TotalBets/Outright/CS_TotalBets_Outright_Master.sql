@@ -29,7 +29,7 @@ Param's Explanation:
 				= 1:	Company %: Shown on SMA
 				= 2:	SMA %: Shown on SMA
 				= 3:	MA%: Shown on SMA, MA
-				= 4:	Agent%
+				= 4:	Agent%: Shown on SMA, MA, Agent
 				= 5:	SMA + MA + Agent%: Shown on SMA
 				= 6:	SMA + MA %: Shown on SMA
 				= 7:	MA + Agent %: Shown on SMA, MA
@@ -51,6 +51,7 @@ BEGIN
 	SELECT  leagueid, TeamId, Wager, 
 			CASE @PossType WHEN 0 THEN Stake0							  
 						   WHEN 3 THEN Stake3						  
+						   WHEN 4 THEN Stake4
 						   WHEN 7 THEN Stake7
 			END	AS Stake										
 	FROM  (
@@ -60,6 +61,7 @@ BEGIN
 				COUNT(b.TransId) AS Wager,  
 				SUM (b.Stake) AS Stake0,
 				SUM (b.Stake * (mpositiontaking)) AS Stake3,
+				SUM (b.Stake * (apositiontaking)) AS Stake4,
 				SUM (b.Stake * (mpositiontaking + apositiontaking)) AS Stake7
 			FROM bettrans b WITH (NOLOCK)
 				INNER JOIN outright o WITH (NOLOCK) ON o.orid = b.matchid 	 
