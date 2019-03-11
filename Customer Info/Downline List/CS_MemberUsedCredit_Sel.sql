@@ -26,9 +26,9 @@ BEGIN
 
 	CREATE TABLE #BetType (BetType INT, RefTable TINYINT)
 	INSERT INTO #BetType (BetType, RefTable)
-	SELECT DISTINCT BetType, RefTable FROM dbo.f_CS_BettypeMatrix_Sel(0,0,0,@isTest)
+	SELECT DISTINCT BetType, RefTable FROM dbo.CS_f_BettypeMatrix_Sel(0,0,0,@isTest)
 
-	SELECT SUM(stake) AS UsedCredit
+	SELECT ISNULL(SUM(stake), 0) AS UsedCredit
 	FROM
 	(
 	-- 1. bettrans
