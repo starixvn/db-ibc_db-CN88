@@ -51,7 +51,7 @@ BEGIN
 		)
 
 		-- In-play, Early, Today
-		IF @TypeName IN ('Overview', 'In-play', 'Early', 'Today')
+		IF @TypeName IN ('Overview', 'Inplay', 'Early', 'Today')
 		BEGIN
 			INSERT INTO #TotalBets (SportTypeGroup, InplayWager, EarlyWager, TodayWager, InplayStake, EarlyStake, TodayStake)
 			SELECT s.SportTypeGroup
@@ -126,7 +126,9 @@ BEGIN
 			-- 3. Parlay
 			SELECT
 				1 AS SportTypeGroup
-				,100 AS ParlayStake,	1 AS ParlayWager
+				,100 AS SoccerParlayStake,	1 AS SoccerParlayWager
+				,200 AS NonSoccerParlayStake,	2 AS NonSoccerParlayWager
+				,300 AS MixSportsParlayStake,	3 AS MixSportsParlayWager
 			
 			-- 1. Total
 			SELECT 1 AS TotalWagers, 100 AS TotalStake
