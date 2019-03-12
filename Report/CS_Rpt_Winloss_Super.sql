@@ -152,111 +152,107 @@ BEGIN
 	------5.1. bettrans range
 	DECLARE @FDate SMALLDATETIME, @TDate SMALLDATETIME;
 
-	SELECT  @FDate = @FromDate, @TDate = @ToDate;
+	SELECT  @FDate = @FromDate, @TDate = @ToDate
 
-	IF @ToDate >= @ArchiveDate 
+	IF @ToDate > @MoveBetsDay
 	BEGIN
-		IF @ToDate > @MoveBetsDay
+		IF @FromDate <= @MoveBetsDay
 		BEGIN
-			IF @FromDate <= @MoveBetsDay
-			BEGIN
-				SET @FDate = DATEADD(DD, 1, @MoveBetsDay);
-			END
-		 
-			INSERT INTO	#SuperWinLoss (
-								CustId,
-								Username,
-								Name,
-								Wagers,
-								Stake,
-								ValidStake,
-								MemberIncome,
-										
-								Agent,
-								AgentResult,	
-								Master,
-										
-								Super,
-								SuperIncome,
-								SuperResult,
-								SuperStock, 
-								
-								HeadlineIncome,
-								HeadlineResult,
-								HeadlineStock )		
-			SELECT
-			  					srecommend,
-								'' AS Username,
-								'' AS Name,
-								COUNT(TransID) AS Wagers,
-								SUM(Actual_stake) AS Stake,
-								SUM(ABS(winlost - actual_stake)) ValidStake,
-								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
-										
-								SUM((Winlost - actual_stake)  + (ABS(winlost - actual_stake) * discount) ) AS Agent,
-								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm)) AS AgentResult,  --- Member Income + Agent Income
-								SUM(((Winlost - actual_stake) * (1-apositiontaking)) + ABS(winlost - actual_stake) * (1 - apositiontaking) * adiscount) AS Master,
-									 
-								SUM( (Winlost - actual_stake)* (1 - apositiontaking - mpositiontaking) 
-									 +  ABS(winlost - actual_stake) * (1 - apositiontaking - mpositiontaking) * sdiscount
-									 ) AS Super,
-								
-								SUM(SWinlost + SComm - Acomm) AS SuperIncome,
-								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm) + (SWinlost + SComm - Acomm)) AS SuperResult,
-								SUM(ABS(winlost - actual_stake) * (1 - tpositiontaking)) AS SuperStock,		
-								
-								SUM ((CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT) AS HeadlineIncome,  --- MSH Win Loss + MSH Sharing Comm 
-								SUM ( 								
-										((CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT)
-										+ ((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm) + (SWinlost + SComm - Acomm)) 
-									) AS HeadlineResult,
-								SUM (ABS(winlost - actual_stake) * (1 - tpositiontaking - e.ExtraPT)) AS HeadlineStock		
-										
-			FROM	dbo.bettrans b WITH (NOLOCK)		
-				INNER JOIN @BettypeList bt
-					ON	bt.Bettype = b.bettype
-				LEFT JOIN @ExtraPT e 
-					ON	b.Srecommend = e.SuperID 
-						AND b.winlostdate BETWEEN e.FromDate AND E.ToDate
-						AND bt.ProductID = e.ProductID
-			WHERE	b.winlostdate BETWEEN @FDate AND @TDate
-				AND b.StatusID IN (111,112,113)
-				AND EXISTS (SELECT 1 FROM #SuperList sl WHERE sl.SuperID = b.srecommend)		
-				AND (
-					EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
-					OR
-					(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
-					OR @SporttypeGroup IN(0,9)  --- Parlay (sport)
-					)
-				AND (   @IsLive = 2   --- all
-						OR
-						(b.bettype <> 29 AND b.Liveindicator = @IsLive)
-						OR 
-						(b.bettype = 29  AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
-																UNION 
-																SELECT 2 AS IsLive WHERE @IsLive = 0
-																UNION 
-																SELECT 1 AS IsLive WHERE @IsLive = 1																		
-																)
-						)
-					)
-			GROUP BY srecommend
+			SET @FDate = DATEADD(DD, 1, @MoveBetsDay);
 		END
+		 
+		INSERT INTO	#SuperWinLoss (
+							CustId,
+							Username,
+							Name,
+							Wagers,
+							Stake,
+							ValidStake,
+							MemberIncome,
+										
+							Agent,
+							AgentResult,	
+							Master,
+										
+							Super,
+							SuperIncome,
+							SuperResult,
+							SuperStock, 
+								
+							HeadlineIncome,
+							HeadlineResult,
+							HeadlineStock )		
+		SELECT
+			  				srecommend,
+							'' AS Username,
+							'' AS Name,
+							COUNT(TransID) AS Wagers,
+							SUM(Actual_stake) AS Stake,
+							SUM(ABS(winlost - actual_stake)) ValidStake,
+							SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
+										
+							SUM((Winlost - actual_stake)  + (ABS(winlost - actual_stake) * discount) ) AS Agent,
+							SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm)) AS AgentResult,  --- Member Income + Agent Income
+							SUM(((Winlost - actual_stake) * (1-apositiontaking)) + ABS(winlost - actual_stake) * (1 - apositiontaking) * adiscount) AS Master,
+									 
+							SUM( (Winlost - actual_stake)* (1 - apositiontaking - mpositiontaking) 
+									+  ABS(winlost - actual_stake) * (1 - apositiontaking - mpositiontaking) * sdiscount
+									) AS Super,
+								
+							SUM(SWinlost + SComm - Acomm) AS SuperIncome,
+							SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm) + (SWinlost + SComm - Acomm)) AS SuperResult,
+							SUM(ABS(winlost - actual_stake) * (1 - tpositiontaking)) AS SuperStock,		
+								
+							SUM ((CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT) AS HeadlineIncome,  --- MSH Win Loss + MSH Sharing Comm 
+							SUM ( 								
+									((CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT)
+									+ ((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm) + (SWinlost + SComm - Acomm)) 
+								) AS HeadlineResult,
+							SUM (ABS(winlost - actual_stake) * (1 - tpositiontaking - e.ExtraPT)) AS HeadlineStock		
+										
+		FROM	dbo.bettrans b WITH (NOLOCK)		
+			INNER JOIN @BettypeList bt
+				ON	bt.Bettype = b.bettype
+			LEFT JOIN @ExtraPT e 
+				ON	b.Srecommend = e.SuperID 
+					AND b.winlostdate BETWEEN e.FromDate AND E.ToDate
+					AND bt.ProductID = e.ProductID
+		WHERE	b.winlostdate BETWEEN @FDate AND @TDate
+			AND b.StatusID IN (111,112,113)
+			AND EXISTS (SELECT 1 FROM #SuperList sl WHERE sl.SuperID = b.srecommend)		
+			AND (
+				EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
+				OR
+				(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
+				OR @SporttypeGroup IN(0,9)  --- Parlay (sport)
+				)
+			AND (   @IsLive = 2   --- all
+					OR
+					(b.bettype <> 29 AND b.Liveindicator = @IsLive)
+					OR 
+					(b.bettype = 29  AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
+															UNION 
+															SELECT 2 AS IsLive WHERE @IsLive = 0
+															UNION 
+															SELECT 1 AS IsLive WHERE @IsLive = 1																		
+															)
+					)
+				)
+		GROUP BY srecommend
+	END
+ 
 
 		-- 5.2: sum table range
-		SET @FDate = @FromDate;
+		SELECT @FDate = @FromDate,
+			   @TDate = @ToDate
 		
 		IF @FromDate <= @MoveBetsDay
 		BEGIN
 		
-			IF @ArchiveDate < @FromDate
-			BEGIN
-				SET @FDate = @FromDate;
-			END
-			ELSE
+			IF @FromDate < @ArchiveDate 
 			BEGIN
 				SET @FDate = @ArchiveDate;
-			END		
+			END			 
 		
 			IF @ToDate > @MoveBetsDay
 			BEGIN
@@ -314,6 +310,7 @@ BEGIN
 										
 			FROM	bodb_Summary.dbo.CS_SumWinloss b WITH (NOLOCK)						
 			WHERE	b.winlostdate BETWEEN @FDate AND @TDate		
+				AND (@isLive = 2 OR isLive = @isLive)	
 				AND EXISTS (SELECT 1 FROM #SuperList sl WHERE sl.SuperID = b.CustID)					 
 				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
 				AND EXISTS (SELECT 1 FROM @SporttypeList st WHERE st.Sporttype = b.Sporttype)
@@ -382,6 +379,7 @@ BEGIN
 											
 				FROM	bodb_Summary.dbo.CS_SumWinloss_Old b WITH (NOLOCK)						
 				WHERE	b.winlostdate BETWEEN @FDate AND @TDate		
+					AND (@isLive = 2 OR isLive = @isLive)	
 					AND EXISTS (SELECT 1 FROM #SuperList sl WHERE sl.SuperID = b.CustID)					 
 					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
 					AND EXISTS (SELECT 1 FROM @SporttypeList st WHERE st.Sporttype = b.Sporttype)
@@ -391,7 +389,7 @@ BEGIN
 	 
 		END		
 		 
-	END
+	
 
 	SELECT	c.CustId,
 			c.Username, 

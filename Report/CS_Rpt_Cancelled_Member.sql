@@ -119,8 +119,6 @@ BEGIN
 
 	SELECT  @FDate = @FromDate, @TDate = @ToDate;
 
-	IF @ToDate >= @ArchiveDate 
-	BEGIN
 		IF @ToDate > @MoveBetsDay
 		BEGIN
 			IF @FromDate <= @MoveBetsDay
@@ -222,19 +220,15 @@ BEGIN
 		END 
 		
 		-- 5.2: sum table range
-		SET @FDate = @FromDate;
+		SELECT  @FDate = @FromDate, @TDate = @ToDate;
 		
 		IF @FromDate <= @MoveBetsDay
 		BEGIN
 		
-			IF @ArchiveDate < @FromDate
-			BEGIN
-				SET @FDate = @FromDate;
-			END
-			ELSE
+			IF @FromDate < @ArchiveDate 
 			BEGIN
 				SET @FDate = @ArchiveDate;
-			END		
+			END	
 		
 			IF @ToDate > @MoveBetsDay
 			BEGIN
@@ -257,7 +251,8 @@ BEGIN
 										
 			FROM	bodb_Summary.dbo.CS_SumCancelled b WITH (NOLOCK)						
 			WHERE	b.winlostdate BETWEEN @FDate AND @TDate		
-				AND b.CancelType = @ReportType			
+				AND b.CancelType = @ReportType	
+				AND (@isLive = 2 OR isLive = @isLive)					
 				AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)						
 				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
 				AND EXISTS (SELECT 1 FROM @SporttypeList st WHERE st.Sporttype = b.Sporttype)
@@ -291,6 +286,7 @@ BEGIN
 				FROM	bodb_Summary.dbo.CS_SumCancelled_Old b WITH (NOLOCK)						
 				WHERE	b.winlostdate BETWEEN @FDate AND @TDate	
 					AND b.CancelType = @ReportType
+					AND (@isLive = 2 OR isLive = @isLive)	
 					AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)						
 					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.bettype = b.bettype)
 					AND EXISTS (SELECT 1 FROM @SporttypeList st WHERE st.Sporttype = b.Sporttype)
@@ -299,7 +295,7 @@ BEGIN
 			END
 
 		END
-	END
+	
 
 	SELECT	c.CustId,
 			c.Username, 
