@@ -84,6 +84,7 @@ BEGIN
 					)
 				AND (o.leagueid = @LeagueId OR @leagueid = 0) 
 				AND o.oddsstatus IN ('Running','closed','suspend', 'closePrice')
+				AND o.kickofftime > CURRENT_TIMESTAMP
 			GROUP BY o.leagueid, o.TeamId
 			) A
 	

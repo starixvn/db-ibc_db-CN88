@@ -41,7 +41,9 @@ BEGIN
 		FROM dbo.League l WITH (NOLOCK)  
 		WHERE EXISTS (  SELECT 1 
 						FROM  dbo.outright o WITH (NOLOCK) 
-						WHERE o.oddsstatus IN ('Running','closed','suspend', 'closePrice') AND l.leagueid = o.leagueid)
+						WHERE o.oddsstatus IN ('Running','closed','suspend', 'closePrice') 
+								AND o.kickofftime > CURRENT_TIMESTAMP
+								AND l.leagueid = o.leagueid)
 			AND l.sporttype IN (SELECT sporttype FROM @SporttypeList) 	
 			AND l.isTest <= @isTest
 	END 
@@ -55,6 +57,7 @@ BEGIN
 							ON m.matchid = o.matchid
 						WHERE   m.eventstatus=N'running' 							
 							 AND o.oddsstatus in (N'running',N'suspend',N'closePrice') 
+							 AND m.kickofftime > DATEADD(hour,-12,CURRENT_TIMESTAMP)  ---event startted 
 							 AND l.leagueid = m.leagueid)
 			AND l.sporttype IN (SELECT sporttype FROM @SporttypeList) 	
 			AND l.isTest <= @isTest
