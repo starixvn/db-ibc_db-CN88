@@ -41,6 +41,7 @@ WHERE ProductId = 1
 	AND (SubProduct = '' OR SubProduct IN ('Bet Builder','Betradar','SS'))
 	AND SportType <> 99
 	AND BetType NOT IN (124,125,465,466)
+	AND SportType NOT IN (154)
 GO
 
 UPDATE sbm WITH (ROWLOCK, UPDLOCK)
