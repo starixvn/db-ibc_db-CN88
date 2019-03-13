@@ -4,7 +4,7 @@ GO
 
 ALTER PROCEDURE [dbo].[CS_TotalBets_League_Sel]
 	@SporttypeGroup INT = 0, 
-	@Type TINYINT = 0 
+	@Type TINYINT = 1
 AS
  
 /*
@@ -18,8 +18,11 @@ Revisions:
  
 	
 Param's Explanation:
-	@Type: = 0: Match
-		   = 1: Outright 
+	@Type = 0:  All, 
+		  = 1: In-play, 
+		  = 2: Today, 
+		  = 3: Early,
+		  = 4: Outright
 
 */
 BEGIN
@@ -35,7 +38,7 @@ BEGIN
 	INSERT INTO @SporttypeList
 	SELECT DISTINCT Sporttype, ProductID FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)	
 	
-	IF @Type = 1
+	IF @Type =  4 
 	BEGIN 
 		SELECT l.leagueid		
 		FROM dbo.League l WITH (NOLOCK)  
