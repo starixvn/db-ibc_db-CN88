@@ -9,7 +9,7 @@
 		3: Tennis				- 5
 		4: Volleyball			- 6
 		5: Baseball				- 8
-		6: Other Sports			- others, exclude 99 (dummy sport for setting)
+		6: Other Sports			- others sports
 		7: Badminton			- 9
 		8: Table Tennis			- 18
 		9: Snooker/Pool			- 7
@@ -39,7 +39,6 @@ SELECT DISTINCT SportType, CASE WHEN Bettype = 9 THEN 29 ELSE BetType END, IsLiv
 FROM dbo.SportBettypeMatrix WITH (NOLOCK)
 WHERE ProductId = 1
 	AND (SubProduct = '' OR SubProduct IN ('Bet Builder','Betradar','SS'))
-	AND SportType <> 99
 	AND BetType NOT IN (124,125,465,466)
 	AND SportType NOT IN (154)
 GO
