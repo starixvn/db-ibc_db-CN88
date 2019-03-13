@@ -112,8 +112,7 @@ BEGIN
 				SELECT @isOutright = 1
 			
 			;WITH CTE_Sports AS (
-				SELECT DISTINCT SportTypeGroup FROM dbo.CS_SportBettypeMatrix WITH (NOLOCK)
-				WHERE SportTypeGroup <> 9 -- Exclude Parlay
+				SELECT DISTINCT SportTypeGroup FROM #Sports
 			)
 			SELECT
 				s.SportTypeGroup
@@ -142,13 +141,3 @@ BEGIN
 	DROP TABLE #TotalBets
 END
 GO
-
-GRANT EXECUTE ON [dbo].[CS_TotalBets_Summary_Agent] TO [bodbAdminNet] AS [dbo]
-GO
-
-GRANT EXECUTE ON [dbo].[CS_TotalBets_Summary_Agent] TO [bodbDownlineNet] AS [dbo]
-GO
-
-GRANT EXECUTE ON [dbo].[CS_TotalBets_Summary_Agent] TO [bodbDownlineNetView] AS [dbo]
-GO
-

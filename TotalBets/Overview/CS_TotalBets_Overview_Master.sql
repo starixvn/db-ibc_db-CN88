@@ -16,7 +16,6 @@ AS
 		- 20190307@Percy: Initialize SP [RedmineID: #109693]
 
 	Param's Explanation:
-		@TypeName: Overview, Inplay, Early, Outright
 		@PossType:
 				= 0:	Full Percentage
 				= 1:	Company %: Shown on SMA
@@ -73,7 +72,6 @@ BEGIN
 		)
 
 		-- In-play, Early, Today
-		IF @TypeName IN ('Overview', 'Inplay', 'Early', 'Today')
 		BEGIN
 			INSERT INTO #TotalBets
 			(
@@ -115,7 +113,6 @@ BEGIN
 		END
 
 		-- Outright
-		IF @TypeName IN ('Overview', 'Outright')
 		BEGIN
 			INSERT INTO #TotalBets
 			(
@@ -148,7 +145,6 @@ BEGIN
 		END
 
 		-- Parlay
-		IF @TypeName IN ('Overview')
 		BEGIN
 			/*
 			-- liveawayscore:
@@ -217,67 +213,63 @@ BEGIN
 		GROUP BY s.SportTypeGroup
 		ORDER BY s.SportTypeGroup
 
-		-- 2. Parlay & Total
-		IF @TypeName = 'Overview'
-		BEGIN
-			-- 3. Parlay
-			SELECT
-				9 AS SportTypeGroup
-				-- Soccer only
-				,ISNULL(SUM(CASE WHEN SelectionType = 1 THEN 1 ELSE 0 END), 0)		AS SoccerParlayWager
-				,ISNULL(SUM(CASE WHEN SelectionType = 1 THEN
-										CASE @PossType
-											WHEN 0 THEN Stake0
-											WHEN 3 THEN Stake3
-											WHEN 4 THEN Stake4
-											WHEN 7 THEN Stake7
-											END ELSE 0 END), 0)						AS SoccerParlayStake
-				-- Other Sports except Soccer
-				,ISNULL(SUM(CASE WHEN SelectionType = 2 THEN 1 ELSE 0 END), 0)		AS NonSoccerParlayWager
-				,ISNULL(SUM(CASE WHEN SelectionType = 2 THEN
-										CASE @PossType
-											WHEN 0 THEN Stake0
-											WHEN 3 THEN Stake3
-											WHEN 4 THEN Stake4
-											WHEN 7 THEN Stake7
-											END ELSE 0 END), 0)						AS NonSoccerParlayStake
-				-- Soccer + Other Sports
-				,ISNULL(SUM(CASE WHEN SelectionType = 3 THEN 1 ELSE 0 END), 0)		AS MixSportsParlayWager
-				,ISNULL(SUM(CASE WHEN SelectionType = 3 THEN
-										CASE @PossType
-											WHEN 0 THEN Stake0
-											WHEN 3 THEN Stake3
-											WHEN 4 THEN Stake4
-											WHEN 7 THEN Stake7
-											END ELSE 0 END), 0)						AS MixSportsParlayStake
-			FROM #ParlayTotalBets
+		-- 2. Parlay
+		SELECT
+			9 AS SportTypeGroup
+			-- Soccer only
+			,ISNULL(SUM(CASE WHEN SelectionType = 1 THEN 1 ELSE 0 END), 0)		AS SoccerParlayWager
+			,ISNULL(SUM(CASE WHEN SelectionType = 1 THEN
+									CASE @PossType
+										WHEN 0 THEN Stake0
+										WHEN 3 THEN Stake3
+										WHEN 4 THEN Stake4
+										WHEN 7 THEN Stake7
+										END ELSE 0 END), 0)						AS SoccerParlayStake
+			-- Other Sports except Soccer
+			,ISNULL(SUM(CASE WHEN SelectionType = 2 THEN 1 ELSE 0 END), 0)		AS NonSoccerParlayWager
+			,ISNULL(SUM(CASE WHEN SelectionType = 2 THEN
+									CASE @PossType
+										WHEN 0 THEN Stake0
+										WHEN 3 THEN Stake3
+										WHEN 4 THEN Stake4
+										WHEN 7 THEN Stake7
+										END ELSE 0 END), 0)						AS NonSoccerParlayStake
+			-- Soccer + Other Sports
+			,ISNULL(SUM(CASE WHEN SelectionType = 3 THEN 1 ELSE 0 END), 0)		AS MixSportsParlayWager
+			,ISNULL(SUM(CASE WHEN SelectionType = 3 THEN
+									CASE @PossType
+										WHEN 0 THEN Stake0
+										WHEN 3 THEN Stake3
+										WHEN 4 THEN Stake4
+										WHEN 7 THEN Stake7
+										END ELSE 0 END), 0)						AS MixSportsParlayStake
+		FROM #ParlayTotalBets
 			
-			-- 1. Total
-			SELECT ISNULL(SUM(ISNULL(Wager, 0)), 0) AS TotalWagers, ISNULL(SUM(ISNULL(Stake, 0)), 0) AS TotalStake
-			FROM
-			(
-				SELECT
-					SUM(ISNULL(InplayWager, 0) + ISNULL(TodayWager, 0) + ISNULL(EarlyWager, 0) + ISNULL(OutrightWager, 0)) AS Wager
-					,SUM(CASE @PossType
-							WHEN 0 THEN ISNULL(InplayStake0, 0) + ISNULL(TodayStake0, 0) + ISNULL(EarlyStake0, 0) + ISNULL(OutrightStake0, 0)
-							WHEN 3 THEN ISNULL(InplayStake3, 0) + ISNULL(TodayStake3, 0) + ISNULL(EarlyStake3, 0) + ISNULL(OutrightStake3, 0)
-							WHEN 4 THEN ISNULL(InplayStake4, 0) + ISNULL(TodayStake4, 0) + ISNULL(EarlyStake4, 0) + ISNULL(OutrightStake4, 0)
-							WHEN 7 THEN ISNULL(InplayStake7, 0) + ISNULL(TodayStake7, 0) + ISNULL(EarlyStake7, 0) + ISNULL(OutrightStake7, 0)
-							END) AS Stake
-				FROM #TotalBets
+		-- 3. Total
+		SELECT ISNULL(SUM(ISNULL(Wager, 0)), 0) AS TotalWagers, ISNULL(SUM(ISNULL(Stake, 0)), 0) AS TotalStake
+		FROM
+		(
+			SELECT
+				SUM(ISNULL(InplayWager, 0) + ISNULL(TodayWager, 0) + ISNULL(EarlyWager, 0) + ISNULL(OutrightWager, 0)) AS Wager
+				,SUM(CASE @PossType
+						WHEN 0 THEN ISNULL(InplayStake0, 0) + ISNULL(TodayStake0, 0) + ISNULL(EarlyStake0, 0) + ISNULL(OutrightStake0, 0)
+						WHEN 3 THEN ISNULL(InplayStake3, 0) + ISNULL(TodayStake3, 0) + ISNULL(EarlyStake3, 0) + ISNULL(OutrightStake3, 0)
+						WHEN 4 THEN ISNULL(InplayStake4, 0) + ISNULL(TodayStake4, 0) + ISNULL(EarlyStake4, 0) + ISNULL(OutrightStake4, 0)
+						WHEN 7 THEN ISNULL(InplayStake7, 0) + ISNULL(TodayStake7, 0) + ISNULL(EarlyStake7, 0) + ISNULL(OutrightStake7, 0)
+						END) AS Stake
+			FROM #TotalBets
 
-				UNION ALL
-				SELECT
-					SUM(ISNULL(Wager, 0)) AS Wager
-					,SUM(CASE @PossType
-							WHEN 0 THEN ISNULL(Stake0, 0)
-							WHEN 3 THEN ISNULL(Stake3, 0)
-							WHEN 4 THEN ISNULL(Stake4, 0)
-							WHEN 7 THEN ISNULL(Stake7, 0)
-							END) AS Stake
-				FROM #ParlayTotalBets
-			) AS Total
-		END
+			UNION ALL
+			SELECT
+				SUM(ISNULL(Wager, 0)) AS Wager
+				,SUM(CASE @PossType
+						WHEN 0 THEN ISNULL(Stake0, 0)
+						WHEN 3 THEN ISNULL(Stake3, 0)
+						WHEN 4 THEN ISNULL(Stake4, 0)
+						WHEN 7 THEN ISNULL(Stake7, 0)
+						END) AS Stake
+			FROM #ParlayTotalBets
+		) AS Total
 	END
 
 	DROP TABLE #Sports
