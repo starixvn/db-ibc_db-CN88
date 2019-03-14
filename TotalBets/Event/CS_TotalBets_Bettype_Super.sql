@@ -4,8 +4,6 @@ GO
 
 ALTER PROCEDURE [dbo].[CS_TotalBets_Bettype_Super]
 	@CustID INT ,
-	@Type TINYINT = 1, 
-	@SporttypeGroup INT = 0,	
 	@MatchId INT = 0,
 	@StakeCondition TINYINT = 1,
 	@Stake MONEY = 0,
@@ -91,6 +89,7 @@ BEGIN
 				b.Betteam,
 				b.Liveindicator
 			) A
+		INNER JOIN 
 	
 	
 	 
