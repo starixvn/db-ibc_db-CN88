@@ -71,6 +71,7 @@ BEGIN
 			WHERE b.recommend = @CustId
 				AND b.statusId IN (0, 1)
 				AND m.eventstatus NOT IN ('closed', 'internal')
+				AND m.kickofftime > DATEADD(HOUR, -12, CURRENT_TIMESTAMP)
 			GROUP BY
 				s.SportTypeGroup, m.leagueid, m.matchid, m.homeid, m.awayid
 		END
@@ -97,6 +98,7 @@ BEGIN
 			WHERE b.recommend = @CustId
 				AND b.statusId IN (0, 1)
 				AND o.oddsstatus IN ('closed', 'running', 'suspend', 'closePrice')
+				AND o.kickofftime > CURRENT_TIMESTAMP
 			GROUP BY
 				s.SportTypeGroup, o.leagueid, o.orid
 		END
