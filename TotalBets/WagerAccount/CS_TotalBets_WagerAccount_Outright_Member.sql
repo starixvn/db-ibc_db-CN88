@@ -2,17 +2,17 @@
 USE bodb02
 GO 
 
-ALTER PROCEDURE [dbo].[CS_TotalBets_WagerAccount_Agent]
+CREATE PROCEDURE [dbo].[CS_TotalBets_WagerAccount_Outright_Member]
 	@CustID INT ,
 	@SporttypeGroup INT = 0,
 	@LeagueId INT = 0,
 	@StakeCondition TINYINT = 1,
-	@Stake MONEY = 0 
+	@Stake MONEY = 0
 AS
  
 /*
 Created: 20190307@Sophia
-Task : CN88 Agent Wager Account of Total Bet Outright 
+Task : CN88 - Wager Account of Total Bet Outright: Member
 DB: DB042.bodb02
 Original:
 
@@ -50,13 +50,13 @@ BEGIN
 	SELECT  C.Username, C.Firstname, A.Wager, A.Stake										
 	FROM  (
 			SELECT 
-				b.recommend,
+				b.CustId,
 				COUNT(b.TransId) AS Wager,  
 				SUM (b.Stake) AS Stake 				
 			FROM bettrans b WITH (NOLOCK)
 				INNER JOIN outright o WITH (NOLOCK) ON o.orid = b.matchid 	 
 			WHERE  	
-				b.recommend = @CustId 
+				b.CustId = @CustId 
 				AND b.statusID IN (0,1) 
 				AND b.bettype = 10  
 				AND (
@@ -69,23 +69,23 @@ BEGIN
 							WHERE l.LeagueId = o.LeagueId 
 								  AND l.sporttype IN (SELECT sporttype FROM @SporttypeList)  
 								  AND l.isTest <= @isTest
-								  AND (l.leagueid = @LeagueId OR @leagueid = 0) 								
+								  AND (l.leagueid = @LeagueId OR @leagueid = 0) 
 							)
 					)
 				AND (o.leagueid = @LeagueId OR @leagueid = 0) 
 				AND o.oddsstatus IN ('Running','closed','suspend', 'closePrice')
 				AND o.kickofftime > CURRENT_TIMESTAMP
-			GROUP BY b.recommend
+			GROUP BY b.CustId
 			) A
 		INNER JOIN bodb02.dbo.Customer c WITH (NOLOCK) 
-				ON c.CustId = A.recommend
-		WHERE c.RoleID = 2
+				ON c.CustId = A.CustID
+		WHERE c.RoleID = 1
 	
 	
 	 
 END
 GO
-GRANT EXECUTE ON [dbo].[CS_TotalBets_WagerAccount_Agent] TO [bodbDownlineNet]
+GRANT EXECUTE ON [dbo].[CS_TotalBets_WagerAccount_Outright_Member] TO [bodbDownlineNet]
 GO
-GRANT EXECUTE ON [dbo].[CS_TotalBets_WagerAccount_Agent] TO [bodbDownlineNetView]
+GRANT EXECUTE ON [dbo].[CS_TotalBets_WagerAccount_Outright_Member] TO [bodbDownlineNetView]
 GO 

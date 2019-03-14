@@ -2,7 +2,7 @@
 USE bodb02
 GO 
 
-ALTER PROCEDURE [dbo].[CS_TotalBets_WagerAccount_Master]
+ALTER PROCEDURE [dbo].[CS_TotalBets_WagerAccount_Outright_Master]
 	@CustID INT ,
 	@SporttypeGroup INT = 0,
 	@LeagueId INT = 0,
@@ -85,7 +85,7 @@ BEGIN
 	 
 END
 GO
-GRANT EXECUTE ON [dbo].[CS_TotalBets_WagerAccount_Master] TO [bodbDownlineNet]
+GRANT EXECUTE ON [dbo].[CS_TotalBets_WagerAccount_Outright_Master] TO [bodbDownlineNet]
 GO
-GRANT EXECUTE ON [dbo].[CS_TotalBets_WagerAccount_Master] TO [bodbDownlineNetView]
+GRANT EXECUTE ON [dbo].[CS_TotalBets_WagerAccount_Outright_Master] TO [bodbDownlineNetView]
 GO 
