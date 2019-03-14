@@ -43,14 +43,17 @@ Param's Explanation:
 	- @IsLive: default = 2: All
 					= 1: Live
 					= 0: Dead
+	- @CustID = AgentID
 */
 BEGIN
 	SET NOCOUNT ON
 
  	
-	SELECT 	Bettype,
+	SELECT 	MatchID,
+			Bettype,
 			Betteam,
 			Liveindicator,
+			Wager,
 			CASE @PossType WHEN 0 THEN Stake0	
 						   WHEN 1 THEN Stake1
 						   WHEN 2 THEN Stake2
@@ -62,6 +65,7 @@ BEGIN
 			END	AS Stake										
 	FROM  (
 			SELECT
+				MatchID,
 				Bettype,
 				Betteam,
 				Liveindicator,
@@ -85,6 +89,7 @@ BEGIN
 					)
 				AND b.MatchID = @MatchID
 			GROUP BY
+				b.MatchID,
 				b.Bettype,
 				b.Betteam,
 				b.Liveindicator

@@ -45,6 +45,7 @@ Param's Explanation:
 	- @IsLive: default = 2: All
 					= 1: Live
 					= 0: Dead
+	- @CustID = SuperID
 */
 BEGIN
 	SET NOCOUNT ON
@@ -59,7 +60,8 @@ BEGIN
 	SELECT @SporttypeList = COALESCE (@SporttypeList + ',', '') + CONVERT(VARCHAR(5),Sporttype) FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)	
 	
  	
-	SELECT  LeagueId, 	
+	SELECT  LeagueId, 
+			MatchID,
 			HomeId,	
 			AwayId,
 			LiveHomeScore,
@@ -79,6 +81,7 @@ BEGIN
 	FROM  (
 			SELECT 
 				m.leagueid, 	
+				m.MatchID,
 				m.HomeId,	
 				m.AwayId,
 				m.LiveHomeScore,
@@ -107,6 +110,7 @@ BEGIN
 				 
 			GROUP BY 
 				m.leagueid, 	
+				m.MatchID,
 				m.HomeId,	
 				m.AwayId,
 				m.LiveHomeScore,

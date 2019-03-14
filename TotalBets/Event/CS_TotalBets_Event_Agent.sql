@@ -45,6 +45,7 @@ Param's Explanation:
 	- @IsLive: default = 2: All
 					= 1: Live
 					= 0: Dead
+	- @CustID = AgentID
 */
 BEGIN
 	SET NOCOUNT ON
@@ -60,6 +61,7 @@ BEGIN
 	
  	
 	SELECT  LeagueId, 	
+			MatchID,
 			HomeId,	
 			AwayId,
 			LiveHomeScore,
@@ -78,7 +80,8 @@ BEGIN
 			END	AS Stake										
 	FROM  (
 			SELECT 
-				m.leagueid, 	
+				m.leagueid, 
+				m.MatchID,				
 				m.HomeId,	
 				m.AwayId,
 				m.LiveHomeScore,
@@ -106,7 +109,8 @@ BEGIN
 					)			
 				 
 			GROUP BY 
-				m.leagueid, 	
+				m.leagueid,
+				m.MatchID,
 				m.HomeId,	
 				m.AwayId,
 				m.LiveHomeScore,

@@ -48,13 +48,14 @@ BEGIN
 	INSERT INTO @SporttypeList
 	SELECT DISTINCT Sporttype, ProductID FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)	
 	
-	SELECT  leagueid, TeamId, Wager, 
+	SELECT  leagueid, orID as MatchID, TeamId, Wager, 
 			CASE @PossType WHEN 0 THEN Stake0							  
 						   WHEN 4 THEN Stake4
 			END	AS Stake										
 	FROM  (
 			SELECT 
-				o.leagueid, 	
+				o.leagueid, 
+				o.orID, 
 				o.TeamId,	
 				COUNT(b.TransId) AS Wager,  
 				SUM (b.Stake) AS Stake0,
@@ -62,7 +63,7 @@ BEGIN
 			FROM bettrans b WITH (NOLOCK)
 				INNER JOIN outright o WITH (NOLOCK) ON o.orid = b.matchid 	 
 			WHERE  	
-				b.recommend = @CustId 
+				b.mrecommend = @CustId 
 				AND b.statusID IN (0,1) 
 				AND b.bettype = 10  
 				AND (
@@ -81,7 +82,7 @@ BEGIN
 				AND (o.leagueid = @LeagueId OR @leagueid = 0) 
 				AND o.oddsstatus IN ('Running','closed','suspend', 'closePrice')
 				AND o.kickofftime > CURRENT_TIMESTAMP
-			GROUP BY o.leagueid, o.TeamId
+			GROUP BY o.leagueid, o.TeamId, o.orID
 			) A
 	
 	

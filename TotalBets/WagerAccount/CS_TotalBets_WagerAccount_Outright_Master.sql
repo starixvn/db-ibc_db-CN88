@@ -4,8 +4,7 @@ GO
 
 ALTER PROCEDURE [dbo].[CS_TotalBets_WagerAccount_Outright_Master]
 	@CustID INT ,
-	@SporttypeGroup INT = 0,
-	@LeagueId INT = 0,
+	@MatchID INT,  
 	@StakeCondition TINYINT = 1,
 	@Stake MONEY = 0 
 AS
@@ -23,58 +22,29 @@ Param's Explanation:
 	- @StakeCondition 	= 0 :  =
 						= 1 :  >  (default)
 						= 2 :  < 
-	- @PossType : 
-				= 0:	Full Percentage
-				= 1:	Company %: Shown on SMA
-				= 2:	SMA %: Shown on SMA
-				= 3:	MA%: Shown on SMA, MA
-				= 4:	Agent%: Shown on SMA, MA, Agent
-				= 5:	SMA + MA + Agent%: Shown on SMA
-				= 6:	SMA + MA %: Shown on SMA
-				= 7:	MA + Agent %: Shown on SMA, MA
+ 
+	- @CustID : SuperID				
 */
 BEGIN
 	SET NOCOUNT ON
-
-	------ Check SP Version
-	DECLARE @isTest BIT = 0
-	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
-
-	--- Get Sporttype
+	 
 	
-	DECLARE @SporttypeList AS TABLE (Sporttype SMALLINT PRIMARY KEY, ProductID INT)	
-		 
-	INSERT INTO @SporttypeList
-	SELECT DISTINCT Sporttype, ProductID FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)	
-	
-	SELECT  C.Username, C.Firstname, A.Wager, A.Stake										
+	SELECT  C.CustID, C.Username, C.Firstname, A.Wager, A.Stake										
 	FROM  (
 			SELECT 
 				b.mrecommend,
 				COUNT(b.TransId) AS Wager,  
 				SUM (b.Stake) AS Stake 				
-			FROM bettrans b WITH (NOLOCK)
-				INNER JOIN outright o WITH (NOLOCK) ON o.orid = b.matchid 	 
+			FROM bettrans b WITH (NOLOCK)				
 			WHERE  	
-				b.mrecommend = @CustId 
-				AND b.statusID IN (0,1) 
-				AND b.bettype = 10  
+				b.srecommend = @CustId 
+				AND b.statusID IN (0,1) 				 
 				AND (
 						(@StakeCondition = 0 AND b.Stake = @Stake) 
 						OR (@StakeCondition = 1 AND b.Stake > @Stake)
 						OR (@StakeCondition = 2 AND b.Stake < @Stake)
 					)				
-				AND (EXISTS (SELECT 1 
-							FROM dbo.League l WITH (NOLOCK) 
-							WHERE l.LeagueId = o.LeagueId 
-								  AND l.sporttype IN (SELECT sporttype FROM @SporttypeList)  
-								  AND l.isTest <= @isTest
-								  AND (l.leagueid = @LeagueId OR @leagueid = 0) 
-							)
-					)
-				AND (o.leagueid = @LeagueId OR @leagueid = 0) 
-				AND o.oddsstatus IN ('Running','closed','suspend', 'closePrice')
-				AND o.kickofftime > CURRENT_TIMESTAMP
+				AND b.MatchID = @MatchID
 			GROUP BY b.mrecommend
 			) A
 		INNER JOIN bodb02.dbo.Customer c WITH (NOLOCK) 
