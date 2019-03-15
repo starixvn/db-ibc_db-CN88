@@ -63,7 +63,7 @@ BEGIN
 			FROM bettrans b WITH (NOLOCK)
 				INNER JOIN outright o WITH (NOLOCK) ON o.orid = b.matchid 	 
 			WHERE  	
-				b.mrecommend = @CustId 
+				b.recommend = @CustId 
 				AND b.statusID IN (0,1) 
 				AND b.bettype = 10  
 				AND (

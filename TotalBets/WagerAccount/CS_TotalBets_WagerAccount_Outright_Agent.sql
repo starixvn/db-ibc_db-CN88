@@ -37,7 +37,7 @@ BEGIN
 				SUM (b.Stake) AS Stake 				
 			FROM bettrans b WITH (NOLOCK)	 
 			WHERE  	
-				b.recommend = @CustId 
+				b.mrecommend = @CustId 
 				AND b.statusID IN (0,1) 
 				AND b.bettype = 10  
 				AND (
