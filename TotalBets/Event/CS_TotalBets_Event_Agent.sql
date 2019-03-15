@@ -100,7 +100,7 @@ BEGIN
 			FROM bettrans b WITH (NOLOCK)
 				INNER JOIN dbo.CS_f_TotalBets_Event_Sel (@Type, @isTest, @LeagueId, @SporttypeList) AS m ON m.matchid = b.matchid 				
 			WHERE  	
-				b.mrecommend = @CustId 
+				b.recommend = @CustId 
 				AND b.statusID IN (0,1) 			
 				AND (
 						(@StakeCondition = 0 AND b.Stake = @Stake) 
