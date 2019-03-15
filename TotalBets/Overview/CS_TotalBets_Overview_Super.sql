@@ -46,21 +46,21 @@ BEGIN
 			-- Wager
 			,InplayWager INT, EarlyWager INT, TodayWager INT, OutrightWager INT
 			-- Stake: original
-			,InplayStake0 INT, EarlyStake0 INT, TodayStake0 INT, OutrightStake0 INT
+			,InplayStake0 MONEY, EarlyStake0 MONEY, TodayStake0 MONEY, OutrightStake0 MONEY
 			-- Stake: company
-			,InplayStake1 INT, EarlyStake1 INT, TodayStake1 INT, OutrightStake1 INT
+			,InplayStake1 MONEY, EarlyStake1 MONEY, TodayStake1 MONEY, OutrightStake1 MONEY
 			-- Stake: SMA
-			,InplayStake2 INT, EarlyStake2 INT, TodayStake2 INT, OutrightStake2 INT
+			,InplayStake2 MONEY, EarlyStake2 MONEY, TodayStake2 MONEY, OutrightStake2 MONEY
 			-- Stake: MA
-			,InplayStake3 INT, EarlyStake3 INT, TodayStake3 INT, OutrightStake3 INT
+			,InplayStake3 MONEY, EarlyStake3 MONEY, TodayStake3 MONEY, OutrightStake3 MONEY
 			-- Stake: Agent
-			,InplayStake4 INT, EarlyStake4 INT, TodayStake4 INT, OutrightStake4 INT
+			,InplayStake4 MONEY, EarlyStake4 MONEY, TodayStake4 MONEY, OutrightStake4 MONEY
 			-- Stake: SMA + MA + Agent
-			,InplayStake5 INT, EarlyStake5 INT, TodayStake5 INT, OutrightStake5 INT
+			,InplayStake5 MONEY, EarlyStake5 MONEY, TodayStake5 MONEY, OutrightStake5 MONEY
 			-- Stake: SMA + MA
-			,InplayStake6 INT, EarlyStake6 INT, TodayStake6 INT, OutrightStake6 INT
+			,InplayStake6 MONEY, EarlyStake6 MONEY, TodayStake6 MONEY, OutrightStake6 MONEY
 			-- Stake: MA + Agent
-			,InplayStake7 INT, EarlyStake7 INT, TodayStake7 INT, OutrightStake7 INT
+			,InplayStake7 MONEY, EarlyStake7 MONEY, TodayStake7 MONEY, OutrightStake7 MONEY
 		)
 
 		-- For Parlay

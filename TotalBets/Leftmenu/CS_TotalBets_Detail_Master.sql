@@ -43,7 +43,7 @@ BEGIN
 			-- Wager
 			,InplayWager INT, EarlyWager INT, TodayWager INT, OutrightWager INT
 			-- Stake
-			,InplayStake INT, EarlyStake INT, TodayStake INT, OutrightStake INT
+			,InplayStake MONEY, EarlyStake MONEY, TodayStake MONEY, OutrightStake MONEY
 		)
 
 		-- In-play, Early, Today

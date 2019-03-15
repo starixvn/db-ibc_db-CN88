@@ -46,9 +46,9 @@ BEGIN
 			-- Wager
 			,InplayWager INT, EarlyWager INT, TodayWager INT, OutrightWager INT
 			-- Stake: original
-			,InplayStake0 INT, EarlyStake0 INT, TodayStake0 INT, OutrightStake0 INT
+			,InplayStake0 MONEY, EarlyStake0 MONEY, TodayStake0 MONEY, OutrightStake0 MONEY
 			-- Stake: Agent
-			,InplayStake4 INT, EarlyStake4 INT, TodayStake4 INT, OutrightStake4 INT
+			,InplayStake4 MONEY, EarlyStake4 MONEY, TodayStake4 MONEY, OutrightStake4 MONEY
 		)
 
 		-- For Parlay
