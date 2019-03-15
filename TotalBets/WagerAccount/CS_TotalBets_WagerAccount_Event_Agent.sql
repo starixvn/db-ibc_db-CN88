@@ -37,7 +37,7 @@ BEGIN
 	DECLARE @BettypeList AS TABLE (bettype SMALLINT ) 
 	SELECT Bettype FROM bodb02.dbo.CS_f_BettypeMatrix_Sel (0, 0, @BettypeGroup, @isTest)	
 	
-	SELECT  C.Username, C.Firstname, A.Wager, A.Stake										
+	SELECT  C.CustID, C.Username, C.Firstname, A.Wager, A.Stake										
 	FROM  (
 			SELECT 
 				b.recommend,
