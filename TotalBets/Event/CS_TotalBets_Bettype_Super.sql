@@ -48,9 +48,12 @@ Param's Explanation:
 BEGIN
 	SET NOCOUNT ON
 
- 	
+ 		------ Check SP Version
+	DECLARE @isTest BIT = 0
+	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
+	
 	SELECT 	MatchId,
-			Bettype,
+			B.BettypeGroup As Bettype,
 			Betteam,
 			Liveindicator,
 			Wager,
@@ -94,7 +97,7 @@ BEGIN
 				b.Betteam,
 				b.Liveindicator
 			) A 
-		
+		CROSS APPLY (SELECT Bettype, BettypeGroup FROM dbo.CS_f_BettypeGroupMatrix_Sel (0,0,A.Bettype,@Istest) ) B
 	
 	
 	 

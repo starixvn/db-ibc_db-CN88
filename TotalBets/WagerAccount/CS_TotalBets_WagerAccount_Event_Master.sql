@@ -41,7 +41,7 @@ BEGIN
 				b.srecommend = @CustId 
 				AND b.statusID IN (0,1) 
 				AND b.bettype = @bettype 
-				AND b.betteam = @betteam 
+				AND (b.betteam = @betteam OR @betteam = '')
 				AND b.MatchID = @MatchID
 				AND b.LiveIndicator = @LiveIndicator
 				AND (

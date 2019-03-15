@@ -50,7 +50,7 @@ BEGIN
 
  	
 	SELECT 	MatchID,
-			Bettype,
+			B.BettypeGroup As Bettype,
 			Betteam,
 			Liveindicator,
 			Wager,
@@ -94,6 +94,7 @@ BEGIN
 				b.Betteam,
 				b.Liveindicator
 			) A
+			CROSS APPLY (SELECT Bettype, BettypeGroup FROM dbo.CS_f_BettypeGroupMatrix_Sel (0,0,A.Bettype,@Istest) ) B
 	
 	
 	 
