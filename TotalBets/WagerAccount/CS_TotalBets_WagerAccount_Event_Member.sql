@@ -36,6 +36,7 @@ BEGIN
 
 	--- Get Bettype	
 	DECLARE @BettypeList AS TABLE (bettype SMALLINT ) 
+	INSERT INTO @BettypeList (bettype)
 	SELECT Bettype FROM bodb02.dbo.CS_f_BettypeMatrix_Sel (0, 0, @BettypeGroup, @isTest)
 	
 	

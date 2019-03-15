@@ -1,4 +1,4 @@
-/*<info serverAlias="DB042-bodb02" select="bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="0"></info>*/	
+/*<info serverAlias="DB042-bodb02" select="bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="1"></info>*/	
 USE bodb02
 GO 
 
