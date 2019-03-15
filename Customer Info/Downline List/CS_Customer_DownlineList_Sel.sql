@@ -8,6 +8,7 @@ ALTER PROCEDURE [dbo].[CS_Customer_DownlineList_Sel]
 	@SearchRoleId		TINYINT,
 	@SearchUsername		NVARCHAR(50),
 	@SearchStatusId		TINYINT = 0,
+	@UplineId			INT = 0 OUTPUT,
 	@PageIndex			INT = 1,
 	@PageSize			INT = 500,
 	@TotalRows			INT = 0 OUTPUT
@@ -41,21 +42,19 @@ BEGIN
 	DECLARE @RoleId TINYINT
 	SELECT  @RoleId = roleId FROM dbo.custInfo WITH (NOLOCK) WHERE custId = @custId
 
-	DECLARE @tmpCustId INT
-	
 	IF @RoleId = 4 AND @SearchRoleId < 3
 	BEGIN
-		SELECT @tmpCustId = custid FROM dbo.custInfo WITH (NOLOCK)
+		SELECT @UplineId = custid FROM dbo.custInfo WITH (NOLOCK)
 		WHERE username = @DownlineUsername AND srecommend = @CustId AND roleId = @SearchRoleId + 1
 	END
 	ELSE IF @RoleId = 3 AND @SearchRoleId < 2
 	BEGIN
-		SELECT @tmpCustId = custid FROM dbo.custInfo WITH (NOLOCK)
+		SELECT @UplineId = custid FROM dbo.custInfo WITH (NOLOCK)
 		WHERE username = @DownlineUsername AND mrecommend = @CustId AND roleId = @SearchRoleId + 1
 	END
 	ELSE
 	BEGIN
-		SELECT @tmpCustId = @CustId
+		SELECT @UplineId = @CustId
 	END
 
 	CREATE TABLE #CustInfo (custId INT, username NVARCHAR(50), credit MONEY, Status TINYINT, ClosedReason TINYINT)
@@ -72,7 +71,7 @@ BEGIN
 		FROM dbo.custInfo ci WITH (NOLOCK)
 			INNER JOIN dbo.Customer cu WITH (NOLOCK) ON ci.custid = cu.custid
 			LEFT JOIN dbo.CustLoginInfo cl WITH (NOLOCK) ON ci.custid = cl.custid
-		WHERE ci.srecommend = @tmpCustId
+		WHERE ci.srecommend = @UplineId
 			AND ci.roleId = 3
 			AND (
 				ci.username LIKE '%' + ISNULL(@SearchUsername, '') + '%'
@@ -99,7 +98,7 @@ BEGIN
 		FROM dbo.custInfo ci WITH (NOLOCK)
 			INNER JOIN dbo.Customer cu WITH (NOLOCK) ON ci.custid = cu.custid
 			LEFT JOIN dbo.CustLoginInfo cl WITH (NOLOCK) ON ci.custid = cl.custid
-		WHERE ci.mrecommend = @tmpCustId
+		WHERE ci.mrecommend = @UplineId
 			AND ci.roleId = 2
 			AND (
 				ci.username LIKE '%' + ISNULL(@SearchUsername, '') + '%'
@@ -126,7 +125,7 @@ BEGIN
 		FROM dbo.custInfo ci WITH (NOLOCK)
 			INNER JOIN dbo.Customer cu WITH (NOLOCK) ON ci.custid = cu.custid
 			LEFT JOIN dbo.CustLoginInfo_Member cl WITH (NOLOCK) ON ci.custid = cl.custid
-		WHERE ci.recommend = @tmpCustId
+		WHERE ci.recommend = @UplineId
 			AND ci.roleId = 1
 			AND (
 				ci.username LIKE '%' + ISNULL(@SearchUsername, '') + '%'
