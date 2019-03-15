@@ -5,7 +5,7 @@ GO
 ALTER PROCEDURE [dbo].[CS_TotalBets_WagerAccount_Event_Master]
 	@CustID INT ,
 	@MatchId INT = 0,
-	@Bettype SMALLINT = 0,
+	@BettypeGroup SMALLINT = 0,
 	@Betteam NVARCHAR(10) = '',
 	@LiveIndicator BIT = 0,
 	@StakeCondition TINYINT = 1,
@@ -30,6 +30,15 @@ Param's Explanation:
 BEGIN
 	SET NOCOUNT ON
 	
+	------ Check SP Version
+	DECLARE @isTest BIT = 0
+	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
+
+	--- Get Bettype	
+	DECLARE @BettypeList AS TABLE (bettype SMALLINT ) 
+	SELECT Bettype FROM bodb02.dbo.CS_f_BettypeMatrix_Sel (0, 0, @BettypeGroup, @isTest)		
+	
+	
 	SELECT  C.Username, C.Firstname, A.Wager, A.Stake										
 	FROM  (
 			SELECT 
@@ -40,7 +49,7 @@ BEGIN
 			WHERE  	
 				b.srecommend = @CustId 
 				AND b.statusID IN (0,1) 
-				AND b.bettype = @bettype 
+				AND b.bettype IN (Select Bettype FROM @BettypeList)
 				AND (b.betteam = @betteam OR @betteam = '')
 				AND b.MatchID = @MatchID
 				AND b.LiveIndicator = @LiveIndicator

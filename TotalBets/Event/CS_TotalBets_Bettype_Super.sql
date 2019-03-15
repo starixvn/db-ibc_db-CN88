@@ -53,7 +53,7 @@ BEGIN
 	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
 	
 	SELECT 	MatchId,
-			B.BettypeGroup As Bettype,
+			B.BettypeGroup As BettypeGroup,
 			Betteam,
 			Liveindicator,
 			Wager,

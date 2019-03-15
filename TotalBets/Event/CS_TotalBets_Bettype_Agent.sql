@@ -47,21 +47,19 @@ Param's Explanation:
 */
 BEGIN
 	SET NOCOUNT ON
+	
+		------ Check SP Version
+	DECLARE @isTest BIT = 0
+	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
 
  	
 	SELECT 	MatchID,
-			B.BettypeGroup As Bettype,
+			B.BettypeGroup As BettypeGroup,
 			Betteam,
 			Liveindicator,
 			Wager,
-			CASE @PossType WHEN 0 THEN Stake0	
-						   WHEN 1 THEN Stake1
-						   WHEN 2 THEN Stake2
-						   WHEN 3 THEN Stake3
+			CASE @PossType WHEN 0 THEN Stake0
 						   WHEN 4 THEN Stake4
-						   WHEN 5 THEN Stake5
-						   WHEN 6 THEN Stake6
-						   WHEN 7 THEN Stake7
 			END	AS Stake										
 	FROM  (
 			SELECT
@@ -71,13 +69,7 @@ BEGIN
 				Liveindicator,
 				COUNT(b.TransId) AS Wager,  				
 				SUM (b.Stake) AS Stake0,
-				SUM (b.Stake * ( 1 - tpositiontaking)) AS Stake1,
-				SUM (b.Stake * (spositiontaking)) AS Stake2,
-				SUM (b.Stake * (mpositiontaking)) AS Stake3,
-				SUM (b.Stake * (apositiontaking)) AS Stake4,
-				SUM (b.Stake * (spositiontaking + mpositiontaking + apositiontaking)) AS Stake5,
-				SUM (b.Stake * (spositiontaking + mpositiontaking)) AS Stake6,
-				SUM (b.Stake * (mpositiontaking + apositiontaking)) AS Stake7
+				SUM (b.Stake * (apositiontaking)) AS Stake4
 			FROM bettrans b WITH (NOLOCK)				
 			WHERE  	
 				b.recommend = @CustId 
