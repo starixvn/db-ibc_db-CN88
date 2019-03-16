@@ -38,7 +38,8 @@ BEGIN
 			FROM bettrans b WITH (NOLOCK)				
 			WHERE  	
 				b.srecommend = @CustId 
-				AND b.statusID IN (0,1) 				 
+				AND b.statusID IN (0,1) 	
+				AND b.bettype = 10 				
 				AND (
 						(@StakeCondition = 0 AND b.Stake = @Stake) 
 						OR (@StakeCondition = 1 AND b.Stake > @Stake)
