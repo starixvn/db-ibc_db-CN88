@@ -91,13 +91,25 @@ BEGIN
 						OR (@StakeCondition = 2 AND b.Stake < @Stake)
 					)
 				AND b.MatchID = @MatchID
+				AND (   @IsLive = 2   --- all
+					OR
+					(b.bettype <> 29 AND b.Liveindicator = @IsLive)
+					OR 
+					(b.bettype = 29  AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
+															UNION 
+															SELECT 2 AS IsLive WHERE @IsLive = 0
+															UNION 
+															SELECT 1 AS IsLive WHERE @IsLive = 1																		
+															)
+					)
+				)
 			GROUP BY
 				b.MatchId,
 				b.Bettype,
 				b.Betteam,
 				b.Liveindicator
 			) A 
-		CROSS APPLY (SELECT Bettype, BettypeGroup FROM dbo.CS_f_BettypeGroupMatrix_Sel (0,0,A.Bettype,@Istest) ) B	
+		CROSS APPLY (SELECT Bettype, BettypeGroup FROM dbo.CS_f_BettypeGroupMatrix_Sel (0,0,A.Bettype,@Istest) WHERE BettypeGroup <> 10 ) B	
 	GROUP BY 
 			MatchId,
 			B.BettypeGroup ,

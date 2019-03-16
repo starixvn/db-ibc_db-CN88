@@ -20,14 +20,19 @@ Param's Explanation:
 */
 BEGIN
 	SET NOCOUNT ON
-	SELECT 
-			m.leagueid, 	
+	SELECT 	m.MatchID,
+			m.Sporttype,
+			m.leagueid,
+			--mr.OfferLive,   
+			0 as OfferLive,
 			m.HomeId,	
 			m.AwayId,
 			m.LiveHomeScore,
 			m.LiveAwayScore,
-			m.Showtime				
+			m.Showtime,
+			m.IsNeutral
 	FROM dbo.Match m WITH (NOLOCK)
+		INNER JOIN dbo.match_remark mr WITH (NOLOCK) ON m.MatchID = mr.MatchID 
 	WHERE m.MatchID = @MatchID
 	 
 END

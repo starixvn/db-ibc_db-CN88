@@ -32,7 +32,8 @@ Param's Explanation:
 
 */
 
-		SELECT DISTINCT o.orId as MatchID, o.leagueid, l.sporttype, o.teamId As HomeID, 0 As AwayID, 0 AS livehomescore, 0 AS liveawayscore, '' as Showtime,'outright' AS TableName
+		SELECT DISTINCT o.orId as MatchID, o.leagueid, l.sporttype, 0 AS OfferLive, 0 AS IsNeutral,
+			   o.teamId As HomeID, 0 As AwayID, 0 AS livehomescore, 0 AS liveawayscore, '' as Showtime, 4 AS Type
 		FROM  dbo.outright o WITH (NOLOCK) 
 		INNER JOIN dbo.League l WITH (NOLOCK) 
 			ON l.leagueid = o.leagueid
@@ -45,9 +46,13 @@ Param's Explanation:
 				
 		UNION ALL 
 		
-		SELECT  DISTINCT m.matchid as MatchID, m.leagueid, m.sporttype, 
-				m.HomeID, m.AwayID, m.livehomescore, m.liveawayscore, m.showtime,
-				'Match' AS TableName
+		SELECT  DISTINCT m.matchid as MatchID, m.leagueid, m.sporttype, 0 AS OfferLive, m.IsNeutral,
+				m.HomeID, m.AwayID,  
+				m.livehomescore, m.liveawayscore, m.showtime,
+				CASE WHEN o.liveindicator = 1 THEN 1
+					 WHEN CONVERT(DATE,m.kickofftime) <= CONVERT(DATE,CURRENT_TIMESTAMP) THEN 2
+					 WHEN CONVERT(DATE,m.kickofftime) > CONVERT(DATE,CURRENT_TIMESTAMP) THEN 3
+					 END AS Type
 		FROM  dbo.Match m  WITH (NOLOCK) 
 		INNER JOIN dbo.Odds o WITH (NOLOCK) 
 			ON m.matchid = o.matchid		

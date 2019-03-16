@@ -76,20 +76,33 @@ BEGIN
 			FROM bettrans b WITH (NOLOCK)				
 			WHERE  	
 				b.mrecommend = @CustId 
-				AND b.statusID IN (0,1) 			
+				AND b.statusID IN (0,1) 
+				AND b.bettype <> 10				
 				AND (
 						(@StakeCondition = 0 AND b.Stake = @Stake) 
 						OR (@StakeCondition = 1 AND b.Stake > @Stake)
 						OR (@StakeCondition = 2 AND b.Stake < @Stake)
 					)
 				AND b.MatchID = @MatchID
+				AND (   @IsLive = 2   --- all
+					OR
+					(b.bettype <> 29 AND b.Liveindicator = @IsLive)
+					OR 
+					(b.bettype = 29  AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
+															UNION 
+															SELECT 2 AS IsLive WHERE @IsLive = 0
+															UNION 
+															SELECT 1 AS IsLive WHERE @IsLive = 1																		
+															)
+					)
+				)
 			GROUP BY
 				b.MatchID,
 				b.Bettype,
 				b.Betteam,
 				b.Liveindicator
 			) A
-			CROSS APPLY (SELECT Bettype, BettypeGroup FROM dbo.CS_f_BettypeGroupMatrix_Sel (0,0,A.Bettype,@Istest) ) B
+			CROSS APPLY (SELECT Bettype, BettypeGroup FROM dbo.CS_f_BettypeGroupMatrix_Sel (0,0,A.Bettype,@Istest) WHERE BettypeGroup <> 10 ) B
 	GROUP BY 
 			MatchID,
 			B.BettypeGroup,
