@@ -55,6 +55,7 @@ Param's Explanation:
 			m.kickofftime > DATEADD(hour,-12,CURRENT_TIMESTAMP)  -- event started
 			AND m.eventstatus='running' 							
 			AND o.oddsstatus in ('running','suspend','closePrice') 		
+			AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),m.Sporttype) + ',%' OR @SporttypeList = '')	
 			AND (
 					(o.liveindicator = 1 AND @Type IN (0,1)	)    --- In play
 					OR (o.liveindicator = 0 
@@ -67,8 +68,7 @@ Param's Explanation:
 				)			
 			AND EXISTS ( SELECT 1 FROM League l WITH (NOLOCK) 
 						 WHERE l.leagueid = m.leagueid 
-								AND l.isTest <= @isTest AND (leagueid = @leagueid OR @leagueid = 0)
-								AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),l.Sporttype) + ',%' OR @SporttypeList = '')
+								AND l.isTest <= @isTest AND (leagueid = @leagueid OR @leagueid = 0)								
 								)		
 			
 	
