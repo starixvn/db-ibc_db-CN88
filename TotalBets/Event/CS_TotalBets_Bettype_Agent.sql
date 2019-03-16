@@ -53,13 +53,13 @@ BEGIN
 	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
 
  	
-	SELECT 	MatchID,
+	SELECT  MatchID,
 			B.BettypeGroup As BettypeGroup,
 			Betteam,
 			Liveindicator,
-			Wager,
-			CASE @PossType WHEN 0 THEN Stake0
-						   WHEN 4 THEN Stake4
+			SUM(Wager) AS Wager,
+			CASE @PossType WHEN 0 THEN SUM(Stake0)
+						   WHEN 4 THEN SUM(Stake4)
 			END	AS Stake										
 	FROM  (
 			SELECT
@@ -87,7 +87,10 @@ BEGIN
 				b.Liveindicator
 			) A
 			CROSS APPLY (SELECT Bettype, BettypeGroup FROM dbo.CS_f_BettypeGroupMatrix_Sel (0,0,A.Bettype,@Istest) ) B
-	
+	GROUP BY MatchID,
+			B.BettypeGroup,
+			Betteam,
+			Liveindicator
 	
 	 
 END

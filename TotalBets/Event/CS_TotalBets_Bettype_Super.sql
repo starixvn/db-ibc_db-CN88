@@ -56,15 +56,15 @@ BEGIN
 			B.BettypeGroup As BettypeGroup,
 			Betteam,
 			Liveindicator,
-			Wager,
-			CASE @PossType WHEN 0 THEN Stake0	
-						   WHEN 1 THEN Stake1
-						   WHEN 2 THEN Stake2
-						   WHEN 3 THEN Stake3
-						   WHEN 4 THEN Stake4
-						   WHEN 5 THEN Stake5
-						   WHEN 6 THEN Stake6
-						   WHEN 7 THEN Stake7
+			SUM (Wager) AS Wager,
+			CASE @PossType WHEN 0 THEN SUM (Stake0)
+						   WHEN 1 THEN SUM (Stake1)
+						   WHEN 2 THEN SUM (Stake2)
+						   WHEN 3 THEN SUM (Stake3)
+						   WHEN 4 THEN SUM (Stake4)
+						   WHEN 5 THEN SUM (Stake5)
+						   WHEN 6 THEN SUM (Stake6)
+						   WHEN 7 THEN SUM (Stake7)
 			END	AS Stake										
 	FROM  (
 			SELECT
@@ -97,9 +97,12 @@ BEGIN
 				b.Betteam,
 				b.Liveindicator
 			) A 
-		CROSS APPLY (SELECT Bettype, BettypeGroup FROM dbo.CS_f_BettypeGroupMatrix_Sel (0,0,A.Bettype,@Istest) ) B
-	
-	
+		CROSS APPLY (SELECT Bettype, BettypeGroup FROM dbo.CS_f_BettypeGroupMatrix_Sel (0,0,A.Bettype,@Istest) ) B	
+	GROUP BY 
+			MatchId,
+			B.BettypeGroup ,
+			Betteam,
+			Liveindicator
 	 
 END
 GO
