@@ -203,9 +203,9 @@ BEGIN
 							SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm) + (SWinlost + SComm - Acomm)) AS SuperResult,
 							SUM(ABS(winlost - actual_stake) * (1 - tpositiontaking)) AS SuperStock,		
 								
-							SUM ((CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT) AS HeadlineIncome,  --- MSH Win Loss + MSH Sharing Comm 
+							SUM (-1 *(CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT) AS HeadlineIncome,  --- MSH Win Loss + MSH Sharing Comm 
 							SUM ( 								
-									((CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT)
+									( -1 * (CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT)
 									+ ((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm) + (SWinlost + SComm - Acomm)) 
 								) AS HeadlineResult,
 							SUM (ABS(winlost - actual_stake) * (1 - tpositiontaking - e.ExtraPT)) AS HeadlineStock		
