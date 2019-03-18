@@ -31,238 +31,151 @@ AS
 BEGIN
 	SET NOCOUNT ON
 
-	DECLARE @TimeNow DATETIME = GETDATE()
-	DECLARE @today DATETIME = CONVERT(DATE, @TimeNow)
+	DECLARE @isTest BIT
+	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
 
 	/* ===== Get Data ===== */
 	BEGIN
 		CREATE TABLE #Sports (SportTypeGroup SMALLINT, SportType INT)
 		INSERT INTO #Sports (SportTypeGroup, SportType)
-		SELECT DISTINCT SportTypeGroup, SportType FROM dbo.CS_SportBettypeMatrix WITH (NOLOCK) WHERE SportTypeGroup <> 9 -- Exclude Parlay
+		SELECT DISTINCT SportTypeGroup, SportType FROM dbo.CS_SportBettypeMatrix WITH (NOLOCK)
+		WHERE SportTypeGroup <> 9 -- Exclude Parlay
+			AND IsTest <= @isTest
+
+		CREATE TABLE #EventInfo (MatchId INT, SportType INT, Type TINYINT)
 
 		CREATE TABLE #TotalBets
 		(
-			SportTypeGroup SMALLINT
+			MatchId INT
+			-- for outright (bettype = 10), parlay (bettype = 29, selectiontype = liveawayscore)
+			,BetType INT, SelectionType TINYINT
 			-- Wager
-			,InplayWager INT, EarlyWager INT, TodayWager INT, OutrightWager INT
-			-- Stake: original
-			,InplayStake0 MONEY, EarlyStake0 MONEY, TodayStake0 MONEY, OutrightStake0 MONEY
-			-- Stake: company
-			,InplayStake1 MONEY, EarlyStake1 MONEY, TodayStake1 MONEY, OutrightStake1 MONEY
-			-- Stake: SMA
-			,InplayStake2 MONEY, EarlyStake2 MONEY, TodayStake2 MONEY, OutrightStake2 MONEY
-			-- Stake: MA
-			,InplayStake3 MONEY, EarlyStake3 MONEY, TodayStake3 MONEY, OutrightStake3 MONEY
-			-- Stake: Agent
-			,InplayStake4 MONEY, EarlyStake4 MONEY, TodayStake4 MONEY, OutrightStake4 MONEY
-			-- Stake: SMA + MA + Agent
-			,InplayStake5 MONEY, EarlyStake5 MONEY, TodayStake5 MONEY, OutrightStake5 MONEY
-			-- Stake: SMA + MA
-			,InplayStake6 MONEY, EarlyStake6 MONEY, TodayStake6 MONEY, OutrightStake6 MONEY
-			-- Stake: MA + Agent
-			,InplayStake7 MONEY, EarlyStake7 MONEY, TodayStake7 MONEY, OutrightStake7 MONEY
-		)
-
-		-- For Parlay
-		CREATE TABLE #ParlayTotalBets
-		(
-			SelectionType TINYINT, Wager INT
+			,Wager INT
+			-- Stake
 			,Stake0 MONEY, Stake1 MONEY, Stake2 MONEY, Stake3 MONEY, Stake4 MONEY, Stake5 MONEY, Stake6 MONEY, Stake7 MONEY
 		)
+		
+		INSERT INTO #TotalBets
+		(
+			MatchId, BetType, SelectionType
+			,Wager
+			,Stake0
+			,Stake1
+			,Stake2
+			,Stake3
+			,Stake4
+			,Stake5
+			,Stake6
+			,Stake7
+		)
+		SELECT
+			b.matchid
+			,CASE WHEN b.bettype IN (10, 29) THEN b.bettype ELSE 0 END AS bettype
+			/* <== liveawayscore <==> 1: Soccer only <==> 2: Other Sports except Soccer <==> 3: Soccer + Other Sports ==> */
+			,CASE WHEN b.bettype IN (29) THEN b.liveawayscore ELSE 0 END AS SelectionType
+			-- Wager
+			,COUNT(1) AS Wager
+			-- Stake: original
+			,SUM(b.stake) AS Stake0
+			-- Stake: Company
+			,SUM(b.stake * (1 - b.tpositiontaking)) AS Stake1
+			-- Stake: SMA
+			,SUM(b.stake * b.spositiontaking) AS Stake2
+			-- Stake: MA
+			,SUM(b.stake * b.mpositiontaking) AS Stake3
+			-- Stake: Agent
+			,SUM(b.stake * b.apositiontaking) AS Stake4
+			-- Stake: SMA + MA + Agent
+			,SUM(b.stake * b.tpositiontaking) AS Stake5
+			-- Stake: SMA + MA
+			,SUM(b.stake * (b.spositiontaking + b.mpositiontaking)) AS Stake6
+			-- Stake: MA + Agent
+			,SUM(b.stake * (b.mpositiontaking + b.apositiontaking)) AS Stake7
+		FROM dbo.bettrans b WITH (NOLOCK)
+		WHERE b.srecommend = @CustId
+			AND b.statusId IN (0, 1)
+		GROUP BY
+			b.matchid
+			,CASE WHEN b.bettype IN (10, 29) THEN b.bettype ELSE 0 END
+			,CASE WHEN b.bettype IN (29) THEN b.liveawayscore ELSE 0 END
 
-		-- In-play, Early, Today
+		IF @@ROWCOUNT <> 0
 		BEGIN
-			INSERT INTO #TotalBets
-			(
-				SportTypeGroup
-				,InplayWager, EarlyWager, TodayWager
-				,InplayStake0, EarlyStake0, TodayStake0
-				,InplayStake1, EarlyStake1, TodayStake1
-				,InplayStake2, EarlyStake2, TodayStake2
-				,InplayStake3, EarlyStake3, TodayStake3
-				,InplayStake4, EarlyStake4, TodayStake4
-				,InplayStake5, EarlyStake5, TodayStake5
-				,InplayStake6, EarlyStake6, TodayStake6
-				,InplayStake7, EarlyStake7, TodayStake7
-			)
-			SELECT s.SportTypeGroup
-					-- Wager
-					,SUM(CASE WHEN m.kickofftime <= @TimeNow THEN 1 ELSE 0 END) AS InplayWager
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate > @today THEN 1 ELSE 0 END) AS EarlyWager
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate <= @today THEN 1 ELSE 0 END) AS TodayWager
-					-- Stake: original
-					,SUM(CASE WHEN m.kickofftime <= @TimeNow THEN b.stake ELSE 0 END) AS InplayStake0
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate > @today THEN b.stake ELSE 0 END) AS EarlyStake0
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate <= @today THEN b.stake ELSE 0 END) AS TodayStake0
-					-- Stake: Company
-					,SUM(CASE WHEN m.kickofftime <= @TimeNow THEN b.stake * (1 - b.tpositiontaking) ELSE 0 END) AS InplayStake1
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate > @today THEN b.stake * (1 - b.tpositiontaking) ELSE 0 END) AS EarlyStake1
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate <= @today THEN b.stake * (1 - b.tpositiontaking) ELSE 0 END) AS TodayStake1
-					-- Stake: SMA
-					,SUM(CASE WHEN m.kickofftime <= @TimeNow THEN b.stake * b.spositiontaking ELSE 0 END) AS InplayStake2
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate > @today THEN b.stake * b.spositiontaking ELSE 0 END) AS EarlyStake2
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate <= @today THEN b.stake * b.spositiontaking ELSE 0 END) AS TodayStake2
-					-- Stake: MA
-					,SUM(CASE WHEN m.kickofftime <= @TimeNow THEN b.stake * b.mpositiontaking ELSE 0 END) AS InplayStake3
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate > @today THEN b.stake * b.mpositiontaking ELSE 0 END) AS EarlyStake3
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate <= @today THEN b.stake * b.mpositiontaking ELSE 0 END) AS TodayStake3
-					-- Stake: Agent
-					,SUM(CASE WHEN m.kickofftime <= @TimeNow THEN b.stake * b.apositiontaking ELSE 0 END) AS InplayStake4
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate > @today THEN b.stake * b.apositiontaking ELSE 0 END) AS EarlyStake4
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate <= @today THEN b.stake * b.apositiontaking ELSE 0 END) AS TodayStake4
-					-- Stake: SMA + MA + Agent
-					,SUM(CASE WHEN m.kickofftime <= @TimeNow THEN b.stake * b.tpositiontaking ELSE 0 END) AS InplayStake5
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate > @today THEN b.stake * b.tpositiontaking ELSE 0 END) AS EarlyStake5
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate <= @today THEN b.stake * b.tpositiontaking ELSE 0 END) AS TodayStake5
-					-- Stake: SMA + MA
-					,SUM(CASE WHEN m.kickofftime <= @TimeNow THEN b.stake * (b.spositiontaking + b.mpositiontaking) ELSE 0 END) AS InplayStake6
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate > @today THEN b.stake * (b.spositiontaking + b.mpositiontaking) ELSE 0 END) AS EarlyStake6
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate <= @today THEN b.stake * (b.spositiontaking + b.mpositiontaking) ELSE 0 END) AS TodayStake6
-					-- Stake: MA + Agent
-					,SUM(CASE WHEN m.kickofftime <= @TimeNow THEN b.stake * (b.mpositiontaking + b.apositiontaking) ELSE 0 END) AS InplayStake7
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate > @today THEN b.stake * (b.mpositiontaking + b.apositiontaking) ELSE 0 END) AS EarlyStake7
-					,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate <= @today THEN b.stake * (b.mpositiontaking + b.apositiontaking) ELSE 0 END) AS TodayStake7
-			FROM #Sports s
-				INNER JOIN dbo.match m WITH (NOLOCK) ON s.SportType = m.sporttype
-				INNER JOIN dbo.bettrans b WITH (NOLOCK) ON m.matchid = b.matchid
-			WHERE b.srecommend = @CustId
-				AND b.statusId IN (0, 1)
-				AND m.eventstatus NOT IN ('closed', 'internal')
-				AND m.kickofftime > DATEADD(HOUR, -12, CURRENT_TIMESTAMP)
-			GROUP BY s.SportTypeGroup
-		END
-
-		-- Outright
-		BEGIN
-			INSERT INTO #TotalBets
-			(
-				SportTypeGroup
-				,OutrightWager
-				,OutrightStake0
-				,OutrightStake1
-				,OutrightStake2
-				,OutrightStake3
-				,OutrightStake4
-				,OutrightStake5
-				,OutrightStake6
-				,OutrightStake7
-			)
-			SELECT s.SportTypeGroup
-					-- Wager
-					,SUM(1) AS OutrightWager
-					-- Stake: original
-					,SUM(b.stake) AS OutrightStake0
-					-- Stake: Company
-					,SUM(b.stake * (1 - b.tpositiontaking)) AS OutrightStake1
-					-- Stake: SMA
-					,SUM(b.stake * b.spositiontaking) AS OutrightStake2
-					-- Stake: MA
-					,SUM(b.stake * b.mpositiontaking) AS OutrightStake3
-					-- Stake: Agent
-					,SUM(b.stake * b.apositiontaking) AS OutrightStake4
-					-- Stake: SMA + MA + Agent
-					,SUM(b.stake * b.tpositiontaking) AS OutrightStake5
-					-- Stake: SMA + MA
-					,SUM(b.stake * (b.spositiontaking + b.mpositiontaking)) AS OutrightStake6
-					-- Stake: MA + Agent
-					,SUM(b.stake * (b.mpositiontaking + b.apositiontaking)) AS OutrightStake7
-			FROM #Sports s
-				INNER JOIN dbo.League l WITH (NOLOCK) ON s.SportType = l.sporttype
-				INNER JOIN dbo.outright o WITH (NOLOCK) ON l.leagueid = o.leagueid
-				INNER JOIN dbo.bettrans b WITH (NOLOCK) ON o.orid = b.matchid
-			WHERE b.srecommend = @CustId
-				AND b.statusId IN (0, 1)
-				AND o.oddsstatus IN ('closed', 'running', 'suspend', 'closePrice')
-				AND o.kickofftime > CURRENT_TIMESTAMP
-			GROUP BY s.SportTypeGroup
-		END
-
-		-- Parlay
-		BEGIN
-			/*
-			-- liveawayscore:
-				1: Soccer only
-				2: Other Sports except Soccer
-				3: Soccer + Other Sports
-			*/
-			INSERT INTO #ParlayTotalBets (SelectionType, Wager, Stake0, Stake1, Stake2, Stake3, Stake4, Stake5, Stake6, Stake7)
-			SELECT
-				b.liveawayscore
-				,SUM(1) AS Wager
-				,SUM(b.stake) AS Stake0
-				,SUM(b.stake * (1 - b.tpositiontaking)) AS Stake1
-				,SUM(b.stake * b.spositiontaking) AS Stake2
-				,SUM(b.stake * b.mpositiontaking) AS Stake3
-				,SUM(b.stake * b.apositiontaking) AS Stake4
-				,SUM(b.stake * b.tpositiontaking) AS Stake5
-				,SUM(b.stake * (b.spositiontaking + b.mpositiontaking)) AS Stake6
-				,SUM(b.stake * (b.mpositiontaking + b.apositiontaking)) AS Stake7
-			FROM dbo.bettrans b WITH (NOLOCK)
-			WHERE b.srecommend = @CustId
-				AND b.statusId IN (0, 1)
-				AND b.bettype = 29
-			GROUP BY
-				b.liveawayscore
+			INSERT INTO #EventInfo (MatchId, SportType, Type)
+			SELECT MatchId, SportType, Type FROM dbo.CS_f_TotalBets_Event_Sel (0, @isTest, 0, '')
 		END
 	END
 
 	/* ===== Return data ===== */
 	BEGIN
 			-- 1. Detail by Sports
-			;WITH CTE_Sports AS (
-				SELECT DISTINCT SportTypeGroup FROM dbo.CS_SportBettypeMatrix WITH (NOLOCK)
-				WHERE SportTypeGroup <> 9 -- Exclude Parlay
-			)
 			SELECT
 				s.SportTypeGroup
 				-- Wager
-				,SUM(ISNULL(InplayWager, 0))	AS InplayWager
-				,SUM(ISNULL(TodayWager, 0))		AS TodayWager
-				,SUM(ISNULL(EarlyWager, 0))		AS EarlyWager
-				,SUM(ISNULL(OutrightWager, 0))	AS OutrightWager
+				,SUM(CASE WHEN r.Type = 1 THEN ISNULL(Wager, 0) ELSE 0 END) AS InplayWager
+				,SUM(CASE WHEN r.Type = 2 THEN ISNULL(Wager, 0) ELSE 0 END) AS TodayWager
+				,SUM(CASE WHEN r.Type = 3 THEN ISNULL(Wager, 0) ELSE 0 END) AS EarlyWager
+				,SUM(CASE WHEN r.Type = 4 THEN ISNULL(Wager, 0) ELSE 0 END) AS OutrightWager
 				-- Stake
-				,SUM(ISNULL(CASE @PossType
-								WHEN 0 THEN InplayStake0
-								WHEN 1 THEN InplayStake1
-								WHEN 2 THEN InplayStake2
-								WHEN 3 THEN InplayStake3
-								WHEN 4 THEN InplayStake4
-								WHEN 5 THEN InplayStake5
-								WHEN 6 THEN InplayStake6
-								WHEN 7 THEN InplayStake7
-								END, 0))					AS InplayStake
-				,SUM(ISNULL(CASE @PossType
-								WHEN 0 THEN TodayStake0
-								WHEN 1 THEN TodayStake1
-								WHEN 2 THEN TodayStake2
-								WHEN 3 THEN TodayStake3
-								WHEN 4 THEN TodayStake4
-								WHEN 5 THEN TodayStake5
-								WHEN 6 THEN TodayStake6
-								WHEN 7 THEN TodayStake7
-								END, 0))					AS TodayStake
-				,SUM(ISNULL(CASE @PossType
-								WHEN 0 THEN EarlyStake0
-								WHEN 1 THEN EarlyStake1
-								WHEN 2 THEN EarlyStake2
-								WHEN 3 THEN EarlyStake3
-								WHEN 4 THEN EarlyStake4
-								WHEN 5 THEN EarlyStake5
-								WHEN 6 THEN EarlyStake6
-								WHEN 7 THEN EarlyStake7
-								END, 0))					AS EarlyStake
-				,SUM(ISNULL(CASE @PossType
-								WHEN 0 THEN OutrightStake0
-								WHEN 1 THEN OutrightStake1
-								WHEN 2 THEN OutrightStake2
-								WHEN 3 THEN OutrightStake3
-								WHEN 4 THEN OutrightStake4
-								WHEN 5 THEN OutrightStake5
-								WHEN 6 THEN OutrightStake6
-								WHEN 7 THEN OutrightStake7
-								END, 0))					AS OutrightStake
-			FROM CTE_Sports s
-				LEFT JOIN #TotalBets t ON s.SportTypeGroup = t.SportTypeGroup
+				,SUM(CASE WHEN r.Type = 1 THEN ISNULL(CASE @PossType
+															WHEN 0 THEN Stake0
+															WHEN 1 THEN Stake1
+															WHEN 2 THEN Stake2
+															WHEN 3 THEN Stake3
+															WHEN 4 THEN Stake4
+															WHEN 5 THEN Stake5
+															WHEN 6 THEN Stake6
+															WHEN 7 THEN Stake7
+															END, 0) ELSE 0 END) AS InplayStake
+				,SUM(CASE WHEN r.Type = 2 THEN ISNULL(CASE @PossType
+															WHEN 0 THEN Stake0
+															WHEN 1 THEN Stake1
+															WHEN 2 THEN Stake2
+															WHEN 3 THEN Stake3
+															WHEN 4 THEN Stake4
+															WHEN 5 THEN Stake5
+															WHEN 6 THEN Stake6
+															WHEN 7 THEN Stake7
+															END, 0) ELSE 0 END) AS TodayStake
+				,SUM(CASE WHEN r.Type = 3 THEN ISNULL(CASE @PossType
+															WHEN 0 THEN Stake0
+															WHEN 1 THEN Stake1
+															WHEN 2 THEN Stake2
+															WHEN 3 THEN Stake3
+															WHEN 4 THEN Stake4
+															WHEN 5 THEN Stake5
+															WHEN 6 THEN Stake6
+															WHEN 7 THEN Stake7
+															END, 0) ELSE 0 END) AS EarlyStake
+				,SUM(CASE WHEN r.Type = 4 THEN ISNULL(CASE @PossType
+															WHEN 0 THEN Stake0
+															WHEN 1 THEN Stake1
+															WHEN 2 THEN Stake2
+															WHEN 3 THEN Stake3
+															WHEN 4 THEN Stake4
+															WHEN 5 THEN Stake5
+															WHEN 6 THEN Stake6
+															WHEN 7 THEN Stake7
+															END, 0) ELSE 0 END) AS OutrightStake
+			FROM #Sports s
+				LEFT JOIN (
+					SELECT
+						e.SportType, e.Type
+						,SUM(t.Wager) AS Wager
+						,SUM(t.Stake0) AS Stake0
+						,SUM(t.Stake1) AS Stake1
+						,SUM(t.Stake2) AS Stake2
+						,SUM(t.Stake3) AS Stake3
+						,SUM(t.Stake4) AS Stake4
+						,SUM(t.Stake5) AS Stake5
+						,SUM(t.Stake6) AS Stake6
+						,SUM(t.Stake7) AS Stake7
+					FROM #TotalBets t
+						INNER JOIN #EventInfo e ON t.MatchId = e.MatchId
+					WHERE t.BetType <> 29
+					GROUP BY
+						e.SportType, e.Type
+				) AS r ON s.SportType = r.SportType
 			GROUP BY s.SportTypeGroup
 			ORDER BY s.SportTypeGroup
 
@@ -308,45 +221,27 @@ BEGIN
 											WHEN 6 THEN Stake6
 											WHEN 7 THEN Stake7
 											END ELSE 0 END), 0)						AS MixSportsParlayStake
-			FROM #ParlayTotalBets
+			FROM #TotalBets
+			WHERE bettype = 29
 			
 			-- 3. Total
-			SELECT ISNULL(SUM(ISNULL(Wager, 0)), 0) AS TotalWagers, ISNULL(SUM(ISNULL(Stake, 0)), 0) AS TotalStake
-			FROM
-			(
-				SELECT
-					SUM(ISNULL(InplayWager, 0) + ISNULL(TodayWager, 0) + ISNULL(EarlyWager, 0) + ISNULL(OutrightWager, 0)) AS Wager
-					,SUM(CASE @PossType
-							WHEN 0 THEN ISNULL(InplayStake0, 0) + ISNULL(TodayStake0, 0) + ISNULL(EarlyStake0, 0) + ISNULL(OutrightStake0, 0)
-							WHEN 1 THEN ISNULL(InplayStake1, 0) + ISNULL(TodayStake1, 0) + ISNULL(EarlyStake1, 0) + ISNULL(OutrightStake1, 0)
-							WHEN 2 THEN ISNULL(InplayStake2, 0) + ISNULL(TodayStake2, 0) + ISNULL(EarlyStake2, 0) + ISNULL(OutrightStake2, 0)
-							WHEN 3 THEN ISNULL(InplayStake3, 0) + ISNULL(TodayStake3, 0) + ISNULL(EarlyStake3, 0) + ISNULL(OutrightStake3, 0)
-							WHEN 4 THEN ISNULL(InplayStake4, 0) + ISNULL(TodayStake4, 0) + ISNULL(EarlyStake4, 0) + ISNULL(OutrightStake4, 0)
-							WHEN 5 THEN ISNULL(InplayStake5, 0) + ISNULL(TodayStake5, 0) + ISNULL(EarlyStake5, 0) + ISNULL(OutrightStake5, 0)
-							WHEN 6 THEN ISNULL(InplayStake6, 0) + ISNULL(TodayStake6, 0) + ISNULL(EarlyStake6, 0) + ISNULL(OutrightStake6, 0)
-							WHEN 7 THEN ISNULL(InplayStake7, 0) + ISNULL(TodayStake7, 0) + ISNULL(EarlyStake7, 0) + ISNULL(OutrightStake7, 0)
-							END) AS Stake
-				FROM #TotalBets
-
-				UNION ALL
-				SELECT
-					SUM(ISNULL(Wager, 0)) AS Wager
-					,SUM(CASE @PossType
-							WHEN 0 THEN ISNULL(Stake0, 0)
-							WHEN 1 THEN ISNULL(Stake1, 0)
-							WHEN 2 THEN ISNULL(Stake2, 0)
-							WHEN 3 THEN ISNULL(Stake3, 0)
-							WHEN 4 THEN ISNULL(Stake4, 0)
-							WHEN 5 THEN ISNULL(Stake5, 0)
-							WHEN 6 THEN ISNULL(Stake6, 0)
-							WHEN 7 THEN ISNULL(Stake7, 0)
-							END) AS Stake
-				FROM #ParlayTotalBets
-			) AS Total
+			SELECT
+				ISNULL(SUM(Wager), 0) AS Wager
+				,ISNULL(SUM(CASE @PossType
+						WHEN 0 THEN Stake0
+						WHEN 1 THEN Stake1
+						WHEN 2 THEN Stake2
+						WHEN 3 THEN Stake3
+						WHEN 4 THEN Stake4
+						WHEN 5 THEN Stake5
+						WHEN 6 THEN Stake6
+						WHEN 7 THEN Stake7
+						END), 0) AS Stake
+			FROM #TotalBets
 	END
 
 	DROP TABLE #Sports
 	DROP TABLE #TotalBets
-	DROP TABLE #ParlayTotalBets
+	DROP TABLE #EventInfo
 END
 GO
