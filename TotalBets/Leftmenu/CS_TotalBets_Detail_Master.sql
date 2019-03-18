@@ -18,7 +18,6 @@ AS
 
 	Param's Explanation:
 		@Type:
-			0 = All
 			1 = 'Inplay'
 			2 = 'Today'
 			3 = 'Early'
@@ -28,120 +27,85 @@ AS
 BEGIN
 	SET NOCOUNT ON
 
-	DECLARE @TimeNow DATETIME = GETDATE()
-	DECLARE @today DATETIME = CONVERT(DATE, @TimeNow)
+	DECLARE @isTest BIT
+	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
 
 	/* ===== Get Data ===== */
 	BEGIN
 		CREATE TABLE #Sports (SportTypeGroup SMALLINT, SportType INT)
 		INSERT INTO #Sports (SportTypeGroup, SportType)
-		SELECT DISTINCT SportTypeGroup, SportType FROM dbo.CS_SportBettypeMatrix WITH (NOLOCK) WHERE SportTypeGroup = @SportTypeGroup
+		SELECT DISTINCT SportTypeGroup, SportType FROM dbo.CS_SportBettypeMatrix WITH (NOLOCK)
+		WHERE SportTypeGroup = @SportTypeGroup
+			AND SportTypeGroup <> 9 -- Exclude Parlay
+			AND IsTest <= @isTest
+
+		CREATE TABLE #EventInfo (MatchId INT, SportType INT, LeagueId INT, HomeId INT, AwayId INT)
 
 		CREATE TABLE #TotalBets
 		(
-			SportTypeGroup SMALLINT, leagueId INT, matchId INT, homeId INT, awayId INT
+			MatchId INT
+			-- for outright (bettype = 10)
+			,BetType INT
 			-- Wager
-			,InplayWager INT, EarlyWager INT, TodayWager INT, OutrightWager INT
+			,Wager INT
 			-- Stake
-			,InplayStake MONEY, EarlyStake MONEY, TodayStake MONEY, OutrightStake MONEY
+			,Stake MONEY
 		)
 
-		-- In-play, Early, Today
-		IF @Type IN (1,2,3)
-		BEGIN
-			INSERT INTO #TotalBets
-			(
-				SportTypeGroup, leagueId, matchId, homeId, awayId
-				,InplayWager, EarlyWager, TodayWager
-				,InplayStake, EarlyStake, TodayStake
-			)
-			SELECT
-				s.SportTypeGroup, m.leagueid, m.matchid, m.homeid, m.awayid
-				-- Wager
-				,SUM(CASE WHEN m.kickofftime <= @TimeNow THEN 1 ELSE 0 END) AS InplayWager
-				,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate > @today THEN 1 ELSE 0 END) AS EarlyWager
-				,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate <= @today THEN 1 ELSE 0 END) AS TodayWager
-				-- Stake
-				,SUM(CASE WHEN m.kickofftime <= @TimeNow THEN b.stake ELSE 0 END) AS InplayStake
-				,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate > @today THEN b.stake ELSE 0 END) AS EarlyStake
-				,SUM(CASE WHEN m.kickofftime > @TimeNow AND m.eventdate <= @today THEN b.stake ELSE 0 END) AS TodayStake
-			FROM #Sports s
-				INNER JOIN dbo.match m WITH (NOLOCK) ON s.SportType = m.sporttype
-				INNER JOIN dbo.bettrans b WITH (NOLOCK) ON m.matchid = b.matchid
-			WHERE b.mrecommend = @CustId
-				AND b.statusId IN (0, 1)
-				AND m.eventstatus NOT IN ('closed', 'internal')
-				AND m.kickofftime > DATEADD(HOUR, -12, CURRENT_TIMESTAMP)
-			GROUP BY
-				s.SportTypeGroup, m.leagueid, m.matchid, m.homeid, m.awayid
-		END
+		INSERT INTO #TotalBets
+		(
+			MatchId
+			,BetType
+			,Wager
+			,Stake
+		)
+		SELECT
+			b.matchid
+			,CASE WHEN b.bettype IN (10) THEN b.bettype ELSE 0 END AS bettype
+			-- Wager
+			,COUNT(1) AS Wager
+			-- Stake
+			,SUM(b.stake) AS Stake
+		FROM dbo.bettrans b WITH (NOLOCK)
+		WHERE b.mrecommend = @CustId
+			AND b.statusId IN (0, 1)
+		GROUP BY
+			b.matchid
+			,CASE WHEN b.bettype IN (10) THEN b.bettype ELSE 0 END
 
-		-- Outright
-		IF @Type IN (4)
+		IF @@ROWCOUNT <> 0
 		BEGIN
-			INSERT INTO #TotalBets
-			(
-				SportTypeGroup, leagueId, matchId
-				,OutrightWager
-				,OutrightStake
-			)
-			SELECT
-				s.SportTypeGroup, o.leagueid, o.orid
-				-- Wager
-				,SUM(1) AS OutrightWager
-				-- Stake
-				,SUM(b.stake) AS OutrightStake
-			FROM #Sports s
-				INNER JOIN dbo.League l WITH (NOLOCK) ON s.SportType = l.sporttype
-				INNER JOIN dbo.outright o WITH (NOLOCK) ON l.leagueid = o.leagueid
-				INNER JOIN dbo.bettrans b WITH (NOLOCK) ON o.orid = b.matchid
-			WHERE b.mrecommend = @CustId
-				AND b.statusId IN (0, 1)
-				AND o.oddsstatus IN ('closed', 'running', 'suspend', 'closePrice')
-				AND o.kickofftime > CURRENT_TIMESTAMP
-			GROUP BY
-				s.SportTypeGroup, o.leagueid, o.orid
+			INSERT INTO #EventInfo (MatchId, SportType, LeagueId, HomeId, AwayId)
+			SELECT MatchId, SportType, LeagueId, HomeId, AwayId FROM dbo.CS_f_TotalBets_Event_Sel (@Type, @isTest, 0, '')
 		END
 	END
 
 	/* ===== Return data ===== */
 	BEGIN
-		BEGIN
-			DECLARE @isInplay BIT = 0, @isToday BIT = 0, @isEarly BIT = 0, @isOutright BIT = 0
-			
-			IF @Type = 1
-				SELECT @isInplay = 1
-			ELSE IF @Type = 2
-				SELECT @isToday = 1
-			ELSE IF @Type = 3
-				SELECT @isEarly = 1
-			ELSE IF @Type = 4
-				SELECT @isOutright = 1
-			
-			;WITH CTE_Sports AS (
-				SELECT DISTINCT SportTypeGroup FROM #Sports
-			)
-			SELECT
-				SportTypeGroup, LeagueId, MatchId, HomeId, AwayId
-				-- Wager
-				,(
-					ISNULL(InplayWager, 0) * @isInplay
-					+ ISNULL(TodayWager, 0) * @isToday
-					+ ISNULL(EarlyWager, 0) * @isEarly
-					+ ISNULL(OutrightWager, 0) * @isOutright
-				) AS Wager
-				-- Stake
-				,(
-					ISNULL(InplayStake, 0) * @isInplay
-					+ ISNULL(TodayStake, 0) * @isToday
-					+ ISNULL(EarlyStake, 0) * @isEarly
-					+ ISNULL(OutrightStake, 0) * @isOutright
-					) AS Stake
-			FROM #TotalBets
-		END
+		SELECT
+			r.MatchId, r.LeagueId, r.HomeId, r.AwayId
+			-- Wager
+			,SUM(ISNULL(Wager, 0)) AS Wager
+			-- Stake
+			,SUM(ISNULL(Stake, 0)) AS Stake
+		FROM #Sports s
+			INNER JOIN (
+				SELECT
+					e.SportType, e.MatchId, e.LeagueId, e.HomeId, e.AwayId
+					,SUM(t.Wager) AS Wager
+					,SUM(t.Stake) AS Stake
+				FROM #TotalBets t
+					INNER JOIN #EventInfo e ON t.MatchId = e.MatchId
+				WHERE t.BetType <> 29
+				GROUP BY
+					e.SportType, e.MatchId, e.LeagueId, e.HomeId, e.AwayId
+			) AS r ON s.SportType = r.SportType
+		GROUP BY
+			r.MatchId, r.LeagueId, r.HomeId, r.AwayId
 	END
 
 	DROP TABLE #Sports
 	DROP TABLE #TotalBets
+	DROP TABLE #EventInfo
 END
 GO
