@@ -130,6 +130,7 @@ BEGIN
 															WHEN 7 THEN Stake7
 															END, 0) ELSE 0 END) AS OutrightStake
 			FROM #Sports s
+				INNER JOIN dbo.CS_f_SportTypeGroup_OrderSel(2) f ON s.SportTypeGroup = f.SportTypeGroup
 				LEFT JOIN (
 					SELECT
 						e.SportType, e.Type
@@ -144,8 +145,8 @@ BEGIN
 					GROUP BY
 						e.SportType, e.Type
 				) AS r ON s.SportType = r.SportType
-			GROUP BY s.SportTypeGroup
-			ORDER BY s.SportTypeGroup
+			GROUP BY s.SportTypeGroup, f.OrderId
+			ORDER BY f.OrderId
 
 			-- 2. Parlay
 			SELECT

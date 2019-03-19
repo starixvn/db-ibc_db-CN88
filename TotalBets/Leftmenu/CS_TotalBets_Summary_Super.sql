@@ -87,6 +87,7 @@ BEGIN
 			-- Stake
 			,SUM(ISNULL(Stake, 0)) AS Stake
 		FROM #Sports s
+			INNER JOIN dbo.CS_f_SportTypeGroup_OrderSel(2) f ON s.SportTypeGroup = f.SportTypeGroup
 			LEFT JOIN (
 				SELECT
 					e.SportType
@@ -98,8 +99,8 @@ BEGIN
 				GROUP BY
 					e.SportType
 			) AS r ON s.SportType = r.SportType
-		GROUP BY s.SportTypeGroup
-		ORDER BY s.SportTypeGroup
+		GROUP BY s.SportTypeGroup, f.OrderId
+		ORDER BY f.OrderId
 	END
 
 	DROP TABLE #Sports
