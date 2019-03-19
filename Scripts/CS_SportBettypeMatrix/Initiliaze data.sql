@@ -35,6 +35,7 @@ SELECT DISTINCT SportType, CASE WHEN Bettype = 9 THEN 29 ELSE BetType END, IsLiv
 				WHEN SportType = 7 THEN 8
 				WHEN SportType = 8 THEN 5
 				WHEN SportType = 18 THEN 7
+				WHEN SportType = 43 THEN 10
 				ELSE 99 END AS SportTypeGroup
 FROM dbo.SportBettypeMatrix WITH (NOLOCK)
 WHERE ProductId = 1
