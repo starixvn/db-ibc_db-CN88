@@ -32,12 +32,12 @@ Param's Explanation:
 
 */
 
-		SELECT DISTINCT o.orId as MatchID, o.leagueid, l.sporttype, 0 AS OfferLive, 0 AS IsNeutral,
-			   o.teamId As HomeID, 0 As AwayID, 0 AS livehomescore, 0 AS liveawayscore, '' as Showtime, 4 AS Type
+		SELECT DISTINCT o.orId as MatchID, o.leagueid, l.sporttype, 0 AS IsNeutral,
+			   o.teamId As HomeID, 0 As AwayID, 0 AS livehomescore, 0 AS liveawayscore, '' as ShowtimeDT, 0 AS OfferLive, 4 AS Type
 		FROM  dbo.outright o WITH (NOLOCK) 
 		INNER JOIN dbo.League l WITH (NOLOCK) 
 			ON l.leagueid = o.leagueid
-		WHERE o.oddsstatus IN ('Running','suspend', 'closePrice') 
+		WHERE o.oddsstatus IN ('Running','suspend', 'closed', 'closePrice') 
 				AND o.kickofftime > CURRENT_TIMESTAMP					
 				AND @Type IN (0,4)	
 				AND l.isTest <= @isTest
@@ -46,31 +46,30 @@ Param's Explanation:
 				
 		UNION ALL 
 		
-		SELECT  DISTINCT m.matchid as MatchID, m.leagueid, m.sporttype, 0 AS OfferLive, m.IsNeutral,
+		SELECT  DISTINCT m.matchid as MatchID, m.leagueid, m.sporttype, m.IsNeutral,
 				m.HomeID, m.AwayID,  
-				m.livehomescore, m.liveawayscore, m.showtime,
-				CASE WHEN o.liveindicator = 1 THEN 1
-					 WHEN CONVERT(DATE,m.kickofftime) <= CONVERT(DATE,CURRENT_TIMESTAMP) THEN 2
-					 WHEN CONVERT(DATE,m.kickofftime) > CONVERT(DATE,CURRENT_TIMESTAMP) THEN 3
-					 END AS Type
+				m.livehomescore, m.liveawayscore, m.ShowTimeDT, r.OfferLive,
+				CASE WHEN CONVERT(DATE,m.kickofftime) > CONVERT(DATE,CURRENT_TIMESTAMP) THEN 3
+					ELSE CASE WHEN m.kickofftime <= CURRENT_TIMESTAMP THEN 1
+							ELSE 2 
+						END
+					END AS Type
 		FROM  dbo.Match m  WITH (NOLOCK) 
-		INNER JOIN dbo.Odds o WITH (NOLOCK) 
-			ON m.matchid = o.matchid		
+		INNER JOIN dbo.Match_remark r WITH (NOLOCK) 
+			ON m.matchid = r.matchid		
 		WHERE   
 			m.kickofftime > DATEADD(hour,-12,CURRENT_TIMESTAMP)  -- event started
-			AND m.eventstatus='running' 							
-			AND o.oddsstatus in ('running','suspend','closePrice') 		
-			AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),m.Sporttype) + ',%' OR @SporttypeList = '')	
-			AND (
-					(o.liveindicator = 1 AND @Type IN (0,1)	)    --- In play
-					OR (o.liveindicator = 0 
-						AND @Type IN (0,2,3)  --- not in play
-						AND (
-								(CONVERT(DATE,m.kickofftime) <= CONVERT(DATE,CURRENT_TIMESTAMP) AND @Type IN (0,2))	--- today						
-								OR (CONVERT(DATE,m.kickofftime) > CONVERT(DATE,CURRENT_TIMESTAMP) AND @Type IN (0,3))  --- early
-							)
-						)				
-				)			
+			AND m.eventstatus NOT IN ('completed','Internal')		
+			AND EXISTS (SELECT 1 
+						FROM dbo.odds o WITH(NOLOCK) 
+						WHERE o.matchid	= m.matchid 
+							AND o.oddsstatus <> 'closed')
+			AND (	
+					(CONVERT(DATE,m.kickofftime) > CONVERT(DATE,CURRENT_TIMESTAMP) AND @Type IN (0,3)) --- Early
+					OR (m.kickofftime <= CURRENT_TIMESTAMP AND  @Type IN (0,1))   --- In Play
+					OR (CONVERT(DATE,m.kickofftime) <= CONVERT(DATE,CURRENT_TIMESTAMP) AND  m.kickofftime > CURRENT_TIMESTAMP AND @Type IN (0,2))  --- Today
+				)
+			AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),m.Sporttype) + ',%' OR @SporttypeList = '')				
 			AND EXISTS ( SELECT 1 FROM League l WITH (NOLOCK) 
 						 WHERE l.leagueid = m.leagueid 
 								AND l.isTest <= @isTest AND (leagueid = @leagueid OR @leagueid = 0)								

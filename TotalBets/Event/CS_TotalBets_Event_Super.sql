@@ -68,7 +68,8 @@ BEGIN
 			AwayId,
 			LiveHomeScore,
 			LiveAwayScore,
-			Showtime,
+			ShowtimeDT,
+			OfferLive,
 			IsNeutral,
 			Wager, 
 			BettypeCount,
@@ -89,7 +90,8 @@ BEGIN
 				m.AwayId,
 				m.LiveHomeScore,
 				m.LiveAwayScore,
-				m.Showtime,
+				m.ShowtimeDT,
+				m.OfferLive,
 				m.IsNeutral,
 				COUNT(b.TransId) AS Wager,  
 				COUNT(DISTINCT b.bettype) AS BettypeCount,
@@ -130,7 +132,8 @@ BEGIN
 				m.AwayId,
 				m.LiveHomeScore,
 				m.LiveAwayScore,
-				m.Showtime,
+				m.ShowtimeDT,
+				m.OfferLive,
 				m.IsNeutral
 			) A
 	

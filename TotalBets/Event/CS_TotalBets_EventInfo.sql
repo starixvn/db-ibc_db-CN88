@@ -22,14 +22,13 @@ BEGIN
 	SET NOCOUNT ON
 	SELECT 	m.MatchID,
 			m.Sporttype,
-			m.leagueid,
-			--mr.OfferLive,   
-			0 as OfferLive,
+			m.leagueid,				
 			m.HomeId,	
 			m.AwayId,
 			m.LiveHomeScore,
 			m.LiveAwayScore,
-			m.Showtime,
+			m.ShowtimeDT,
+			mr.OfferLive,
 			m.IsNeutral
 	FROM dbo.Match m WITH (NOLOCK)
 		INNER JOIN dbo.match_remark mr WITH (NOLOCK) ON m.MatchID = mr.MatchID 
