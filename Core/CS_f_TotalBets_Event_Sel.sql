@@ -66,8 +66,8 @@ Param's Explanation:
 							AND o.oddsstatus <> 'closed')
 			AND (	
 					(CONVERT(DATE,m.kickofftime) > CONVERT(DATE,CURRENT_TIMESTAMP) AND @Type IN (0,3)) --- Early
-					OR (m.kickofftime <= CURRENT_TIMESTAMP AND  @Type IN (0,1))   --- In Play
-					OR (CONVERT(DATE,m.kickofftime) <= CONVERT(DATE,CURRENT_TIMESTAMP) AND  m.kickofftime > CURRENT_TIMESTAMP AND @Type IN (0,2))  --- Today
+					OR (m.kickofftime <= CURRENT_TIMESTAMP AND @Type IN (0,1))   --- In Play
+					OR (CONVERT(DATE,m.kickofftime) <= CONVERT(DATE,CURRENT_TIMESTAMP) AND m.kickofftime > CURRENT_TIMESTAMP AND @Type IN (0,2))  --- Today
 				)
 			AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),m.Sporttype) + ',%' OR @SporttypeList = '')				
 			AND EXISTS ( SELECT 1 FROM League l WITH (NOLOCK) 
