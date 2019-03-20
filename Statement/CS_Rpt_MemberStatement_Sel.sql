@@ -65,10 +65,9 @@ BEGIN
 		INSERT INTO #tmpData (WinlostDate, MatchId, Bettype, Stake, ValidStake, WinLoss)
 		SELECT b.winlostdate, b.matchid, CASE WHEN b.bettype IN (10, 29) THEN b.bettype ELSE 0 END
 			,SUM(b.actual_stake), SUM(ABS(b.winlost - b.actual_stake)), SUM(b.winlost - b.actual_stake + b.playercomm)
-		FROM dbo.bettrans b WITH (NOLOCK)
+		FROM dbo.bettrans14 b WITH (NOLOCK)
 		WHERE b.CustId = @CustId
 			AND b.winlostdate BETWEEN @tempFromDate AND @tempToDate
-			AND b.statusID NOT IN (0, 1)
 		GROUP BY b.winlostdate, b.matchid, CASE WHEN b.bettype IN (10, 29) THEN b.bettype ELSE 0 END
 	END
 
@@ -116,7 +115,7 @@ BEGIN
 			WHERE t.Bettype = 10
 		END
 	END
-
+	
 	-- Return data
 	;WITH CTE_WinlostDate AS
 	(
@@ -134,7 +133,6 @@ BEGIN
 			,SUM(ISNULL(ValidStake, 0)) AS ValidStake
 			,SUM(ISNULL(Winloss, 0)) AS Winloss
 		FROM #Statement s
-			
 		GROUP BY WinlostDate
 	)
 	SELECT
@@ -143,7 +141,7 @@ BEGIN
 		,s.ValidStake
 		,s.Winloss
 	FROM CTE_WinlostDate wld
-		LEFT JOIN #Statement s ON wld.WinlostDate = s.WinlostDate
+		LEFT JOIN CTE_Statement s ON wld.WinlostDate = s.WinlostDate
 	ORDER BY
 		WinlostDate DESC
 
