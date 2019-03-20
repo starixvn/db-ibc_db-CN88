@@ -1,4 +1,4 @@
-ALTER PROCEDURE DBA_Customer_HeadlineIns
+ALTER PROCEDURE CS_DBA_Customer_HeadlineIns
 	@firstname NVARCHAR(50),
 	@lastname NVARCHAR(50),
 	@address NVARCHAR(80)=NULL,
