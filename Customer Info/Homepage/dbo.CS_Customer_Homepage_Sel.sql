@@ -86,7 +86,7 @@ BEGIN
 				ISNULL(SUM(CASE WHEN Closed = 0 AND ISNULL(reject, 0) = 0 THEN 1 ELSE 0 END), 0) as cntActive,
 				ISNULL(SUM(CASE WHEN Closed = 1 THEN 1 ELSE 0 END), 0) as cntClosed,
 				ISNULL(SUM(CASE WHEN ISNULL(reject, 0) = 1 AND Closed = 0 THEN 1 ELSE 0 END), 0) as cntSuspend
-			FROM custinfo (NOLOCK)
+			FROM custinfo WITH(NOLOCK)
 			WHERE srecommend = @custid	
 				AND roleid IN (1,2,3)				
 			GROUP BY roleid	
@@ -98,7 +98,7 @@ BEGIN
 				ISNULL(SUM(CASE WHEN Closed = 0 AND ISNULL(reject, 0) = 0 THEN 1 ELSE 0 END), 0) as cntActive,
 				ISNULL(SUM(CASE WHEN Closed = 1 THEN 1 ELSE 0 END), 0) as cntClosed,
 				ISNULL(SUM(CASE WHEN ISNULL(reject, 0) = 1 AND Closed = 0 THEN 1 ELSE 0 END), 0) as cntSuspend
-			FROM custinfo (NOLOCK)
+			FROM custinfo WITH(NOLOCK)
 			WHERE mrecommend = @custid	
 				AND roleid IN (1,2)
 			GROUP BY roleid	
@@ -111,7 +111,7 @@ BEGIN
 				ISNULL(SUM(CASE WHEN Closed = 1 THEN 1 ELSE 0 END), 0) as cntClosed,
 				ISNULL(SUM(CASE WHEN ISNULL(reject, 0) = 1 AND Closed = 0 THEN 1 ELSE 0 END), 0) as cntSuspend
 			FROM dbo.Custinfo ci WITH(NOLOCK)
-				INNER JOIN Customer c (NOLOCK) on c.custid = ci.custid
+				INNER JOIN Customer c WITH(NOLOCK) on c.custid = ci.custid
 			WHERE c.recommend = @custid	
 				AND c.roleid = 1
 			GROUP BY c.roleid	
