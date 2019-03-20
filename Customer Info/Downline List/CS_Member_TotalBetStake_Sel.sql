@@ -2,7 +2,7 @@
 USE [bodb02]
 GO
 
-ALTER PROCEDURE [dbo].[CS_MemberUsedCredit_Sel]
+ALTER PROCEDURE [dbo].[CS_Member_TotalBetStake_Sel]
 	@CustId INT
 AS
 
@@ -17,6 +17,16 @@ AS
 
 BEGIN
 	SET NOCOUNT ON
+
+	DECLARE @today SMALLDATETIME
+	SELECT  @today = CONVERT(DATE, GETDATE())
+
+	DELETE dbo.DailyBetStake WITH (ROWLOCK, UPDLOCK)
+	WHERE  @CustId = @CustId AND Date = @today
+
+	EXEC dbo.Dot_Member_CalcDailyBetStake_CN88 @CustId = @CustId, @Date = @today, @Stake = 0
+
+	/*
 
 	DECLARE @today SMALLDATETIME
 	SELECT  @today = CONVERT(DATE, GETDATE())
@@ -71,5 +81,6 @@ BEGIN
 	) AS bt
 
 	DROP TABLE #BetType
+	*/
 END
 GO

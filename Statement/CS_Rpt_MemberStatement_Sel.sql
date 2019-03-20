@@ -28,10 +28,10 @@ BEGIN
 	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
 
 	-- Get Sport List
-	DECLARE @SportTypeList TABLE (SportType SMALLINT PRIMARY KEY, ProductID INT)
+	DECLARE @SportTypeList TABLE (SportType SMALLINT PRIMARY KEY)
      
-	INSERT INTO @SportTypeList (SportType, ProductID)
-	SELECT DISTINCT SportType, ProductID FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)
+	INSERT INTO @SportTypeList (SportType)
+	SELECT DISTINCT SportType FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)
 	-- End Get Sport List
 
 	-- Get data
@@ -46,12 +46,13 @@ BEGIN
 		SELECT @tempToDate = @ToDate
 
 		INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
-		SELECT b.winlostdate, SUM(b.stake), SUM(ABS(b.winlost - b.actual_stake)), SUM(b.winlost - b.actual_stake + b.playercomm)
+		SELECT b.winlostdate, SUM(b.actual_stake), SUM(ABS(b.winlost - b.actual_stake)), SUM(b.winlost - b.actual_stake + b.playercomm)
 		FROM dbo.bettrans b WITH (NOLOCK)
 			INNER JOIN dbo.match m WITH (NOLOCK) ON b.matchid = m.matchid
 			INNER JOIN @SportTypeList st ON m.SportType = st.SportType
 		WHERE b.CustId = @CustId
 			AND b.winlostdate BETWEEN @tempFromDate AND @tempToDate
+			AND b.statusID NOT IN (0, 1)
 		GROUP BY b.winlostdate
 	END
 
@@ -62,7 +63,7 @@ BEGIN
 		SELECT @tempToDate = CASE WHEN @ToDate > @MoveBetsDay THEN @MoveBetsDay ELSE @ToDate END
 
 		INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
-		SELECT b.winlostdate, SUM(b.stake), SUM(ABS(b.winlost - b.actual_stake)), SUM(b.winlost - b.actual_stake + b.playercomm)
+		SELECT b.winlostdate, SUM(b.actual_stake), SUM(ABS(b.winlost - b.actual_stake)), SUM(b.winlost - b.actual_stake + b.playercomm)
 		FROM dbo.bettrans14 b WITH (NOLOCK)
 			INNER JOIN dbo.match14 m WITH (NOLOCK) ON b.matchid = m.matchid
 			INNER JOIN @SportTypeList st ON m.SportType = st.SportType
