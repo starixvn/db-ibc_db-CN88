@@ -1,3 +1,5 @@
+/*<info serverAlias="DBCUST-CustDB" executers="" isFunction="0" isNested="0"></info>*/
+
 ALTER PROCEDURE CS_DBA_Customer_HeadlineIns
 	@firstname NVARCHAR(50),
 	@lastname NVARCHAR(50),
