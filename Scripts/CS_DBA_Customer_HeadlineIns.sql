@@ -23,12 +23,12 @@ ALTER PROCEDURE CS_DBA_Customer_HeadlineIns
 AS
 /*
 	Created: Johnson
-	Date: 2019-02-21
+	Date: 2019-03-20
 	Task: create new tier0 account
 	DB: DBCUST/CUSTDB
 	
 	Revisions:
-	
+		- 20190320@Johnson: initial sp [redmine: #105660]
 	Sample: 	
 	DECLARE @ErrCode INT = 0 , 
 			@ErrMsg NVARCHAR(1000) = '' 
