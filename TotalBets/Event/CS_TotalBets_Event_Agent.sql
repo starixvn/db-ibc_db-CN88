@@ -86,11 +86,12 @@ BEGIN
 				m.OfferLive,
 				m.IsNeutral,
 				COUNT(b.TransId) AS Wager,  
-				COUNT(DISTINCT b.bettype) AS BettypeCount,
+				COUNT(DISTINCT bg.bettypeGroup) AS BettypeCount,
 				SUM (b.Stake) AS Stake0,
 				SUM (b.Stake * (apositiontaking)) AS Stake4
 			FROM bettrans b WITH (NOLOCK)
-				INNER JOIN dbo.CS_f_TotalBets_Event_Sel (@Type, @isTest, @LeagueId, @SporttypeList) AS m ON m.matchid = b.matchid 				
+				INNER JOIN dbo.CS_f_TotalBets_Event_Sel (@Type, @isTest, @LeagueId, @SporttypeList) AS m ON m.matchid = b.matchid 	
+				CROSS APPLY dbo.CS_f_BettypeGroupMatrix_Sel (0,0,b.Bettype,@IsTest) AS bg 				
 			WHERE  	
 				b.recommend = @CustId 
 				AND b.statusID IN (0,1) 
