@@ -37,6 +37,7 @@ BEGIN
 	-- Get data
 	DECLARE @tempFromDate SMALLDATETIME, @tempToDate SMALLDATETIME
 
+	CREATE TABLE #tmpData (WinlostDate SMALLDATETIME, MatchId INT, Bettype INT, Stake MONEY, ValidStake MONEY, WinLoss MONEY)
 	CREATE TABLE #Statement (WinlostDate SMALLDATETIME, Stake MONEY, ValidStake MONEY, WinLoss MONEY)
 
 	-- 1. bettrans
@@ -45,15 +46,14 @@ BEGIN
 		SELECT @tempFromDate = CASE WHEN @FromDate <= @MoveBetsDay THEN DATEADD(DAY, 1, @MoveBetsDay) ELSE @FromDate END
 		SELECT @tempToDate = @ToDate
 
-		INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
-		SELECT b.winlostdate, SUM(b.actual_stake), SUM(ABS(b.winlost - b.actual_stake)), SUM(b.winlost - b.actual_stake + b.playercomm)
+		INSERT INTO #tmpData (WinlostDate, MatchId, Bettype, Stake, ValidStake, WinLoss)
+		SELECT b.winlostdate, b.matchid, CASE WHEN b.bettype IN (10, 29) THEN b.bettype ELSE 0 END
+			,SUM(b.actual_stake), SUM(ABS(b.winlost - b.actual_stake)), SUM(b.winlost - b.actual_stake + b.playercomm)
 		FROM dbo.bettrans b WITH (NOLOCK)
-			INNER JOIN dbo.match m WITH (NOLOCK) ON b.matchid = m.matchid
-			INNER JOIN @SportTypeList st ON m.SportType = st.SportType
 		WHERE b.CustId = @CustId
 			AND b.winlostdate BETWEEN @tempFromDate AND @tempToDate
 			AND b.statusID NOT IN (0, 1)
-		GROUP BY b.winlostdate
+		GROUP BY b.winlostdate, b.matchid, CASE WHEN b.bettype IN (10, 29) THEN b.bettype ELSE 0 END
 	END
 
 	-- 2. bettrans14
@@ -62,14 +62,59 @@ BEGIN
 		SELECT @tempFromDate = CASE WHEN @FromDate < @BalanceUpDay THEN @BalanceUpDay ELSE @FromDate END
 		SELECT @tempToDate = CASE WHEN @ToDate > @MoveBetsDay THEN @MoveBetsDay ELSE @ToDate END
 
-		INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
-		SELECT b.winlostdate, SUM(b.actual_stake), SUM(ABS(b.winlost - b.actual_stake)), SUM(b.winlost - b.actual_stake + b.playercomm)
-		FROM dbo.bettrans14 b WITH (NOLOCK)
-			INNER JOIN dbo.match14 m WITH (NOLOCK) ON b.matchid = m.matchid
-			INNER JOIN @SportTypeList st ON m.SportType = st.SportType
+		INSERT INTO #tmpData (WinlostDate, MatchId, Bettype, Stake, ValidStake, WinLoss)
+		SELECT b.winlostdate, b.matchid, CASE WHEN b.bettype IN (10, 29) THEN b.bettype ELSE 0 END
+			,SUM(b.actual_stake), SUM(ABS(b.winlost - b.actual_stake)), SUM(b.winlost - b.actual_stake + b.playercomm)
+		FROM dbo.bettrans b WITH (NOLOCK)
 		WHERE b.CustId = @CustId
 			AND b.winlostdate BETWEEN @tempFromDate AND @tempToDate
-		GROUP BY b.winlostdate
+			AND b.statusID NOT IN (0, 1)
+		GROUP BY b.winlostdate, b.matchid, CASE WHEN b.bettype IN (10, 29) THEN b.bettype ELSE 0 END
+	END
+
+	IF @SportTypeGroup = 9 -- Parlay
+	BEGIN
+		INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
+		SELECT WinlostDate, Stake, ValidStake, WinLoss
+		FROM #tmpData WHERE bettype = 29
+	END
+	ELSE
+	BEGIN
+		IF @ToDate > @MoveBetsDay
+		BEGIN
+			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
+			SELECT WinlostDate, Stake, ValidStake, WinLoss
+			FROM #tmpData t
+				INNER JOIN dbo.match m WITH (NOLOCK) ON t.MatchId = m.matchid
+				INNER JOIN @SportTypeList s ON m.sporttype = s.SportType
+			WHERE t.Bettype = 0
+
+			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
+			SELECT WinlostDate, Stake, ValidStake, WinLoss
+			FROM #tmpData t
+				INNER JOIN dbo.outright o WITH (NOLOCK) ON t.MatchId = o.orid
+				INNER JOIN dbo.League l WITH (NOLOCK) ON o.leagueid = l.leagueid
+				INNER JOIN @SportTypeList s ON l.sporttype = s.SportType
+			WHERE t.Bettype = 10
+		END
+
+		IF @FromDate <= @MoveBetsDay
+		BEGIN
+			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
+			SELECT WinlostDate, Stake, ValidStake, WinLoss
+			FROM #tmpData t
+				INNER JOIN dbo.match14 m WITH (NOLOCK) ON t.MatchId = m.matchid
+				INNER JOIN @SportTypeList s ON m.sporttype = s.SportType
+			WHERE t.Bettype = 0
+
+			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
+			SELECT WinlostDate, Stake, ValidStake, WinLoss
+			FROM #tmpData t
+				INNER JOIN dbo.outright14 o WITH (NOLOCK) ON t.MatchId = o.orid
+				INNER JOIN dbo.League l WITH (NOLOCK) ON o.leagueid = l.leagueid
+				INNER JOIN @SportTypeList s ON l.sporttype = s.SportType
+			WHERE t.Bettype = 10
+		END
 	END
 
 	-- Return data
@@ -88,7 +133,8 @@ BEGIN
 			,SUM(ISNULL(Stake, 0)) AS Stake
 			,SUM(ISNULL(ValidStake, 0)) AS ValidStake
 			,SUM(ISNULL(Winloss, 0)) AS Winloss
-		FROM #Statement
+		FROM #Statement s
+			
 		GROUP BY WinlostDate
 	)
 	SELECT
@@ -102,5 +148,6 @@ BEGIN
 		WinlostDate DESC
 
 	DROP TABLE #Statement
+	DROP TABLE #tmpData
 END
 GO
