@@ -71,14 +71,12 @@ BEGIN
 		GROUP BY b.winlostdate, b.matchid, CASE WHEN b.bettype IN (10, 29) THEN b.bettype ELSE 0 END
 	END
 
-	IF @SportTypeGroup = 9 -- Parlay
+	-- Get final data
 	BEGIN
 		INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
 		SELECT WinlostDate, Stake, ValidStake, WinLoss
-		FROM #tmpData WHERE bettype = 29
-	END
-	ELSE
-	BEGIN
+		FROM #tmpData WHERE bettype = 29 AND @SportTypeGroup IN (0,9) -- Parlay
+
 		IF @ToDate > @MoveBetsDay
 		BEGIN
 			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
@@ -86,7 +84,7 @@ BEGIN
 			FROM #tmpData t
 				INNER JOIN dbo.match m WITH (NOLOCK) ON t.MatchId = m.matchid
 				INNER JOIN @SportTypeList s ON m.sporttype = s.SportType
-			WHERE t.Bettype = 0
+			WHERE m.eventdate > @MoveBetsDay AND t.Bettype = 0
 
 			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
 			SELECT WinlostDate, Stake, ValidStake, WinLoss
@@ -94,7 +92,7 @@ BEGIN
 				INNER JOIN dbo.outright o WITH (NOLOCK) ON t.MatchId = o.orid
 				INNER JOIN dbo.League l WITH (NOLOCK) ON o.leagueid = l.leagueid
 				INNER JOIN @SportTypeList s ON l.sporttype = s.SportType
-			WHERE t.Bettype = 10
+			WHERE o.eventdate > @MoveBetsDay AND t.Bettype = 10
 		END
 
 		IF @FromDate <= @MoveBetsDay
@@ -104,7 +102,7 @@ BEGIN
 			FROM #tmpData t
 				INNER JOIN dbo.match14 m WITH (NOLOCK) ON t.MatchId = m.matchid
 				INNER JOIN @SportTypeList s ON m.sporttype = s.SportType
-			WHERE t.Bettype = 0
+			WHERE m.eventdate <= @MoveBetsDay AND t.Bettype = 0
 
 			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
 			SELECT WinlostDate, Stake, ValidStake, WinLoss
@@ -112,7 +110,7 @@ BEGIN
 				INNER JOIN dbo.outright14 o WITH (NOLOCK) ON t.MatchId = o.orid
 				INNER JOIN dbo.League l WITH (NOLOCK) ON o.leagueid = l.leagueid
 				INNER JOIN @SportTypeList s ON l.sporttype = s.SportType
-			WHERE t.Bettype = 10
+			WHERE o.eventdate <= @MoveBetsDay AND t.Bettype = 10
 		END
 	END
 	
