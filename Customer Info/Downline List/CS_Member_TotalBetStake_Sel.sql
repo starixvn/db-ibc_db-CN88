@@ -27,7 +27,7 @@ BEGIN
 	WHERE  CustId = @CustId AND Date = @today
 	*/
 
-	EXEC dbo.Dot_Member_CalcDailyBetStake_CN88 @CustId = @CustId, @Date = @today, @Stake = 0
+	EXEC dbo.Dot_Member_CalcDailyBetStake_CN88_test @CustId = @CustId, @Date = @today, @Stake = 0
 
 	/*
 
