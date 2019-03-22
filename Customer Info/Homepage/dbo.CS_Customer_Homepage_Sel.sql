@@ -126,7 +126,7 @@ BEGIN
 	END
 	
 	SELECT @credit as Credit,
-		@CreditBalance as CreditBalance,
+		@credit - @CreditBalance as CreditBalance,
 		ISNULL(@cntNewMember,0) as cntNewMember,
 		@LastLogin as LastLogin,
 		@LastChangePwd as LastChangePwd
