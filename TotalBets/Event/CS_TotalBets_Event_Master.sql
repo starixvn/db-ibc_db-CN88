@@ -104,18 +104,9 @@ BEGIN
 						OR (@StakeCondition = 1 AND b.Stake > @Stake)
 						OR (@StakeCondition = 2 AND b.Stake < @Stake)
 					)			
-				AND (   @IsLive = 2   --- all
-					OR
-					(b.bettype <> 29 AND b.Liveindicator = @IsLive)
-					OR 
-					(b.bettype = 29  AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
-															UNION 
-															SELECT 2 AS IsLive WHERE @IsLive = 0
-															UNION 
-															SELECT 1 AS IsLive WHERE @IsLive = 1																		
-															)
+				AND (	@IsLive = 2   --- all
+						OR b.Liveindicator = @IsLive
 					)
-				)
 			GROUP BY 
 				m.leagueid,
 				m.MatchID,				

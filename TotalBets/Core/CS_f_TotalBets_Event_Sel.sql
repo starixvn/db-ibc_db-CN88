@@ -37,8 +37,7 @@ Param's Explanation:
 		FROM  dbo.outright o WITH (NOLOCK) 
 		INNER JOIN dbo.League l WITH (NOLOCK) 
 			ON l.leagueid = o.leagueid
-		WHERE o.oddsstatus IN ('Running','suspend', 'closed', 'closePrice') 
-				AND o.kickofftime > CURRENT_TIMESTAMP					
+		WHERE o.oddsstatus IN ('Running','suspend', 'closed', 'closePrice') 								
 				AND @Type IN (0,4)	
 				AND l.isTest <= @isTest
 				AND (l.leagueid = @leagueid OR @leagueid = 0)
@@ -58,8 +57,7 @@ Param's Explanation:
 		INNER JOIN dbo.Match_remark r WITH (NOLOCK) 
 			ON m.matchid = r.matchid		
 		WHERE   
-			m.kickofftime > DATEADD(hour,-12,CURRENT_TIMESTAMP)  -- event started
-			AND m.eventstatus NOT IN ('completed','Internal')		
+			m.eventstatus NOT IN ('completed','Internal')		
 			AND (	
 					(CONVERT(DATE,m.kickofftime) > CONVERT(DATE,CURRENT_TIMESTAMP) AND @Type IN (0,3)) --- Early
 					OR (m.kickofftime <= CURRENT_TIMESTAMP AND @Type IN (0,1))   --- In Play
