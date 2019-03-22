@@ -21,8 +21,11 @@ BEGIN
 	DECLARE @today SMALLDATETIME
 	SELECT  @today = CONVERT(DATE, GETDATE())
 
+	/*
+	-- for local testing
 	DELETE dbo.DailyBetStake WITH (ROWLOCK, UPDLOCK)
-	WHERE  @CustId = @CustId AND Date = @today
+	WHERE  CustId = @CustId AND Date = @today
+	*/
 
 	EXEC dbo.Dot_Member_CalcDailyBetStake_CN88 @CustId = @CustId, @Date = @today, @Stake = 0
 
