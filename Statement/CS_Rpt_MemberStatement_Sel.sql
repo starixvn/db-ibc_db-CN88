@@ -48,7 +48,7 @@ BEGIN
 
 		INSERT INTO #tmpData (WinlostDate, MatchId, Bettype, Stake, ValidStake, WinLoss)
 		SELECT b.winlostdate, b.matchid, CASE WHEN b.bettype IN (10, 29) THEN b.bettype ELSE 0 END
-			,SUM(b.actual_stake), SUM(ABS(b.winlost - b.actual_stake)), SUM(b.winlost - b.actual_stake + b.playercomm)
+			,SUM(b.stake), SUM(ABS(b.winlost - b.actual_stake)), SUM(b.winlost - b.actual_stake + b.playercomm)
 		FROM dbo.bettrans b WITH (NOLOCK)
 		WHERE b.CustId = @CustId
 			AND b.winlostdate BETWEEN @tempFromDate AND @tempToDate
@@ -64,7 +64,7 @@ BEGIN
 
 		INSERT INTO #tmpData (WinlostDate, MatchId, Bettype, Stake, ValidStake, WinLoss)
 		SELECT b.winlostdate, b.matchid, CASE WHEN b.bettype IN (10, 29) THEN b.bettype ELSE 0 END
-			,SUM(b.actual_stake), SUM(ABS(b.winlost - b.actual_stake)), SUM(b.winlost - b.actual_stake + b.playercomm)
+			,SUM(b.stake), SUM(ABS(b.winlost - b.actual_stake)), SUM(b.winlost - b.actual_stake + b.playercomm)
 		FROM dbo.bettrans14 b WITH (NOLOCK)
 		WHERE b.CustId = @CustId
 			AND b.winlostdate BETWEEN @tempFromDate AND @tempToDate
