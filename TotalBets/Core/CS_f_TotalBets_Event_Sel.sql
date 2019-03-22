@@ -60,10 +60,6 @@ Param's Explanation:
 		WHERE   
 			m.kickofftime > DATEADD(hour,-12,CURRENT_TIMESTAMP)  -- event started
 			AND m.eventstatus NOT IN ('completed','Internal')		
-			AND EXISTS (SELECT 1 
-						FROM dbo.odds o WITH(NOLOCK) 
-						WHERE o.matchid	= m.matchid 
-							AND o.oddsstatus <> 'closed')
 			AND (	
 					(CONVERT(DATE,m.kickofftime) > CONVERT(DATE,CURRENT_TIMESTAMP) AND @Type IN (0,3)) --- Early
 					OR (m.kickofftime <= CURRENT_TIMESTAMP AND @Type IN (0,1))   --- In Play
