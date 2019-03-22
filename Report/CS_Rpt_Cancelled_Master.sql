@@ -156,7 +156,7 @@ BEGIN
 							'' AS Username,
 							'' AS Name,
 							COUNT(TransID) AS Wagers,
-							SUM(Actual_stake) AS Stake			
+							SUM(Stake) AS Stake			
 				FROM	dbo.bettrans b WITH (NOLOCK)							
 				WHERE	b.winlostdate BETWEEN @FDate AND @TDate
 					AND b.StatusID IN (101,102,103)
@@ -199,7 +199,7 @@ BEGIN
 							'' AS Username,
 							'' AS Name,
 							COUNT(TransID) AS Wagers,
-							SUM(Actual_stake) AS Stake			
+							SUM(Stake) AS Stake			
 				FROM	dbo.bettrans b WITH (NOLOCK)							
 				WHERE	b.winlostdate BETWEEN @FDate AND @TDate
 					AND b.StatusID = 102

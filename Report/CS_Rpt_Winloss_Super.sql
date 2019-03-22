@@ -187,7 +187,7 @@ BEGIN
 							'' AS Username,
 							'' AS Name,
 							COUNT(TransID) AS Wagers,
-							SUM(Actual_stake) AS Stake,
+							SUM(Stake) AS Stake,
 							SUM(ABS(winlost - actual_stake)) ValidStake,
 							SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
 										

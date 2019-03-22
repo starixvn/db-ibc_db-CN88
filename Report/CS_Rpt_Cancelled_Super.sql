@@ -173,7 +173,7 @@ BEGIN
 									'' AS Username,
 									'' AS Name,
 									COUNT(TransID) AS Wagers,
-									SUM(Actual_stake) AS Stake										
+									SUM(Stake) AS Stake										
 				FROM	dbo.bettrans b WITH (NOLOCK)		
 					INNER JOIN @BettypeList bt
 						ON	bt.Bettype = b.bettype
@@ -221,7 +221,7 @@ BEGIN
 									'' AS Username,
 									'' AS Name,
 									COUNT(TransID) AS Wagers,
-									SUM(Actual_stake) AS Stake											
+									SUM(Stake) AS Stake											
 				FROM	dbo.bettrans b WITH (NOLOCK)		
 					INNER JOIN @BettypeList bt
 						ON	bt.Bettype = b.bettype
