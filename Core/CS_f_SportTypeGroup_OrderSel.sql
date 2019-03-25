@@ -49,9 +49,9 @@ RETURN
 			,(2, 20) -- Basketball/Football
 			,(3, 30) -- Tennis
 			,(4, 40) -- Volleyball
-			,(5, 50) -- Baseball
+			,(7, 50) -- Table Tennis
 			,(6, 60) -- Badminton
-			,(7, 70) -- Table Tennis
+			,(5, 70) -- Baseball
 			,(8, 80) -- Snooker
 			,(9, 90) -- Parlay
 			,(10, 100) -- E-Sports
