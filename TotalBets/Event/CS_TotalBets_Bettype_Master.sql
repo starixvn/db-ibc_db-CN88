@@ -54,8 +54,8 @@ BEGIN
 	
 	SELECT 	MatchID,
 			B.BettypeGroup As BettypeGroup,
-			CASE WHEN B.BettypeGroup IN (1,2,3,5,7,8,12,15,17,18,20,21,428,430) THEN Betteam ELSE '' END AS Betteam,
-			CASE WHEN B.BettypeGroup IN (1,2,3,5,7,8,12,15,17,18,20,21,428,430) THEN Liveindicator ELSE 0 END AS Liveindicator,
+			CASE WHEN B.BettypeGroup IN (1,2,3,5,7,8,12,15,17,18,20,21,177,184) THEN Betteam ELSE '' END AS Betteam,
+			CASE WHEN B.BettypeGroup IN (1,2,3,5,7,8,12,15,17,18,20,21,177,184) THEN Liveindicator ELSE 0 END AS Liveindicator,
 			SUM (Wager) AS Wager,
 			CASE @PossType WHEN 0 THEN SUM (Stake0) 
 						   WHEN 3 THEN SUM (Stake3)
@@ -97,8 +97,8 @@ BEGIN
 	GROUP BY 
 			MatchID,
 			B.BettypeGroup,
-			CASE WHEN B.BettypeGroup IN (1,2,3,5,7,8,12,15,17,18,20,21,428,430) THEN Betteam ELSE '' END,
-			CASE WHEN B.BettypeGroup IN (1,2,3,5,7,8,12,15,17,18,20,21,428,430) THEN Liveindicator ELSE 0 END
+			CASE WHEN B.BettypeGroup IN (1,2,3,5,7,8,12,15,17,18,20,21,177,184) THEN Betteam ELSE '' END,
+			CASE WHEN B.BettypeGroup IN (1,2,3,5,7,8,12,15,17,18,20,21,177,184) THEN Liveindicator ELSE 0 END
 	
 	 
 END
