@@ -59,33 +59,35 @@ BEGIN
 	SELECT @SporttypeList = COALESCE (@SporttypeList + ',', '') + CONVERT(VARCHAR(5),Sporttype) 
 	FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)	
 	 	
-	SELECT  LeagueId, 
-			MatchID,
-			HomeId,	
-			AwayId,
-			LiveHomeScore,
-			LiveAwayScore,
-			HTHomeScore,
-			HTAwayScore,
-			ShowtimeDT,
-			OfferLive,
-			IsNeutral,
-			DateType,   ---- 1 Today / 2 yesterday
-			LiveType,
-			liveindicator,
-			Wager, 
-			BettypeCount,
-			CASE @PossType WHEN 0 THEN Stake0	
-						   WHEN 1 THEN Stake1
-						   WHEN 2 THEN Stake2
-						   WHEN 3 THEN Stake3
-						   WHEN 4 THEN Stake4
-						   WHEN 5 THEN Stake5
-						   WHEN 6 THEN Stake6
-						   WHEN 7 THEN Stake7
-			END	AS Stake										
-	FROM  (
-			SELECT 
+	CREATE TABLE #StartedData (
+				leagueid INT, 	
+				MatchID INT,
+				HomeId INT,	
+				AwayId INT,
+				LiveHomeScore INT,
+				LiveAwayScore INT,
+				HTHomeScore INT,
+				HTAwayScore INT,
+				ShowtimeDT SMALLDATETIME,
+				OfferLive BIT,
+				IsNeutral BIT,
+				DateType TINYINT,   
+				LiveType BIT,  
+				liveindicator BIT,
+				bettypeGroup SMALLINT,
+				Wager INT,  				
+				Stake0 MONEY,
+				Stake1 MONEY,
+				Stake2 MONEY,
+				Stake3 MONEY,
+				Stake4 MONEY,
+				Stake5 MONEY,
+				Stake6 MONEY,
+				Stake7 MONEY
+				)
+ 
+		INSERT INTO #StartedData 
+		SELECT 
 				m.leagueid, 	
 				m.MatchID,
 				m.HomeId,	
@@ -100,8 +102,8 @@ BEGIN
 				m.DateType,   ---- 1 Today / 2 yesterday
 				m.LiveType,  --- show text Live on the UI 
 				b.liveindicator,
-				COUNT(b.TransId) AS Wager,  
-				COUNT(DISTINCT bg.bettypeGroup) AS BettypeCount,
+				bg.bettypeGroup,
+				COUNT(b.TransId) AS Wager,  				
 				SUM (b.Stake) AS Stake0,
 				SUM (b.Stake * ( 1 - tpositiontaking)) AS Stake1,
 				SUM (b.Stake * (spositiontaking)) AS Stake2,
@@ -109,8 +111,7 @@ BEGIN
 				SUM (b.Stake * (apositiontaking)) AS Stake4,
 				SUM (b.Stake * (spositiontaking + mpositiontaking + apositiontaking)) AS Stake5,
 				SUM (b.Stake * (spositiontaking + mpositiontaking)) AS Stake6,
-				SUM (b.Stake * (mpositiontaking + apositiontaking)) AS Stake7
-
+				SUM (b.Stake * (mpositiontaking + apositiontaking)) AS Stake7	
 			FROM bettrans b WITH (NOLOCK)
 				INNER JOIN dbo.CS_f_TotalBets_Event_Sel (5, @isTest, @LeagueId, @SporttypeList) AS m ON m.matchid = b.matchid 	
 				CROSS APPLY dbo.CS_f_BettypeGroupMatrix_Sel (0,0,b.Bettype,@IsTest) AS bg
@@ -140,8 +141,60 @@ BEGIN
 				m.IsNeutral,
 				m.DateType,
 				m.LiveType,
-				liveindicator
-			) A
+				b.liveindicator,
+				bg.bettypeGroup
+
+
+---- get MatchInfo 
+
+	SELECT  LeagueId, 
+			MatchID,
+			HomeId,	
+			AwayId,
+			LiveHomeScore,
+			LiveAwayScore,
+			HTHomeScore,
+			HTAwayScore,
+			ShowtimeDT,
+			OfferLive,
+			IsNeutral,
+			DateType,   ---- 1 Today / 2 yesterday
+			LiveType,	--- show text Live on the UI 		
+			COUNT (DISTINCT bettypeGroup) BettypeCount								
+	FROM   #StartedData A
+	GROUP BY  
+			LeagueId, 
+			MatchID,
+			HomeId,	
+			AwayId,
+			LiveHomeScore,
+			LiveAwayScore,
+			HTHomeScore,
+			HTAwayScore,
+			ShowtimeDT,
+			OfferLive,
+			IsNeutral,
+			DateType,   ---- 1 Today / 2 yesterday
+			LiveType
+	
+	 
+	 ----- SumInfo 
+	SELECT  MatchID,			
+			LiveIndicator,
+			SUM(Wager) AS Wager, 
+			SUM(CASE @PossType WHEN 0 THEN Stake0	
+						   WHEN 1 THEN Stake1
+						   WHEN 2 THEN Stake2
+						   WHEN 3 THEN Stake3
+						   WHEN 4 THEN Stake4
+						   WHEN 5 THEN Stake5
+						   WHEN 6 THEN Stake6
+						   WHEN 7 THEN Stake7
+				 END)	AS Stake										
+	FROM   #StartedData A
+	GROUP BY MatchID, LiveIndicator
+	
+	DROP TABLE #StartedData
 	
 	
 	 
