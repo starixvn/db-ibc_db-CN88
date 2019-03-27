@@ -85,6 +85,7 @@ BEGIN
 		BEGIN
 			INSERT INTO #EventInfo (MatchId, SportType, Type)
 			SELECT MatchId, SportType, Type FROM dbo.CS_f_TotalBets_Event_Sel (0, @isTest, 0, '')
+			WHERE Type IN (1,2,3,4) -- In-play, Today, Early, Outright
 		END
 	END
 
@@ -136,21 +137,21 @@ BEGIN
 			SELECT
 				9 AS SportTypeGroup
 				-- Soccer only
-				,ISNULL(SUM(CASE WHEN SelectionType = 1 THEN Wager ELSE 0 END), 0)		AS SoccerParlayWager
+				,ISNULL(SUM(CASE WHEN SelectionType = 1 THEN Wager ELSE 0 END), 0)	AS SoccerParlayWager
 				,ISNULL(SUM(CASE WHEN SelectionType = 1 THEN
 										CASE @PossType
 											WHEN 0 THEN Stake0
 											WHEN 4 THEN Stake4
 											END ELSE 0 END), 0)						AS SoccerParlayStake
 				-- Other Sports except Soccer
-				,ISNULL(SUM(CASE WHEN SelectionType = 2 THEN Wager ELSE 0 END), 0)		AS NonSoccerParlayWager
+				,ISNULL(SUM(CASE WHEN SelectionType = 2 THEN Wager ELSE 0 END), 0)	AS NonSoccerParlayWager
 				,ISNULL(SUM(CASE WHEN SelectionType = 2 THEN
 										CASE @PossType
 											WHEN 0 THEN Stake0
 											WHEN 4 THEN Stake4
 											END ELSE 0 END), 0)						AS NonSoccerParlayStake
 				-- Soccer + Other Sports
-				,ISNULL(SUM(CASE WHEN SelectionType = 3 THEN Wager ELSE 0 END), 0)		AS MixSportsParlayWager
+				,ISNULL(SUM(CASE WHEN SelectionType = 3 THEN Wager ELSE 0 END), 0)	AS MixSportsParlayWager
 				,ISNULL(SUM(CASE WHEN SelectionType = 3 THEN
 										CASE @PossType
 											WHEN 0 THEN Stake0

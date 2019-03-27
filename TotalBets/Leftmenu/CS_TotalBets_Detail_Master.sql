@@ -22,6 +22,7 @@ AS
 			2 = 'Today'
 			3 = 'Early'
 			4 = 'Outright'
+			5 = 'Started'
 */
 
 BEGIN
