@@ -71,7 +71,6 @@ BEGIN
 				ShowtimeDT SMALLDATETIME,
 				OfferLive BIT,
 				IsNeutral BIT,
-				DateType TINYINT,   
 				LiveType BIT,  
 				liveindicator BIT,
 				bettypeGroup SMALLINT,
@@ -99,7 +98,6 @@ BEGIN
 				m.ShowtimeDT,
 				m.OfferLive,
 				m.IsNeutral,
-				m.DateType,   ---- 1 Today / 2 yesterday
 				m.LiveType,  --- show text Live on the UI 
 				b.liveindicator,
 				bg.bettypeGroup,
@@ -126,7 +124,7 @@ BEGIN
 				AND (	@IsLive = 2   --- all
 						OR b.Liveindicator = @IsLive
 					)
-				AND m.DateType = @DateType
+				AND (m.DateType = @DateType OR @DateType = 0)
 			GROUP BY 
 				m.leagueid, 	
 				m.MatchID,
@@ -139,7 +137,6 @@ BEGIN
 				m.ShowtimeDT,
 				m.OfferLive,
 				m.IsNeutral,
-				m.DateType,
 				m.LiveType,
 				b.liveindicator,
 				bg.bettypeGroup
@@ -158,7 +155,6 @@ BEGIN
 			ShowtimeDT,
 			OfferLive,
 			IsNeutral,
-			DateType,   ---- 1 Today / 2 yesterday
 			LiveType,	--- show text Live on the UI 		
 			COUNT (DISTINCT bettypeGroup) BettypeCount								
 	FROM   #StartedData A
@@ -174,7 +170,6 @@ BEGIN
 			ShowtimeDT,
 			OfferLive,
 			IsNeutral,
-			DateType,   ---- 1 Today / 2 yesterday
 			LiveType
 	
 	 
