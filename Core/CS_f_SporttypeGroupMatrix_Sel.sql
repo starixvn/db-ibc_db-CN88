@@ -1,6 +1,7 @@
 /*<info serverAlias="DBAGE-bodb02,DBEXT-bodb02,DBACC-bodb02,DBTXN-bodb02,DB042-bodb02" selecters="bodbAdminNet,bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="1" isNested="0"></info>*/
 USE [bodb02]
 GO
+
 ALTER FUNCTION [dbo].[CS_f_SporttypeGroupMatrix_Sel]
 (
 	 @ProductID		SMALLINT = 0
@@ -29,8 +30,7 @@ ALTER FUNCTION [dbo].[CS_f_SporttypeGroupMatrix_Sel]
 RETURNS TABLE
 RETURN
 SELECT DISTINCT
-	ma.SportType
-	,ma.SportTypeGroup
+	 ma.SportTypeGroup
 	,ma.ProductID
 	,p.CasinoType
 	,p.ProductPrefix
@@ -44,6 +44,6 @@ WHERE   (@ProductID		 = 0 OR  ma.ProductID	= @ProductID)
 	AND (ma.IsTest	= 0  OR  ma.IsTest = @IsTest)
 	AND (ma.Enabled = 1) 
 	
- GO
+ 
 
-
+GO

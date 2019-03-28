@@ -38,7 +38,6 @@ RETURNS TABLE
 RETURN
 SELECT DISTINCT
 	 ma.ProductID
-	,ma.Bettype
 	,ma.BetTypeGroup
 	,ma.EventType
 	,ma.RefTable
@@ -52,6 +51,5 @@ WHERE   (@ProductID	= 0  OR  ma.ProductID	= @ProductID)
 	AND (@Bettype = 0 OR ma.Bettype = @Bettype)
 	AND (ma.IsTest <= @IsTest)
 	AND (ma.Enabled = 1)
-
 
 GO
