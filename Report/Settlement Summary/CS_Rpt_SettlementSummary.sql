@@ -17,12 +17,17 @@ AS
 BEGIN
 	SET NOCOUNT ON
 
+	DECLARE @isTest BIT
+	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
+
 	DECLARE @today SMALLDATETIME, @yesterday SMALLDATETIME
 	SELECT  @today = CONVERT(DATE, GETDATE()), @yesterday = DATEADD(DAY, -1, @today)
 
 	CREATE TABLE #Sports (SportTypeGroup INT, SportType INT)
 	INSERT INTO #Sports (SportTypeGroup, SportType)
-	SELECT DISTINCT SportTypeGroup, SportType FROM dbo.CS_SportBettypeMatrix WITH (NOLOCK) WHERE SportTypeGroup <> 9 -- Exclude Parlay
+	SELECT DISTINCT SportTypeGroup, SportType FROM dbo.CS_SportBettypeMatrix WITH (NOLOCK)
+	WHERE SportTypeGroup <> 9 -- Exclude Parlay
+		AND IsTest <= @isTest
 
 	CREATE TABLE #tmpMatch (EventDate SMALLDATETIME, SportTypeGroup INT, CompletedEvent INT, IncompletedEvent INT)
 

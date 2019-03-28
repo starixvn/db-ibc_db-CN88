@@ -15,9 +15,15 @@ AS
 */
 
 BEGIN
-	WITH CTE_Sports AS (
+	SET NOCOUNT ON
+
+	DECLARE @isTest BIT
+	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
+
+	;WITH CTE_Sports AS (
 		SELECT DISTINCT SportTypeGroup, SportType
 		FROM dbo.CS_SportBettypeMatrix WITH (NOLOCK)
+		WHERE IsTest <= @isTest
 	)
 	SELECT
 		SportTypeGroup	= s.SportTypeGroup

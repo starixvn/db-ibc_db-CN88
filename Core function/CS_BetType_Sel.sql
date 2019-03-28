@@ -15,9 +15,14 @@ AS
 */
 
 BEGIN
+	SET NOCOUNT ON
+
+	DECLARE @isTest BIT
+	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
+
 	SELECT DISTINCT sbm.SportTypeGroup, sbm.BettypeGroup, b.typenamee AS TypeName
 	FROM dbo.BetType b WITH (NOLOCK)
 		INNER JOIN dbo.CS_SportBettypeMatrix sbm WITH (NOLOCK) ON b.TypeId = sbm.BettypeGroup
-	WHERE sbm.Enabled = 1
+	WHERE sbm.Enabled = 1 AND sbm.IsTest <= @isTest
 END
 GO
