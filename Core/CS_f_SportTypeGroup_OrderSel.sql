@@ -37,6 +37,9 @@ RETURN
 			,(9, 90) -- Parlay
 			,(10, 100) -- E-Sports
 			,(99, 990) -- Other Sports
+			,(11, 1010) -- Number Game/Happy 5
+			,(12, 1020) -- Keno/Lottery
+			,(13, 1030) -- Virtual Sports (include Virtual Sports 2)
 	) AS A (SportTypeGroup, OrderId)
 	WHERE @TypeId = 1 -- Report
 
@@ -56,6 +59,9 @@ RETURN
 			,(9, 90) -- Parlay
 			,(10, 100) -- E-Sports
 			,(99, 990) -- Other Sports
+			,(11, 1010) -- Number Game/Happy 5
+			,(12, 1020) -- Keno/Lottery
+			,(13, 1030) -- Virtual Sports (include Virtual Sports 2)
 	) AS B (SportTypeGroup, OrderId)
 	WHERE @TypeId = 2 -- Total Bets
 GO
