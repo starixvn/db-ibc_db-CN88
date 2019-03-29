@@ -19,6 +19,8 @@ AS
 	DB: DBAGE.bodb02	
 	Revisions:
 		- 20190214@Sophia: Create new [RedmineID: #105660] 
+		- 20190329@Sophia: Implement Non Sports [Redmine: #109521]
+		
 	Param's Explanation:
 		- @CustId: MasterID or AgentID  
 		- @IsOwner: Upline view Agent or not (if @CustId = AgentId then @IsOwner = 1, if @CustId = MasterId then @IsOwner = 0)
@@ -119,6 +121,19 @@ BEGIN
 			AND m.eventdate BETWEEN @FromDate AND @ToDate			
 	END 		 
 
+	--- 5. get VSOutright by sports	
+	DECLARE @VSOutrightList AS TABLE (MatchID INT)
+	
+	IF @SporttypeGroup IN (13, 0) 
+	BEGIN 
+		INSERT INTO @VSOutrightList (MatchID) 
+		SELECT o.EventID 		
+		FROM dbo.VSOutright o WITH (NOLOCK)
+		INNER JOIN dbo.VSRaceInfo r WITH(NOLOCK) ON o.EventID = r.EventID		
+		WHERE r.Sporttype IN (SELECT Sporttype FROM @SporttypeList)
+			AND o.eventdate BETWEEN @FromDate AND @ToDate		
+					
+	END 
   		
 	--- 5. Get report
 	DECLARE @FDate SMALLDATETIME, @TDate SMALLDATETIME;
@@ -177,6 +192,8 @@ BEGIN
 					EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
 					OR
 					(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
+					OR
+					(EXISTS (SELECT 1 FROM @VSOutrightList r WHERE r.MatchID = b.MatchID) AND (@SporttypeGroup IN (13, 0)) ) --- VS
 					OR @SporttypeGroup IN(0,9)  --- Parlay (sport)
 					)
 				AND (   @IsLive = 2   --- all
@@ -190,8 +207,61 @@ BEGIN
 																SELECT 1 AS IsLive WHERE @IsLive = 1																		
 																)
 						)
-					)			  	
+					)			
+				AND b.Bettype <> 2799 -- exclude VS mix Parlay			
 			GROUP BY recommend
+			
+			-- Mix parlay of BRVS
+			IF (@BettypeGroup IN (2799,0) OR @SporttypeGroup(13,0) AND @IsLive IN (0,2))
+			BEGIN 
+				INSERT INTO	#AgentWinLoss (
+										CustId,
+										Username,
+										Name,
+										Wagers,
+										Stake,
+										ValidStake,
+										MemberIncome,
+ 					
+										Agent, 
+										AgentIncome,
+										AgentResult,	
+										AgentStock,
+					
+										MasterIncome,
+										MasterResult		
+										)		
+			SELECT
+			  					recommend,
+								'' AS Username,
+								'' AS Name,
+								COUNT(TransID) AS Wagers,
+								SUM(Stake) AS Stake,
+								SUM(ABS(winlost - actual_stake)) ValidStake,
+								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
+ 									
+								SUM((Winlost - actual_stake)  + (ABS(winlost - actual_stake) * discount) ) AS Agent,
+								SUM(AWinlost + Comm - Playercomm) AS AgentIncome,	
+								SUM((Winlost - actual_stake + PlayerComm) + (Awinlost + Comm - PlayerComm)) AS AgentResult,  --- Member Income + Agent Income
+								SUM(ABS(winlost - actual_stake) * (1 - apositiontaking)) AS AgentStock,
+								
+								SUM(MWinlost + AComm - Comm) AS MasterIncome,								
+								SUM((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm)) AS MasterResult
+				FROM dbo.bettrans b WITH (NOLOCK)		
+				CROSS APPLY (
+					SELECT TOP 1 m.sporttype
+					FROM dbo.bettransm bm WITH (NOLOCK)
+						INNER JOIN dbo.match m WITH (NOLOCK) ON bm.matchid = m.matchid				
+					WHERE bm.refno = b.refno
+						  AND m.sporttype IN (Select Sporttype FROM @SporttypeList)
+					) AS s
+				WHERE b.matchid = 2799 AND b.bettype = 2799
+					AND b.winlostdate BETWEEN @FDate AND @TDate
+					AND b.StatusID IN (111,112,113)
+					AND EXISTS (SELECT 1 FROM #AgentList sl WHERE sl.MasterID = b.mrecommend)
+				GROUP BY recommend
+			END	
+				
 		END
 				
 		-- 5.2: sum table range

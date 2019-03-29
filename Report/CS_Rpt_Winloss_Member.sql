@@ -21,6 +21,8 @@ AS
 	DB: DBAGE.bodb02	
 	Revisions:
 		- 20190214@Sophia: Create new [RedmineID: #105660] 
+		- 20190329@Sophia: Implement Non Sports [Redmine: #109521]
+		
 	Param's Explanation:
 		- @CustId: AgentID
 		- @IsOwner: Upline view Member , @IsOwner = 0
@@ -107,11 +109,24 @@ BEGIN
 		SELECT m.orid			
 		FROM dbo.Outright m WITH (NOLOCK)
 		INNER JOIN dbo.League l WITH (NOLOCK) ON m.LeagueId = l.LeagueId
-		WHERE l.Sporttype IN (SELECT Sporttype FROM @SporttypeList) 
+		WHERE l.Sporttype IN (SELECT Sporttype FROM @SporttypeList)
 			AND m.eventdate BETWEEN @FromDate AND @ToDate			
 	END 		 
 		
-  	
+  	--- 5. get VSOutright by sports	
+	DECLARE @VSOutrightList AS TABLE (MatchID INT)
+	
+	IF @SporttypeGroup IN (13, 0) 
+	BEGIN 
+		INSERT INTO @VSOutrightList (MatchID) 
+		SELECT o.EventID 		
+		FROM dbo.VSOutright o WITH (NOLOCK)
+		INNER JOIN dbo.VSRaceInfo r WITH(NOLOCK) ON o.EventID = r.EventID		
+		WHERE r.Sporttype IN (SELECT Sporttype FROM @SporttypeList)
+			AND o.eventdate BETWEEN @FromDate AND @ToDate		
+					
+	END 
+	
 	--- 5. Get report
 	------5.1. bettrans range
 	DECLARE @FDate SMALLDATETIME, @TDate SMALLDATETIME;
@@ -158,6 +173,8 @@ BEGIN
 					EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
 					OR
 					(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
+					OR
+					(EXISTS (SELECT 1 FROM @VSOutrightList r WHERE r.MatchID = b.MatchID) AND (@SporttypeGroup IN (13, 0)) ) --- VS
 					OR @SporttypeGroup IN(0,9)  --- Parlay (sport)
 					)
 				AND (   @IsLive = 2   --- all
@@ -171,7 +188,8 @@ BEGIN
 																SELECT 1 AS IsLive WHERE @IsLive = 1																		
 																)
 						)
-					)					  	
+					)
+				AND b.Bettype <> 2799 -- exclude VS mix Parlay							
 			GROUP BY CustId
 		END 
 		
