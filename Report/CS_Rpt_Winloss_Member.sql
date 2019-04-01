@@ -107,7 +107,7 @@ BEGIN
 		SELECT m.orid			
 		FROM dbo.Outright m WITH (NOLOCK)
 		INNER JOIN dbo.League l WITH (NOLOCK) ON m.LeagueId = l.LeagueId
-		WHERE (l.Sporttype IN (SELECT Sporttype FROM @SporttypeList) OR @BettypeGroup = 0 )
+		WHERE l.Sporttype IN (SELECT Sporttype FROM @SporttypeList) 
 			AND m.eventdate BETWEEN @FromDate AND @ToDate			
 	END 		 
 		
