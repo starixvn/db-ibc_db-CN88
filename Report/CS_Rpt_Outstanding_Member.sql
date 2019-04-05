@@ -156,7 +156,7 @@ BEGIN
 					OR
 					(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
 					OR
-					EXISTS (SELECT 1 FROM @VSOutrightList r WHERE r.MatchID = b.MatchID) AND (@SporttypeGroup IN (13, 0)) ) --- VS
+					(EXISTS (SELECT 1 FROM @VSOutrightList r WHERE r.MatchID = b.MatchID) AND (@SporttypeGroup IN (13, 0)) ) --- VS
 					OR @SporttypeGroup IN(0,9)  --- Parlay (sport)
 					)
 				AND (   @IsLive = 2   --- all
@@ -176,7 +176,7 @@ BEGIN
 
 			
 		-- Mix parlay of BRVS
-			IF (@BettypeGroup IN (2799,0) OR @SporttypeGroup(13,0) AND @IsLive IN (0,2))
+			IF (@BettypeGroup IN (2799,0) OR @SporttypeGroup IN(13,0) AND @IsLive IN (0,2))
 			BEGIN 
 				INSERT INTO	#MemberOutstanding (
 										CustId,

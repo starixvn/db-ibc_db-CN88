@@ -206,7 +206,7 @@ BEGIN
 				
 				
 			-- Mix parlay of BRVS
-			IF (@BettypeGroup IN (2799,0) OR @SporttypeGroup(13,0) AND @IsLive IN (0,2))
+			IF (@BettypeGroup IN (2799,0) OR @SporttypeGroup IN(13,0) AND @IsLive IN (0,2))
 			BEGIN 				
 				INSERT INTO	#SuperCancelled (
 									CustId,
@@ -254,11 +254,7 @@ BEGIN
 									SUM(Stake) AS Stake											
 				FROM	dbo.bettrans b WITH (NOLOCK)		
 					INNER JOIN @BettypeList bt
-						ON	bt.Bettype = b.bettype
-					LEFT JOIN @ExtraPT e 
-						ON	b.Srecommend = e.SuperID 
-							AND b.winlostdate BETWEEN e.FromDate AND E.ToDate
-							AND bt.ProductID = e.ProductID
+						ON	bt.Bettype = b.bettype					
 				WHERE	b.winlostdate BETWEEN @FDate AND @TDate
 					AND b.StatusID = 102
 					AND CASE WHEN b.ExtraInfo LIKE '%p1%' THEN
