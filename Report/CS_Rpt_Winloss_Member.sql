@@ -191,6 +191,49 @@ BEGIN
 					)
 				AND b.Bettype <> 2799 -- exclude VS mix Parlay							
 			GROUP BY CustId
+			
+			-- Mix parlay of BRVS
+			IF (@BettypeGroup IN (2799,0) OR @SporttypeGroup(13,0) AND @IsLive IN (0,2))
+			BEGIN 
+				INSERT INTO	#MemberWinloss (
+										CustId,
+										Username,
+										Name,
+										Wagers,
+										Stake, 
+										ValidStake, 
+										MemberIncome,		 				
+										AgentIncome,
+										AgentResultA	 
+										) 
+									 	
+				SELECT
+			  					CustId,
+								'' AS Username,
+								'' AS Name,
+								COUNT(TransID) AS Wagers,
+								SUM(Stake) AS Stake,
+								SUM(ABS(winlost - actual_stake)) ValidStake,
+								SUM(Winlost - actual_stake + Playercomm) AS MemberIncome,
+
+								SUM(AWinlost + Comm - Playercomm) AS AgentIncome,	
+								SUM((Winlost - actual_stake + Playercomm)* (1 - APositiontaking)) AS AgentResultA 
+
+				FROM dbo.bettrans b WITH (NOLOCK)		
+				CROSS APPLY (
+					SELECT TOP 1 m.sporttype
+					FROM dbo.bettransm bm WITH (NOLOCK)
+						INNER JOIN dbo.match m WITH (NOLOCK) ON bm.matchid = m.matchid				
+					WHERE bm.refno = b.refno
+						  AND m.sporttype IN (Select Sporttype FROM @SporttypeList)
+					) AS s
+				WHERE b.matchid = 2799 AND b.bettype = 2799
+					AND b.winlostdate BETWEEN @FDate AND @TDate
+					AND b.StatusID IN (111,112,113)
+					AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)	
+				GROUP BY CustId
+			END	
+		
 		END 
 		
 		-- 5.2: sum table range
