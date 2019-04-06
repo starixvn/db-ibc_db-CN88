@@ -39,9 +39,11 @@ BEGIN
 		,CompletedEvent		= SUM(CASE WHEN m.eventstatus IN ('Completed', 'refund') THEN 1 ELSE 0 END)
 		,IncompletedEvent	= SUM(CASE WHEN m.eventstatus NOT IN ('Completed', 'refund') THEN 1 ELSE 0 END)
 	FROM dbo.match m WITH (NOLOCK)
+		INNER JOIN dbo.league l WITH (NOLOCK) ON m.leagueid = l.leagueid
 		INNER JOIN #Sports s ON m.sporttype = s.SportType
 	WHERE m.eventdate BETWEEN @yesterday AND @today
 		AND m.eventstatus <> 'closed'
+		AND l.isTest <= @isTest
 	GROUP BY
 		m.EventDate
 		,s.SportTypeGroup
@@ -50,11 +52,13 @@ BEGIN
 		SELECT DISTINCT e.EventDate, s.SportTypeGroup
 		FROM #Sports s
 			CROSS JOIN (SELECT @yesterday AS EventDate UNION ALL SELECT @today) AS e
-		WHERE s.SportTypeGroup <> 9 -- exclude Parlay Sport
 	)
-	SELECT s.EventDate, s.SportTypeGroup, ISNULL(m.CompletedEvent, 0) AS CompletedEvent, ISNULL(m.IncompletedEvent, 0) AS IncompletedEvent
+	SELECT s.EventDate, s.SportTypeGroup, SUM(ISNULL(m.CompletedEvent, 0)) AS CompletedEvent, SUM(ISNULL(m.IncompletedEvent, 0)) AS IncompletedEvent
 	FROM CTE_Sports s
+		INNER JOIN dbo.CS_f_SportTypeGroup_OrderSel(1) f ON s.SportTypeGroup = f.SportTypeGroup
 		LEFT JOIN #tmpMatch m ON s.SportTypeGroup = m.SportTypeGroup AND s.EventDate = m.EventDate
+	GROUP BY s.EventDate, s.SportTypeGroup, f.OrderId
+	ORDER BY f.OrderId
 
 	DROP TABLE #Sports
 	DROP TABLE #tmpMatch
