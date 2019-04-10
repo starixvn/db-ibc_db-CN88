@@ -18,6 +18,7 @@ ALTER PROCEDURE CS_DBA_Customer_HeadlineIns
 	@userpwd VARCHAR(40),
 	@site NVARCHAR(50),
 	@currency INT,
+	@GroupID INT = NULL,
 	@ErrCode INT = 0 OUTPUT, 
 	@ErrMsg NVARCHAR(1000) = '' OUTPUT
 AS
@@ -32,7 +33,7 @@ AS
 	Sample: 	
 	DECLARE @ErrCode INT = 0 , 
 			@ErrMsg NVARCHAR(1000) = '' 
-	EXEC DBA_Customer_HeadlineIns
+	EXEC CS_DBA_Customer_HeadlineIns
 		@firstname=N'',
 		@lastname=N'',
 		@address='',
@@ -50,6 +51,7 @@ AS
 		@userpwd='56E8A2D78170E87C928E480797CC73',
 		@site=N'CN88',
 		@currency=35,
+		@GroupID = 27,
 		@ErrCode = @ErrCode OUTPUT,
 		@ErrMsg = @ErrMsg OUTPUT
 		
@@ -173,7 +175,35 @@ BEGIN
 			@custid, NULL, GETDATE(), 1, 0,
 			NULL, @isForcedChangeSecurityCode, NULL,0
 		)	
-
+	
+	IF @@ERROR > 0
+	BEGIN
+		print 'Create headline fail'
+		
+		DELETE customer WITH(UPDLOCK,ROWLOCK)
+		WHERE custid = @custid	
+		EXEC DBMSG.bodb_Message.dbo.Age_MsgCustReadStatus_Del  @custid
+		
+		RETURN;
+	END	
+	
+	INSERT INTO dbo.CS_HeadlineExtraPTGroup(HeadlineId,GroupID)
+	VALUES (@custid,@groupid)
+	
+	IF @@ERROR > 0
+	BEGIN
+		print 'Create headline fail'
+		
+		DELETE customer WITH(UPDLOCK,ROWLOCK)
+		WHERE custid = @custid	
+		
+		EXEC DBMSG.bodb_Message.dbo.Age_MsgCustReadStatus_Del  @custid
+		
+		DELETE CustLoginInfo WITH(UPDLOCK,ROWLOCK)
+		WHERE custid = @custid	
+		RETURN;
+	END	
+	
 	INSERT INTO [dbo].[custinfo]
 		(
 			custid, currency,Disable151_AU
@@ -210,6 +240,11 @@ BEGIN
 		WHERE custid = @custid	
 		EXEC DBMSG.bodb_Message.dbo.Age_MsgCustReadStatus_Del  @custid
 		
+		DELETE CustLoginInfo WITH(UPDLOCK,ROWLOCK)
+		WHERE custid = @custid
+		
+		DELETE CS_HeadlineExtraPTGroup WITH(UPDLOCK,ROWLOCK)
+		WHERE HeadlineId = @custid
 		RETURN;
 	END	
 	
