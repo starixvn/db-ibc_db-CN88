@@ -18,7 +18,7 @@ ALTER PROCEDURE CS_DBA_Customer_HeadlineIns
 	@userpwd VARCHAR(40),
 	@site NVARCHAR(50),
 	@currency INT,
-	@GroupID INT = NULL,
+	@GroupName VARCHAR(50) = NULL,
 	@ErrCode INT = 0 OUTPUT, 
 	@ErrMsg NVARCHAR(1000) = '' OUTPUT
 AS
@@ -51,7 +51,7 @@ AS
 		@userpwd='56E8A2D78170E87C928E480797CC73',
 		@site=N'CN88',
 		@currency=35,
-		@GroupID = 27,
+		@GroupName = 'CN88_00',
 		@ErrCode = @ErrCode OUTPUT,
 		@ErrMsg = @ErrMsg OUTPUT
 		
@@ -123,9 +123,10 @@ BEGIN
 	--Keno
 	@HideKeno BIT = 0,	
 	
-	@credit MONEY = 0
+	@credit MONEY = 0,
+	@groupid INT
 	
-
+	
 	IF EXISTS(SELECT 1 FROM customer WITH(NOLOCK) WHERE username = @username)
 	BEGIN
 		PRINT 'Username exists'
@@ -146,7 +147,7 @@ BEGIN
 
 	IF @custid IS NULL
 		BEGIN
-			print 'Create headline fail'
+			print 'Create headline fail, step customer'
 
 			DELETE customer WITH(UPDLOCK,ROWLOCK)
 			WHERE custid = @custid
@@ -158,7 +159,7 @@ BEGIN
 		
 	IF @ErrCode <>0
 	BEGIN	
-		print 'Create headline fail'
+		print 'Create headline fail, step Msg CustRead'
 		
 		DELETE customer WITH(UPDLOCK,ROWLOCK)
 		WHERE custid = @custid	
@@ -178,7 +179,7 @@ BEGIN
 	
 	IF @@ERROR > 0
 	BEGIN
-		print 'Create headline fail'
+		print 'Create headline fail, step CustLoginInfo'
 		
 		DELETE customer WITH(UPDLOCK,ROWLOCK)
 		WHERE custid = @custid	
@@ -187,12 +188,30 @@ BEGIN
 		RETURN;
 	END	
 	
+	SELECT TOP (1) @groupid = GroupID 
+	FROM Acc_GroupExtraPT_Product WITH(NOLOCK)
+	WHERE GroupName = @GroupName
+	
+	IF @groupid IS NULL
+	BEGIN
+		print 'Create headline fail, group name is not exists.'
+		
+		DELETE customer WITH(UPDLOCK,ROWLOCK)
+		WHERE custid = @custid	
+		
+		EXEC DBMSG.bodb_Message.dbo.Age_MsgCustReadStatus_Del  @custid
+		
+		DELETE CustLoginInfo WITH(UPDLOCK,ROWLOCK)
+		WHERE custid = @custid	
+		RETURN;
+	END
+	
 	INSERT INTO dbo.CS_HeadlineExtraPTGroup(HeadlineId,GroupID)
 	VALUES (@custid,@groupid)
 	
 	IF @@ERROR > 0
 	BEGIN
-		print 'Create headline fail'
+		print 'Create headline fail, step ExtraPTGroup'
 		
 		DELETE customer WITH(UPDLOCK,ROWLOCK)
 		WHERE custid = @custid	
@@ -234,7 +253,7 @@ BEGIN
 
 	IF @@ERROR > 0
 	BEGIN
-		print 'Create headline fail'
+		print 'Create headline fail, step Custinfo'
 		
 		DELETE customer WITH(UPDLOCK,ROWLOCK)
 		WHERE custid = @custid	
