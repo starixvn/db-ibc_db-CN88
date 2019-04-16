@@ -90,7 +90,7 @@ Param's Explanation:
 						END 
 					END AS DateType,
 				5 AS Type,
-				CASE WHEN m.kickofftime <= CURRENT_TIMESTAMP AND m.eventstatus NOT IN ('completed','Internal') THEN 1 ELSE 0 END AS LiveType
+				CASE WHEN m.kickofftime <= CURRENT_TIMESTAMP AND m.eventstatus NOT IN ('completed') THEN 1 ELSE 0 END AS LiveType
 		FROM  dbo.Match m  WITH (NOLOCK) 
 		INNER JOIN dbo.Match_remark r WITH (NOLOCK) 
 			ON m.matchid = r.matchid		

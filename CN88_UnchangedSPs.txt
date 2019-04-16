@@ -1,0 +1,24 @@
+TotalBets/Started/CS_TotalBets_Started_Agent.sql
+TotalBets/Started/CS_TotalBets_Started_Master.sql
+TotalBets/Started/CS_TotalBets_Started_Super.sql
+TotalBets/Core/CS_TotalBets_League_Sel.sql
+TotalBets/Event/CS_TotalBets_Event_Agent.sql
+ TotalBets/Event/CS_TotalBets_Event_Master.sql
+ TotalBets/Event/CS_TotalBets_Event_Super.sql
+ TotalBets/Leftmenu/CS_TotalBets_Detail_Agent.sql
+ TotalBets/Leftmenu/CS_TotalBets_Detail_Master.sql
+ TotalBets/Leftmenu/CS_TotalBets_Detail_Super.sql
+ TotalBets/Leftmenu/CS_TotalBets_Summary_Agent.sql
+ TotalBets/Leftmenu/CS_TotalBets_Summary_Master.sql 
+ TotalBets/Leftmenu/CS_TotalBets_Summary_Super.sql
+ TotalBets/Outright/CS_TotalBets_Outright_Agent.sql
+ TotalBets/Outright/CS_TotalBets_Outright_Master.sql
+ TotalBets/Outright/CS_TotalBets_Outright_Super.sql
+ TotalBets/Overview/CS_TotalBets_Overview_Agent.sql
+ TotalBets/Overview/CS_TotalBets_Overview_Master.sql 
+TotalBets/Overview/CS_TotalBets_Overview_Super.sql  
+ TotalBets/Started/CS_TotalBets_Started_Agent.sql 
+ TotalBets/Started/CS_TotalBets_Started_Master.sql
+ TotalBets/Started/CS_TotalBets_Started_Super.sql
+ 
+ 
