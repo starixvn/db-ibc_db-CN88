@@ -189,12 +189,12 @@ BEGIN
 				AND EXISTS (SELECT 1 FROM #AgentList sl WHERE sl.AgentID = b.recommend)	
 				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.Bettype)	
 				AND (
-					EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
+					EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))   ---SB, NG, VS, VS2
 					OR
 					(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
 					OR
 					(EXISTS (SELECT 1 FROM @VSOutrightList r WHERE r.MatchID = b.MatchID) AND (@SporttypeGroup IN (13, 0)) ) --- VS
-					OR @SporttypeGroup IN(0,9)  --- Parlay (sport)
+					OR @SporttypeGroup IN(0,9,12)  --- Parlay (sport), KN, LT
 					)
 				AND (   @IsLive = 2   --- all
 						OR
@@ -258,7 +258,7 @@ BEGIN
 				WHERE b.matchid = 2799 AND b.bettype = 2799
 					AND b.winlostdate BETWEEN @FDate AND @TDate
 					AND b.StatusID IN (111,112,113)
-					AND EXISTS (SELECT 1 FROM #AgentList sl WHERE sl.MasterID = b.mrecommend)
+					AND EXISTS (SELECT 1 FROM #AgentList sl WHERE sl.AgentId = b.mrecommend)
 				GROUP BY recommend
 			END	
 				
