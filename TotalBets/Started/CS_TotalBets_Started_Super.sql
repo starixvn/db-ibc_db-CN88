@@ -57,7 +57,7 @@ BEGIN
 	
 	DECLARE @SporttypeList VARCHAR(MAX)	
 	SELECT @SporttypeList = COALESCE (@SporttypeList + ',', '') + CONVERT(VARCHAR(5),Sporttype) 
-	FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)	
+	FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (1, @SporttypeGroup, 0, @isTest)	
 	 	
 	CREATE TABLE #StartedData (
 				leagueid INT, 	
