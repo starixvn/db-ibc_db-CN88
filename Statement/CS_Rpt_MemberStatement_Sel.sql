@@ -31,13 +31,18 @@ BEGIN
 	DECLARE @SportTypeList TABLE (SportType SMALLINT PRIMARY KEY)
      
 	INSERT INTO @SportTypeList (SportType)
-	SELECT DISTINCT SportType FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)
+	SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)
 	-- End Get Sport List
+
+	-- Get Bet Type List
+	DECLARE @BetTypeList TABLE (BetType INT, EventType INT)
+	SELECT DISTINCT BetType, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)
+	-- End Get Bet Type List
 
 	-- Get data
 	DECLARE @tempFromDate SMALLDATETIME, @tempToDate SMALLDATETIME
 
-	CREATE TABLE #tmpData (WinlostDate SMALLDATETIME, MatchId INT, Bettype INT, Stake MONEY, ValidStake MONEY, WinLoss MONEY)
+	CREATE TABLE #tmpData (WinlostDate SMALLDATETIME, MatchId INT, EventType TINYINT, Stake MONEY, ValidStake MONEY, WinLoss MONEY)
 	CREATE TABLE #Statement (WinlostDate SMALLDATETIME, Stake MONEY, ValidStake MONEY, WinLoss MONEY)
 
 	-- 1. bettrans
@@ -46,14 +51,15 @@ BEGIN
 		SELECT @tempFromDate = CASE WHEN @FromDate <= @MoveBetsDay THEN DATEADD(DAY, 1, @MoveBetsDay) ELSE @FromDate END
 		SELECT @tempToDate = @ToDate
 
-		INSERT INTO #tmpData (WinlostDate, MatchId, Bettype, Stake, ValidStake, WinLoss)
-		SELECT b.winlostdate, b.matchid, CASE WHEN b.bettype IN (10, 29) THEN b.bettype ELSE 0 END
+		INSERT INTO #tmpData (WinlostDate, MatchId, EventType, Stake, ValidStake, WinLoss)
+		SELECT b.winlostdate, b.matchid, bt.EventType
 			,SUM(b.stake), SUM(ABS(b.winlost - b.actual_stake)), SUM(b.winlost - b.actual_stake + b.playercomm)
 		FROM dbo.bettrans b WITH (NOLOCK)
+			INNER JOIN @BetTypeList bt ON b.bettype = bt.bettype
 		WHERE b.CustId = @CustId
 			AND b.winlostdate BETWEEN @tempFromDate AND @tempToDate
 			AND b.statusID NOT IN (0, 1)
-		GROUP BY b.winlostdate, b.matchid, CASE WHEN b.bettype IN (10, 29) THEN b.bettype ELSE 0 END
+		GROUP BY b.winlostdate, b.matchid, bt.EventType
 	END
 
 	-- 2. bettrans14
@@ -62,55 +68,86 @@ BEGIN
 		SELECT @tempFromDate = CASE WHEN @FromDate < @BalanceUpDay THEN @BalanceUpDay ELSE @FromDate END
 		SELECT @tempToDate = CASE WHEN @ToDate > @MoveBetsDay THEN @MoveBetsDay ELSE @ToDate END
 
-		INSERT INTO #tmpData (WinlostDate, MatchId, Bettype, Stake, ValidStake, WinLoss)
-		SELECT b.winlostdate, b.matchid, CASE WHEN b.bettype IN (10, 29) THEN b.bettype ELSE 0 END
+		INSERT INTO #tmpData (WinlostDate, MatchId, EventType, Stake, ValidStake, WinLoss)
+		SELECT b.winlostdate, b.matchid, bt.EventType
 			,SUM(b.stake), SUM(ABS(b.winlost - b.actual_stake)), SUM(b.winlost - b.actual_stake + b.playercomm)
 		FROM dbo.bettrans14 b WITH (NOLOCK)
+			INNER JOIN @BetTypeList bt ON b.bettype = bt.bettype
 		WHERE b.CustId = @CustId
 			AND b.winlostdate BETWEEN @tempFromDate AND @tempToDate
-		GROUP BY b.winlostdate, b.matchid, CASE WHEN b.bettype IN (10, 29) THEN b.bettype ELSE 0 END
+		GROUP BY b.winlostdate, b.matchid, bt.EventType
 	END
 
 	-- Get final data
 	BEGIN
+		-- not event info: eventtype = 0
 		INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
-		SELECT WinlostDate, Stake, ValidStake, WinLoss
-		FROM #tmpData WHERE bettype = 29 AND @SportTypeGroup IN (0,9) -- Parlay
+		SELECT t.WinlostDate, t.Stake, t.ValidStake, t.WinLoss
+		FROM #tmpData t
+		WHERE t.EventType = 0
+			AND (
+				@SportTypeGroup = 0
+				OR (@SportTypeGroup = 9 AND t.MatchId = 29) -- Sportsbook Parlay
+				OR (@SportTypeGroup = 12 AND t.MatchId IN (202, 220)) -- Keno/Lottery
+				OR (@SportTypeGroup = 13 AND t.MatchId = 2799) -- Virtual Sports Parlay
+			)
 
 		IF @ToDate > @MoveBetsDay
 		BEGIN
+			-- match: eventtype = 1
 			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
-			SELECT WinlostDate, Stake, ValidStake, WinLoss
+			SELECT t.WinlostDate, t.Stake, t.ValidStake, t.WinLoss
 			FROM #tmpData t
 				INNER JOIN dbo.match m WITH (NOLOCK) ON t.MatchId = m.matchid
 				INNER JOIN @SportTypeList s ON m.sporttype = s.SportType
-			WHERE m.eventdate > @MoveBetsDay AND t.Bettype = 0
+			WHERE m.eventdate > @MoveBetsDay AND t.EventType = 1
 
+			-- outright: eventtype = 2
 			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
-			SELECT WinlostDate, Stake, ValidStake, WinLoss
+			SELECT t.WinlostDate, t.Stake, t.ValidStake, t.WinLoss
 			FROM #tmpData t
 				INNER JOIN dbo.outright o WITH (NOLOCK) ON t.MatchId = o.orid
 				INNER JOIN dbo.League l WITH (NOLOCK) ON o.leagueid = l.leagueid
 				INNER JOIN @SportTypeList s ON l.sporttype = s.SportType
-			WHERE o.eventdate > @MoveBetsDay AND t.Bettype = 10
+			WHERE o.eventdate > @MoveBetsDay AND t.EventType = 2
+
+			-- VSOutright/VSRaceInfo: eventtype = 3
+			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
+			SELECT t.WinlostDate, t.Stake, t.ValidStake, t.WinLoss
+			FROM #tmpData t
+				INNER JOIN dbo.VSOutright o WITH (NOLOCK) ON t.MatchId = o.EventID
+				INNER JOIN dbo.VSRaceInfo r WITH (NOLOCK) ON o.EventID = r.EventID
+				INNER JOIN @SportTypeList s ON r.sporttype = s.SportType
+			WHERE o.eventdate > @MoveBetsDay AND t.EventType = 3
 		END
 
 		IF @FromDate <= @MoveBetsDay
 		BEGIN
+			-- match: eventtype = 1
 			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
-			SELECT WinlostDate, Stake, ValidStake, WinLoss
+			SELECT t.WinlostDate, t.Stake, t.ValidStake, t.WinLoss
 			FROM #tmpData t
 				INNER JOIN dbo.match14 m WITH (NOLOCK) ON t.MatchId = m.matchid
 				INNER JOIN @SportTypeList s ON m.sporttype = s.SportType
-			WHERE m.eventdate <= @MoveBetsDay AND t.Bettype = 0
+			WHERE m.eventdate <= @MoveBetsDay AND t.EventType = 1
 
+			-- outright: eventtype = 2
 			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
-			SELECT WinlostDate, Stake, ValidStake, WinLoss
+			SELECT t.WinlostDate, t.Stake, t.ValidStake, t.WinLoss
 			FROM #tmpData t
 				INNER JOIN dbo.outright14 o WITH (NOLOCK) ON t.MatchId = o.orid
 				INNER JOIN dbo.League l WITH (NOLOCK) ON o.leagueid = l.leagueid
 				INNER JOIN @SportTypeList s ON l.sporttype = s.SportType
-			WHERE o.eventdate <= @MoveBetsDay AND t.Bettype = 10
+			WHERE o.eventdate <= @MoveBetsDay AND t.EventType = 2
+
+			-- VSOutright/VSRaceInfo: eventtype = 3
+			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
+			SELECT t.WinlostDate, t.Stake, t.ValidStake, t.WinLoss
+			FROM #tmpData t
+				INNER JOIN dbo.VSOutright14 o WITH (NOLOCK) ON t.MatchId = o.EventID
+				INNER JOIN dbo.VSRaceInfo r WITH (NOLOCK) ON o.EventID = r.EventID
+				INNER JOIN @SportTypeList s ON r.sporttype = s.SportType
+			WHERE o.eventdate <= @MoveBetsDay AND t.EventType = 3
 		END
 	END
 	
