@@ -76,12 +76,8 @@ BEGIN
 				bettypeGroup SMALLINT,
 				Wager INT,  				
 				Stake0 MONEY,
-				Stake1 MONEY,
-				Stake2 MONEY,
 				Stake3 MONEY,
 				Stake4 MONEY,
-				Stake5 MONEY,
-				Stake6 MONEY,
 				Stake7 MONEY
 				)
  
