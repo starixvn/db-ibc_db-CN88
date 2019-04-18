@@ -15,6 +15,7 @@ AS
 
 	Revisions:
 		- 20190307@Percy: Initialize SP [RedmineID: #109693]
+		- 20190418@Percy: Return IsNeutral for Started [RedmineID: #112032]
 
 	Param's Explanation:
 		@Type:
@@ -40,7 +41,7 @@ BEGIN
 			AND SportTypeGroup <> 9 -- Exclude Parlay
 			AND IsTest <= @isTest
 
-		CREATE TABLE #EventInfo (MatchId INT, SportType INT, LeagueId INT, HomeId INT, AwayId INT)
+		CREATE TABLE #EventInfo (MatchId INT, SportType INT, LeagueId INT, HomeId INT, AwayId INT, IsNeutral BIT)
 
 		CREATE TABLE #TotalBets
 		(
@@ -76,15 +77,15 @@ BEGIN
 
 		IF @@ROWCOUNT <> 0
 		BEGIN
-			INSERT INTO #EventInfo (MatchId, SportType, LeagueId, HomeId, AwayId)
-			SELECT MatchId, SportType, LeagueId, HomeId, AwayId FROM dbo.CS_f_TotalBets_Event_Sel (@Type, @isTest, 0, '')
+			INSERT INTO #EventInfo (MatchId, SportType, LeagueId, HomeId, AwayId, IsNeutral)
+			SELECT MatchId, SportType, LeagueId, HomeId, AwayId, IsNeutral FROM dbo.CS_f_TotalBets_Event_Sel (@Type, @isTest, 0, '')
 		END
 	END
 
 	/* ===== Return data ===== */
 	BEGIN
 		SELECT
-			r.MatchId, r.LeagueId, r.HomeId, r.AwayId
+			r.MatchId, r.LeagueId, r.HomeId, r.AwayId, r.IsNeutral
 			-- Wager
 			,SUM(ISNULL(Wager, 0)) AS Wager
 			-- Stake
@@ -92,17 +93,17 @@ BEGIN
 		FROM #Sports s
 			INNER JOIN (
 				SELECT
-					e.SportType, e.MatchId, e.LeagueId, e.HomeId, e.AwayId
+					e.SportType, e.MatchId, e.LeagueId, e.HomeId, e.AwayId, e.IsNeutral
 					,SUM(t.Wager) AS Wager
 					,SUM(t.Stake) AS Stake
 				FROM #TotalBets t
 					INNER JOIN #EventInfo e ON t.MatchId = e.MatchId
 				WHERE t.BetType <> 29
 				GROUP BY
-					e.SportType, e.MatchId, e.LeagueId, e.HomeId, e.AwayId
+					e.SportType, e.MatchId, e.LeagueId, e.HomeId, e.AwayId, e.IsNeutral
 			) AS r ON s.SportType = r.SportType
 		GROUP BY
-			r.MatchId, r.LeagueId, r.HomeId, r.AwayId
+			r.MatchId, r.LeagueId, r.HomeId, r.AwayId, r.IsNeutral
 	END
 
 	DROP TABLE #Sports
