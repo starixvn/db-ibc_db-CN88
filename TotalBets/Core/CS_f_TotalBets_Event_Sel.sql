@@ -1,4 +1,4 @@
-/*<info serverAlias="DB042-bodb02" select="bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="1"></info>*/	
+/*<info serverAlias="DB042-bodb02, DBAGE-bodb02" select="bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="1"></info>*/	
 USE bodb02
 GO 
 
@@ -15,7 +15,7 @@ RETURN
 /*
 Created: 20190313@Sophia
 Task : CN88 - Total Bet - Core func get all running event by Type
-DB: DB042.bodb02
+DB: DB042-bodb02, DBAGE-bodb02
 Original:
 
 Revisions:
@@ -90,11 +90,12 @@ Param's Explanation:
 						END 
 					END AS DateType,
 				5 AS Type,
-				CASE WHEN m.kickofftime <= CURRENT_TIMESTAMP AND m.eventstatus NOT IN ('completed') THEN 1 ELSE 0 END AS LiveType
+				CASE WHEN m.eventstatus NOT IN ('completed') THEN 1 ELSE 0 END AS LiveType
 		FROM  dbo.Match m  WITH (NOLOCK) 
 		INNER JOIN dbo.Match_remark r WITH (NOLOCK) 
 			ON m.matchid = r.matchid		
 		WHERE   CONVERT(DATE,m.kickofftime) IN (CONVERT(DATE,CURRENT_TIMESTAMP), DATEADD(DAY, -1, CONVERT(DATE,CURRENT_TIMESTAMP)))
+				AND m.kickofftime <= CURRENT_TIMESTAMP 
 				AND @Type IN (0,5)  --- Started				
 			AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),m.Sporttype) + ',%' OR @SporttypeList = '')				
 			AND EXISTS ( SELECT 1 FROM League l WITH (NOLOCK) 

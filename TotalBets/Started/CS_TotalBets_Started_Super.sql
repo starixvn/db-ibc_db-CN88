@@ -1,4 +1,4 @@
-/*<info serverAlias="DB042-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="0"></info>*/	
+/*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="0"></info>*/	
 USE bodb02
 GO 
 
@@ -16,7 +16,7 @@ AS
 /*
 Created: 20190325@Sophia
 Task : CN88 - Total Bet for Started: Super view downline
-DB: DB042.bodb02
+DB: DBAGE.bodb02
 Original:
 
 Revisions:
@@ -115,7 +115,7 @@ BEGIN
 				CROSS APPLY dbo.CS_f_BettypeGroupMatrix_Sel (0,0,b.Bettype,@IsTest) AS bg
 			WHERE  	
 				b.srecommend = @CustId 
-				AND b.statusID IN (0,1) 			
+				AND b.statusID IN (0, 1, 111, 112, 113) 			
 				AND (
 						(@StakeCondition = 0 AND b.Stake = @Stake) 
 						OR (@StakeCondition = 1 AND b.Stake > @Stake)
