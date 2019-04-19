@@ -2,7 +2,7 @@
 USE bodb02
 GO 
 
-ALTER PROCEDURE [dbo].[CS_TotalBets_WagerAccount_Event_Master]
+ALTER PROCEDURE [dbo].[CS_TotalBets_WagerAccount_Started_Master]
 	@CustID INT ,
 	@MatchId INT = 0,
 	@BettypeGroup SMALLINT = 0,
