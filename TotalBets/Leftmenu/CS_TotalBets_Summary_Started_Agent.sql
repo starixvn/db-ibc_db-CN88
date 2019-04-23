@@ -4,7 +4,7 @@ GO
 
 ALTER PROCEDURE [dbo].[CS_TotalBets_Summary_Started_Agent]
 	@CustId	INT,
-	@Type	TINYINT = 1
+	@Type	TINYINT = 5
 AS
 
 /*

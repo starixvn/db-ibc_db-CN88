@@ -57,7 +57,18 @@ BEGIN
 	
 	DECLARE @SporttypeList VARCHAR(MAX)	
 	SELECT @SporttypeList = COALESCE (@SporttypeList + ',', '') + CONVERT(VARCHAR(5),Sporttype) 
-	FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (1, @SporttypeGroup, 0, @isTest)	
+	FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (1, @SporttypeGroup, 0, @isTest)
+
+	---Get #EventInfoID
+	CREATE TABLE #EventInfo (MatchID INT, LeagueId INT, Sporttype INT, IsNeutral BIT, ShowtimeDT SMALLDATETIME, HomeId INT, AwayId INT,
+						LiveHomeScore INT, LiveAwayScore INT, HTHomeScore INT, HTAwayScore INT, OfferLive BIT, LiveType TINYINT, DateType TINYINT)
+	
+	INSERT INTO #EventInfo (MatchID, LeagueId, Sporttype, IsNeutral, ShowtimeDT, HomeId, AwayId,
+						  LiveHomeScore, LiveAwayScore, HTHomeScore, HTAwayScore, OfferLive, LiveType, DateType )
+	SELECT 	MatchID, LeagueId, Sporttype, IsNeutral, ShowtimeDT, HomeId, AwayId,
+			LiveHomeScore, LiveAwayScore, HTHomeScore, HTAwayScore, OfferLive, LiveType, DateType
+	FROM 	dbo.CS_f_TotalBets_Event_Sel (5, @isTest, @LeagueId, @SporttypeList)
+	
 	 	
 	CREATE TABLE #StartedData (
 				leagueid INT, 	
@@ -103,7 +114,7 @@ BEGIN
 				SUM (b.Stake * (apositiontaking)) AS Stake4,
 				SUM (b.Stake * (mpositiontaking + apositiontaking)) AS Stake7	
 			FROM bettrans b WITH (NOLOCK)
-				INNER JOIN dbo.CS_f_TotalBets_Event_Sel (5, @isTest, @LeagueId, @SporttypeList) AS m ON m.matchid = b.matchid 	
+				INNER JOIN #EventInfo AS m ON m.matchid = b.matchid 	
 				CROSS APPLY dbo.CS_f_BettypeGroupMatrix_Sel (0,0,b.Bettype,@IsTest) AS bg
 			WHERE  	
 				b.mrecommend = @CustId 
@@ -178,7 +189,7 @@ BEGIN
 	GROUP BY MatchID, LiveIndicator
 	
 	DROP TABLE #StartedData
-	
+	DROP TABLE #EventInfo
 	
 	 
 END
