@@ -208,7 +208,7 @@ BEGIN
 			-- Mix parlay of BRVS
 			IF (@BettypeGroup IN (2799,0) OR @SporttypeGroup IN(13,0) AND @IsLive IN (0,2))
 			BEGIN 				
-				INSERT INTO	#SuperCancelled (
+				INSERT INTO	#MasterCancelled (
 									CustId,
 									Username,
 									Name,
