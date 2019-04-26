@@ -19,6 +19,7 @@ Original:
 
 Revisions:
     - 20190307@Sophia: initial SP [Redmine: #109693] 
+	- 20190426@Sophia: SB only + Revise Sp  [Redmine: #112570]
 	
 Param's Explanation:
 	- @StakeCondition 	= 0 :  =
@@ -43,7 +44,19 @@ BEGIN
 	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
 
 	DECLARE @SporttypeList VARCHAR(MAX)	
-	SELECT @SporttypeList = COALESCE (@SporttypeList + ',', '') + CONVERT(VARCHAR(5),Sporttype) FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)	
+	SELECT @SporttypeList = COALESCE (@SporttypeList + ',', '') + CONVERT(VARCHAR(5),Sporttype) FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (1, @SporttypeGroup, 0, @isTest)	
+	
+	---Get event
+	CREATE TABLE #EventInfo (MatchID INT, LeagueId INT, Sporttype INT, IsNeutral BIT, ShowtimeDT SMALLDATETIME, HomeId INT, AwayId INT,
+						LiveHomeScore INT, LiveAwayScore INT, HTHomeScore INT, HTAwayScore INT, OfferLive BIT, LiveType TINYINT, DateType TINYINT)
+	
+	INSERT INTO #EventInfo (MatchID, LeagueId, Sporttype, IsNeutral, ShowtimeDT, HomeId, AwayId,
+						  LiveHomeScore, LiveAwayScore, HTHomeScore, HTAwayScore, OfferLive, LiveType, DateType )
+	SELECT 	MatchID, LeagueId, Sporttype, IsNeutral, ShowtimeDT, HomeId, AwayId,
+			LiveHomeScore, LiveAwayScore, HTHomeScore, HTAwayScore, OfferLive, LiveType, DateType
+	FROM 	dbo.CS_f_TotalBets_Event_Sel (4, @isTest, @LeagueId, @SporttypeList)
+	
+	
 		
 	SELECT  leagueid, MatchID, HomeId AS TeamId, 
 			Wager, 
@@ -71,7 +84,7 @@ BEGIN
 				SUM (b.Stake * (spositiontaking + mpositiontaking)) AS Stake6,
 				SUM (b.Stake * (mpositiontaking + apositiontaking)) AS Stake7
 			FROM bettrans b WITH (NOLOCK)
-				INNER JOIN dbo.CS_f_TotalBets_Event_Sel (4, @isTest, @LeagueId, @SporttypeList) AS m ON m.matchid = b.matchid 		 
+				INNER JOIN #EventInfo AS m ON m.matchid = b.matchid 		 
 			WHERE  	
 				b.srecommend = @CustId 
 				AND b.statusID IN (0,1) 

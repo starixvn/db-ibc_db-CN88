@@ -123,7 +123,7 @@ BEGIN
 				SUM (b.Stake * (mpositiontaking + apositiontaking)) AS Stake7	
 			FROM bettrans b WITH (NOLOCK)
 				INNER JOIN #EventInfo AS m ON m.matchid = b.matchid 	
-				CROSS APPLY dbo.CS_f_BettypeGroupMatrix_Sel (0,0,b.Bettype,@IsTest) AS bg
+				CROSS APPLY dbo.CS_f_BettypeGroupMatrix_Sel (1,0,b.Bettype,@IsTest) AS bg
 			WHERE  	
 				b.srecommend = @CustId 
 				AND b.statusID IN (0, 1, 111, 112, 113) 			
