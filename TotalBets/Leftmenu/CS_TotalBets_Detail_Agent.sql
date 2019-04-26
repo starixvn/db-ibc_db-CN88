@@ -15,7 +15,7 @@ AS
 
 	Revisions:
 		- 20190307@Percy: Initialize SP [RedmineID: #109693]
-		- 20190418@Percy: Return IsNeutral for Started [RedmineID: #112032]
+		- 20190418@Percy: Return IsNeutral [RedmineID: #112032]
 
 	Param's Explanation:
 		@Type:
