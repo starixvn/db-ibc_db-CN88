@@ -20,6 +20,7 @@ Original:
 
 Revisions:
     - 20190307@Sophia: initial SP [Redmine: #109693]
+	- 20190426@Sophia: Change kickofftime to GlobalShowTime [redmine: #112568]
  
 	
 Param's Explanation:
@@ -51,26 +52,26 @@ Param's Explanation:
 				m.HomeID, m.AwayID,  
 				m.livehomescore, m.liveawayscore, m.hthomescore, m.htawayscore, 
 				m.ShowTimeDT, r.OfferLive, 
-				CASE WHEN CONVERT(DATE,m.kickofftime) = CONVERT(DATE,CURRENT_TIMESTAMP) THEN 1 
-					ELSE CASE WHEN CONVERT(DATE,m.kickofftime) = DATEADD(DAY, -1, CONVERT(DATE,CURRENT_TIMESTAMP)) THEN 2
+				CASE WHEN CONVERT(DATE,m.GlobalShowTime) = CONVERT(DATE,CURRENT_TIMESTAMP) THEN 1 
+					ELSE CASE WHEN CONVERT(DATE,m.GlobalShowTime) = DATEADD(DAY, -1, CONVERT(DATE,CURRENT_TIMESTAMP)) THEN 2
 						ELSE 0 
 						END 
 					END AS DateType,
-				CASE WHEN CONVERT(DATE,m.kickofftime) > CONVERT(DATE,CURRENT_TIMESTAMP) THEN 3
-					ELSE CASE WHEN m.kickofftime <= CURRENT_TIMESTAMP THEN 1
+				CASE WHEN CONVERT(DATE,m.GlobalShowTime) > CONVERT(DATE,CURRENT_TIMESTAMP) THEN 3
+					ELSE CASE WHEN m.GlobalShowTime <= CURRENT_TIMESTAMP THEN 1
 							ELSE 2 							
 						END
 					END AS Type,
-				CASE WHEN m.kickofftime <= CURRENT_TIMESTAMP AND m.eventstatus NOT IN ('completed','Internal') THEN 1 ELSE 0 END AS LiveType
+				CASE WHEN m.GlobalShowTime <= CURRENT_TIMESTAMP AND m.eventstatus NOT IN ('completed','Internal') THEN 1 ELSE 0 END AS LiveType
 		FROM  dbo.Match m  WITH (NOLOCK) 
 		INNER JOIN dbo.Match_remark r WITH (NOLOCK) 
 			ON m.matchid = r.matchid		
 		WHERE   
 			m.eventstatus NOT IN ('completed','Internal')
 			AND (	
-					(CONVERT(DATE,m.kickofftime) > CONVERT(DATE,CURRENT_TIMESTAMP) AND @Type IN (0,3)) --- Early
-					OR (m.kickofftime <= CURRENT_TIMESTAMP AND @Type IN (0,1))   --- In Play 
-					OR (CONVERT(DATE,m.kickofftime) <= CONVERT(DATE,CURRENT_TIMESTAMP) AND m.kickofftime > CURRENT_TIMESTAMP AND @Type IN (0,2))  --- Today
+					(CONVERT(DATE,m.GlobalShowTime) > CONVERT(DATE,CURRENT_TIMESTAMP) AND @Type IN (0,3)) --- Early
+					OR (m.GlobalShowTime <= CURRENT_TIMESTAMP AND @Type IN (0,1))   --- In Play 
+					OR (CONVERT(DATE,m.GlobalShowTime) <= CONVERT(DATE,CURRENT_TIMESTAMP) AND m.GlobalShowTime > CURRENT_TIMESTAMP AND @Type IN (0,2))  --- Today
 				)
 			AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),m.Sporttype) + ',%' OR @SporttypeList = '')				
 			AND EXISTS ( SELECT 1 FROM League l WITH (NOLOCK) 
@@ -84,8 +85,8 @@ Param's Explanation:
 				m.HomeID, m.AwayID,  
 				m.livehomescore, m.liveawayscore, m.hthomescore, m.htawayscore, 
 				m.ShowTimeDT, r.OfferLive, 
-				CASE WHEN CONVERT(DATE,m.kickofftime) = CONVERT(DATE,CURRENT_TIMESTAMP) THEN 1 
-					ELSE CASE WHEN CONVERT(DATE,m.kickofftime) = DATEADD(DAY, -1, CONVERT(DATE,CURRENT_TIMESTAMP)) THEN 2
+				CASE WHEN CONVERT(DATE,m.GlobalShowTime) = CONVERT(DATE,CURRENT_TIMESTAMP) THEN 1 
+					ELSE CASE WHEN CONVERT(DATE,m.GlobalShowTime) = DATEADD(DAY, -1, CONVERT(DATE,CURRENT_TIMESTAMP)) THEN 2
 						ELSE 0 
 						END 
 					END AS DateType,
@@ -94,8 +95,8 @@ Param's Explanation:
 		FROM  dbo.Match m  WITH (NOLOCK) 
 		INNER JOIN dbo.Match_remark r WITH (NOLOCK) 
 			ON m.matchid = r.matchid		
-		WHERE   CONVERT(DATE,m.kickofftime) IN (CONVERT(DATE,CURRENT_TIMESTAMP), DATEADD(DAY, -1, CONVERT(DATE,CURRENT_TIMESTAMP)))
-				AND m.kickofftime <= CURRENT_TIMESTAMP 
+		WHERE   CONVERT(DATE,m.GlobalShowTime) IN (CONVERT(DATE,CURRENT_TIMESTAMP), DATEADD(DAY, -1, CONVERT(DATE,CURRENT_TIMESTAMP)))
+				AND m.GlobalShowTime <= CURRENT_TIMESTAMP 
 				AND @Type IN (0,5)  --- Started				
 			AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),m.Sporttype) + ',%' OR @SporttypeList = '')				
 			AND EXISTS ( SELECT 1 FROM League l WITH (NOLOCK) 
