@@ -35,7 +35,8 @@ BEGIN
 		CREATE TABLE #Sports (SportTypeGroup SMALLINT, SportType INT)
 		INSERT INTO #Sports (SportTypeGroup, SportType)
 		SELECT DISTINCT SportTypeGroup, SportType FROM dbo.CS_SportBettypeMatrix WITH (NOLOCK)
-		WHERE SportTypeGroup <> 9 -- Exclude Parlay
+		WHERE ProductId = 1 -- Sportsbook only
+			AND SportTypeGroup <> 9 -- Exclude Parlay
 			AND IsTest <= @isTest
 
 		CREATE TABLE #EventInfo (MatchId INT, SportType INT)
