@@ -15,6 +15,7 @@ Original:
 
 Revisions:
     - 20190307@Sophia: initial SP [Redmine: #109693]
+	- 20190418@Sophia: SB only [Redmine: #109521]
  
 	
 Param's Explanation:
@@ -35,7 +36,7 @@ BEGIN
 
 	--- Get Sporttype
 	DECLARE @SporttypeList VARCHAR(MAX)	
-	SELECT @SporttypeList = COALESCE (@SporttypeList + ',', '') + CONVERT(VARCHAR(5),Sporttype) FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)	
+	SELECT @SporttypeList = COALESCE (@SporttypeList + ',', '') + CONVERT(VARCHAR(5),Sporttype) FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (1, @SporttypeGroup, 0, @isTest)	
 		
 	SELECT DISTINCT LeagueID from dbo.CS_f_TotalBets_Event_Sel (@Type, @isTest, 0, @SporttypeList) 
 	 
