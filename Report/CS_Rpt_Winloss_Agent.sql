@@ -258,7 +258,7 @@ BEGIN
 				WHERE b.matchid = 2799 AND b.bettype = 2799
 					AND b.winlostdate BETWEEN @FDate AND @TDate
 					AND b.StatusID IN (111,112,113)
-					AND EXISTS (SELECT 1 FROM #AgentList sl WHERE sl.AgentId = b.mrecommend)
+					AND EXISTS (SELECT 1 FROM #AgentList sl WHERE sl.AgentId = b.recommend)
 				GROUP BY recommend
 			END	
 				
