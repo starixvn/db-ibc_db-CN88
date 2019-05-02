@@ -20,6 +20,7 @@ Original:
 
 Revisions:
     - 20190307@Sophia: initial SP [Redmine: #109693]
+	- 20190427@Sophia: Change KOtime to GlobalShowtime & get code isTest <= @isTest [redmine: #112570]
  
 	
 Param's Explanation:
@@ -42,7 +43,7 @@ Param's Explanation:
 			ON l.leagueid = o.leagueid
 		WHERE o.oddsstatus IN ('Running','suspend', 'closed', 'closePrice') 								
 				AND @Type IN (0,4)	
-				-- AND l.isTest <= @isTest
+				AND l.isTest <= @isTest
 				AND (l.leagueid = @leagueid OR @leagueid = 0)
 				AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),l.Sporttype) + ',%' OR @SporttypeList = '')
 				
@@ -78,7 +79,7 @@ Param's Explanation:
 			AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),m.Sporttype) + ',%' OR @SporttypeList = '')				
 			AND EXISTS ( SELECT 1 FROM League l WITH (NOLOCK) 
 						 WHERE l.leagueid = m.leagueid 
-								-- AND l.isTest <= @isTest
+								AND l.isTest <= @isTest
 								AND (leagueid = @leagueid OR @leagueid = 0)								
 								)
 								
@@ -103,7 +104,7 @@ Param's Explanation:
 			AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),m.Sporttype) + ',%' OR @SporttypeList = '')				
 			AND EXISTS ( SELECT 1 FROM League l WITH (NOLOCK) 
 						 WHERE l.leagueid = m.leagueid 
-								-- AND l.isTest <= @isTest
+								AND l.isTest <= @isTest
 								AND (leagueid = @leagueid OR @leagueid = 0)								
 								)
 GO
