@@ -59,11 +59,11 @@ Param's Explanation:
 						END 
 					END AS DateType,
 				CASE WHEN m.GlobalShowTime >= CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE()+1)) THEN 3  --- early
-					ELSE CASE WHEN m.GlobalShowTime <= CURRENT_TIMESTAMP THEN 1 --- in play
+					ELSE CASE WHEN m.GlobalShowTime <= CONVERT(SMALLDATETIME,GETDATE())  THEN 1 --- in play
 							ELSE 2   --- Today					
 						END
 					END AS Type,
-				CASE WHEN m.GlobalShowTime <= CURRENT_TIMESTAMP AND m.eventstatus NOT IN ('completed','Internal') THEN 1 ELSE 0 END AS LiveType
+				CASE WHEN m.GlobalShowTime <= CONVERT(SMALLDATETIME,GETDATE())  AND m.eventstatus NOT IN ('completed','Internal') THEN 1 ELSE 0 END AS LiveType
 		FROM  dbo.Match m  WITH (NOLOCK) 
 		INNER JOIN dbo.Match_remark r WITH (NOLOCK) 
 			ON m.matchid = r.matchid		
@@ -72,9 +72,9 @@ Param's Explanation:
 			AND (	
 					( m.GlobalShowTime >= CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE()+1))  --- Begin of tomorrow	
 					  AND @Type IN (0,3)) --- Early
-					OR (m.GlobalShowTime <= CURRENT_TIMESTAMP AND @Type IN (0,1))   --- In Play 
+					OR (m.GlobalShowTime <= CONVERT( SMALLDATETIME,GETDATE())  AND @Type IN (0,1))   --- In Play 
 					OR ( m.GlobalShowTime < CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE()+1)) --- Begin of tomorrow		
-						 AND m.GlobalShowTime > CURRENT_TIMESTAMP AND @Type IN (0,2))  --- Today
+						 AND m.GlobalShowTime > CONVERT(SMALLDATETIME,GETDATE())  AND @Type IN (0,2))  --- Today
 				)
 			AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),m.Sporttype) + ',%' OR @SporttypeList = '')				
 			AND EXISTS ( SELECT 1 FROM League l WITH (NOLOCK) 
@@ -98,8 +98,8 @@ Param's Explanation:
 		FROM  dbo.Match m  WITH (NOLOCK) 
 		INNER JOIN dbo.Match_remark r WITH (NOLOCK) 
 			ON m.matchid = r.matchid		
-		WHERE   m.GlobalShowTime >= CONVERT( SMALLDATETIME,CONVERT(DATE, GETDATE()-1)) --- Begin of yesterday				
-				AND m.GlobalShowTime <= CURRENT_TIMESTAMP 
+		WHERE   m.GlobalShowTime >= CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE()-1)) --- Begin of yesterday				
+				AND m.GlobalShowTime <= CONVERT(SMALLDATETIME,GETDATE())  
 				AND @Type IN (0,5)  --- Started				
 			AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),m.Sporttype) + ',%' OR @SporttypeList = '')				
 			AND EXISTS ( SELECT 1 FROM League l WITH (NOLOCK) 
