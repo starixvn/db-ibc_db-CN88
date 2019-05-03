@@ -7,8 +7,7 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Outstanding_Master]
 	@CustId				INT = 0,	 
 	@IsOwner			BIT = 1,
 	@FromDate			SMALLDATETIME,
-	@ToDate				SMALLDATETIME,	
-	@ProductId			SMALLINT = 1,
+	@ToDate				SMALLDATETIME,	 
 	@SporttypeGroup		SMALLINT = 0, -- all
 	@BettypeGroup		SMALLINT = 0, -- all
 	@IsLive				TINYINT = 2 -- all
@@ -167,7 +166,7 @@ BEGIN
 					(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
 					OR
 					(EXISTS (SELECT 1 FROM @VSOutrightList r WHERE r.MatchID = b.MatchID) AND (@SporttypeGroup IN (13, 0)) ) --- VS
-					OR @SporttypeGroup IN(0,9,12)  --- Parlay (sport), KN, LT
+					OR @SporttypeGroup IN(0,9)  --- All, Parlay (sport)
 					)
 				AND (   @IsLive = 2   --- all
 						OR
@@ -236,7 +235,7 @@ BEGIN
 				AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.gameID AND RefTable = 3)	
 				AND (
 					EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.eventID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))	
-					OR @SporttypeGroup IN(0)  ---all
+					OR @SporttypeGroup IN (0,12)  --- All, KN, LT
 					)
 				AND (   @IsLive = 2   --- all
 						OR  b.Liveindicator = @IsLive					 
