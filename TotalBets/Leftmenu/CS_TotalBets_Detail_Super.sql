@@ -15,7 +15,8 @@ AS
 
 	Revisions:
 		- 20190307@Percy: Initialize SP [RedmineID: #109693]
-		- 20190418@Percy: Support SB only + Return IsNeutral [RedmineID: #109521]
+		- 20190418@Percy: Return IsNeutral [RedmineID: #112032]
+		- 20190418@Percy: Support SB only [RedmineID: #109521]
 
 	Param's Explanation:
 		@Type:
@@ -23,7 +24,6 @@ AS
 			2 = 'Today'
 			3 = 'Early'
 			4 = 'Outright'
-			5 = 'Started'
 */
 
 BEGIN
