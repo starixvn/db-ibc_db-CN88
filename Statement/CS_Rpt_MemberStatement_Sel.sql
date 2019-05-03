@@ -18,6 +18,7 @@ AS
 
 	Revisions:
 		- 20190227@Percy: Initialize SP [RedmineID: #105660]
+		- 20190328@Percy: Implement Non-Sports [RedmineID: #109521]
 */
 
 BEGIN
@@ -36,6 +37,8 @@ BEGIN
 
 	-- Get Bet Type List
 	DECLARE @BetTypeList TABLE (BetType INT, EventType INT)
+
+	INSERT INTO @BetTypeList (BetType, EventType)
 	SELECT DISTINCT BetType, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SporttypeGroup, 0, @isTest)
 	-- End Get Bet Type List
 
