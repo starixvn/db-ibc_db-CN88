@@ -103,22 +103,17 @@ BEGIN
 	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
 
 	------ Get Bettype Matrix------	
-	DECLARE @BettypeList TABLE (ProductID INT, Bettype SMALLINT)
+	DECLARE @BettypeList TABLE (ProductID INT, Bettype SMALLINT, EventType TINYINT)
 	INSERT INTO @BettypeList
-	SELECT ProductID, Bettype FROM bodb02.dbo.CS_f_BettypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
-	--- End get Bettype 
-
+	SELECT DISTINCT ProductID, Bettype, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
 
 	--- 3. Get Sporttype
-
-	DECLARE @SporttypeList AS TABLE (Sporttype SMALLINT PRIMARY KEY, ProductID INT)	
-		 
+	DECLARE @SporttypeList TABLE (Sporttype SMALLINT PRIMARY KEY, ProductID INT)	
 	INSERT INTO @SporttypeList
-	SELECT DISTINCT Sporttype, ProductID FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
-
+	SELECT DISTINCT Sporttype, ProductID FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
 	
 	--- 4. get Outright by sports	
-	DECLARE @OutrightList AS TABLE (MatchID INT)
+	DECLARE @OutrightList TABLE (MatchID INT)
 
 	IF @BettypeGroup IN (10, 0) --- bettype is Outright or ALL
 	BEGIN 
@@ -131,24 +126,26 @@ BEGIN
 	END 		 
 
 	--- 5. get VSOutright by sports	
-	DECLARE @VSOutrightList AS TABLE (MatchID INT)
+	DECLARE @VSOutrightList TABLE (MatchID INT)
 	
-	IF @SporttypeGroup IN (13, 0) 
+	IF @SporttypeGroup IN (13, 0)
 	BEGIN 
 		INSERT INTO @VSOutrightList (MatchID) 
-		SELECT o.EventID 		
-		FROM dbo.VSOutright o WITH (NOLOCK)
-		INNER JOIN dbo.VSRaceInfo r WITH(NOLOCK) ON o.EventID = r.EventID		
+		SELECT r.EventID
+		FROM dbo.VSRaceInfo r WITH (NOLOCK)
 		WHERE r.Sporttype IN (SELECT Sporttype FROM @SporttypeList)
-			AND o.eventdate BETWEEN @FromDate AND @ToDate		
-					
-	END 
+			AND EXISTS (
+				SELECT 1 FROM dbo.VSOutright o WITH (NOLOCK)
+				WHERE o.EventID = r.EventID
+					AND o.eventdate BETWEEN @FromDate AND @ToDate	
+			)
+	END
 	
 		
 	----5. Get Tier 0 Poss
 	IF @IsOwner = 0
 	BEGIN 
-		DECLARE @ExtraPT AS TABLE (SuperID INT, ExtraPT DECIMAL(9,8), FromDate DATETIME, ToDate DATETIME, ProductID TINYINT)----, Sporttype SMALLINT, SubProduct VARCHAR (50) )
+		DECLARE @ExtraPT TABLE (SuperID INT, ExtraPT DECIMAL(9,8), FromDate DATETIME, ToDate DATETIME, ProductID TINYINT)----, Sporttype SMALLINT, SubProduct VARCHAR (50) )
 
 		INSERT INTO @ExtraPT (SuperID, ExtraPT, FromDate, ToDate, ProductID)---, Sporttype, SubProduct)
 		SELECT DISTINCT e.SuperID, e.ExtraPT, e.FromDate, e.ToDate, e.ProductId----, Sporttype, SubProduct 
@@ -237,12 +234,10 @@ BEGIN
 			AND b.StatusID IN (111,112,113)
 			AND EXISTS (SELECT 1 FROM #SuperList sl WHERE sl.SuperID = b.srecommend)		
 			AND (
-					EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))   ---SB, NG, VS, VS2
-					OR
-					(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
-					OR
-					(EXISTS (SELECT 1 FROM @VSOutrightList r WHERE r.MatchID = b.MatchID) AND (@SporttypeGroup IN (13, 0)) ) --- VS
-					OR @SporttypeGroup IN(0,9,12)  --- Parlay (sport), KN, LT
+					bt.EventType = 0  --- bettrans only
+					OR EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND bt.EventType = 1)
+					OR EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID AND bt.EventType = 2)
+					OR EXISTS (SELECT 1 FROM @VSOutrightList r WHERE r.MatchID = b.MatchID AND bt.EventType = 3)
 				)
 			AND (   @IsLive = 2   --- all
 					OR
