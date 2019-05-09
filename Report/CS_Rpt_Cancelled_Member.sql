@@ -165,7 +165,7 @@ BEGIN
 					AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)	
 					AND (
 						bt.EventType = 0  --- bettrans only
-						OR EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND bt.EventType = 1)
+						OR EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) INNER JOIN @SporttypeList s ON m.sporttype = s.Sporttype WHERE m.MatchID = b.MatchID AND bt.EventType = 1)
 						OR EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID AND bt.EventType = 2)
 						OR EXISTS (SELECT 1 FROM @VSOutrightList r WHERE r.MatchID = b.MatchID AND bt.EventType = 3)
 					)
@@ -244,7 +244,7 @@ BEGIN
 					AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)	
 					AND (
 						bt.EventType = 0  --- bettrans only
-						OR EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND bt.EventType = 1)
+						OR EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) INNER JOIN @SporttypeList s ON m.sporttype = s.Sporttype WHERE m.MatchID = b.MatchID AND bt.EventType = 1)
 						OR EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID AND bt.EventType = 2)
 						OR EXISTS (SELECT 1 FROM @VSOutrightList r WHERE r.MatchID = b.MatchID AND bt.EventType = 3)
 					)
