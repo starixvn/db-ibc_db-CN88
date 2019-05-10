@@ -118,10 +118,10 @@ BEGIN
 			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
 			SELECT t.WinlostDate, t.Stake, t.ValidStake, t.WinLoss
 			FROM #tmpData t
-				INNER JOIN dbo.VSOutright o WITH (NOLOCK) ON t.MatchId = o.EventID
-				INNER JOIN dbo.VSRaceInfo r WITH (NOLOCK) ON o.EventID = r.EventID
+				INNER JOIN dbo.VSRaceInfo r WITH (NOLOCK) ON t.MatchId = r.EventID
 				INNER JOIN @SportTypeList s ON r.sporttype = s.SportType
-			WHERE o.eventdate > @MoveBetsDay AND t.EventType = 3
+			WHERE t.EventType = 3
+				AND EXISTS (SELECT 1 FROM dbo.VSOutright o WITH (NOLOCK) WHERE o.EventID = r.EventID AND o.eventdate > @MoveBetsDay)
 		END
 
 		IF @FromDate <= @MoveBetsDay
@@ -147,10 +147,10 @@ BEGIN
 			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
 			SELECT t.WinlostDate, t.Stake, t.ValidStake, t.WinLoss
 			FROM #tmpData t
-				INNER JOIN dbo.VSOutright14 o WITH (NOLOCK) ON t.MatchId = o.EventID
-				INNER JOIN dbo.VSRaceInfo r WITH (NOLOCK) ON o.EventID = r.EventID
+				INNER JOIN dbo.VSRaceInfo r WITH (NOLOCK) ON t.MatchId = r.EventID
 				INNER JOIN @SportTypeList s ON r.sporttype = s.SportType
-			WHERE o.eventdate <= @MoveBetsDay AND t.EventType = 3
+			WHERE t.EventType = 3
+				AND EXISTS (SELECT 1 FROM dbo.VSOutright14 o WITH (NOLOCK) WHERE o.EventID = r.EventID AND o.eventdate <= @MoveBetsDay)
 		END
 	END
 	
