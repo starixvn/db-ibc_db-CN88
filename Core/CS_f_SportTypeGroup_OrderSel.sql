@@ -16,6 +16,7 @@ AS
 
 	Revisions:
 		- 20190307@Percy: Initialize function [RedmineID: #105660]
+		- 20190328@Percy: Add Number Game/Happy 5, Keno/Lottery, Virtual Sports/Virtual Sports 2 [RedmineID: #109521]
 
 	Param's Explanation:
 		@Type: 1 for Report, 2 for Total Bets
