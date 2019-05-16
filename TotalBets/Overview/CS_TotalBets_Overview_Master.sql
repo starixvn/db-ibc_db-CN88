@@ -14,6 +14,7 @@ AS
 
 	Revisions:
 		- 20190307@Percy: Initialize SP [RedmineID: #109693]
+		- 20190418@Percy: Support SB only [RedmineID: #109521]
 
 	Param's Explanation:
 		@PossType:
@@ -39,7 +40,8 @@ BEGIN
 		CREATE TABLE #Sports (SportTypeGroup SMALLINT, SportType INT)
 		INSERT INTO #Sports (SportTypeGroup, SportType)
 		SELECT DISTINCT SportTypeGroup, SportType FROM dbo.CS_SportBettypeMatrix WITH (NOLOCK)
-		WHERE SportTypeGroup <> 9 -- Exclude Parlay
+		WHERE ProductId = 1 -- Sportsbook only
+			AND SportTypeGroup <> 9 -- Exclude Parlay
 			AND IsTest <= @isTest
 
 		CREATE TABLE #EventInfo (MatchId INT, SportType INT, Type TINYINT)

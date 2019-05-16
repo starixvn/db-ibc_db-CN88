@@ -20,6 +20,7 @@ Original:
 
 Revisions:
     - 20190307@Sophia: initial SP [Redmine: #109693]
+	- 20190427@Sophia: Change KOtime to GlobalShowtime & get code isTest <= @isTest [redmine: #112570]
  
 	
 Param's Explanation:
@@ -32,6 +33,7 @@ Param's Explanation:
 	@LeagueId = 0 : all
 
 */
+		
 
 		SELECT DISTINCT o.orId as MatchID, o.leagueid, l.sporttype, 0 AS IsNeutral,
 			   o.teamId As HomeID, 0 As AwayID, 0 AS livehomescore, 0 AS liveawayscore, 0 AS hthomescore, 0 AS htawayscore, 
@@ -41,7 +43,7 @@ Param's Explanation:
 			ON l.leagueid = o.leagueid
 		WHERE o.oddsstatus IN ('Running','suspend', 'closed', 'closePrice') 								
 				AND @Type IN (0,4)	
-				-- AND l.isTest <= @isTest
+				AND l.isTest <= @isTest
 				AND (l.leagueid = @leagueid OR @leagueid = 0)
 				AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),l.Sporttype) + ',%' OR @SporttypeList = '')
 				
@@ -51,31 +53,33 @@ Param's Explanation:
 				m.HomeID, m.AwayID,  
 				m.livehomescore, m.liveawayscore, m.hthomescore, m.htawayscore, 
 				m.ShowTimeDT, r.OfferLive, 
-				CASE WHEN CONVERT(DATE,m.kickofftime) = CONVERT(DATE,CURRENT_TIMESTAMP) THEN 1 
-					ELSE CASE WHEN CONVERT(DATE,m.kickofftime) = DATEADD(DAY, -1, CONVERT(DATE,CURRENT_TIMESTAMP)) THEN 2
+				CASE WHEN m.GlobalShowTime >= CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE())) AND m.GlobalShowTime < CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE()+1)) THEN 1 --- today
+					ELSE CASE WHEN m.GlobalShowTime >= CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE()-1)) AND m.GlobalShowTime < CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE())) THEN 2   --- Yesterday
 						ELSE 0 
 						END 
 					END AS DateType,
-				CASE WHEN CONVERT(DATE,m.kickofftime) > CONVERT(DATE,CURRENT_TIMESTAMP) THEN 3
-					ELSE CASE WHEN m.kickofftime <= CURRENT_TIMESTAMP THEN 1
-							ELSE 2 							
+				CASE WHEN m.GlobalShowTime >= CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE()+1)) THEN 3  --- early
+					ELSE CASE WHEN m.GlobalShowTime <= CONVERT(SMALLDATETIME,GETDATE())  THEN 1 --- in play
+							ELSE 2   --- Today					
 						END
 					END AS Type,
-				CASE WHEN m.kickofftime <= CURRENT_TIMESTAMP AND m.eventstatus NOT IN ('completed','Internal') THEN 1 ELSE 0 END AS LiveType
+				CASE WHEN m.GlobalShowTime <= CONVERT(SMALLDATETIME,GETDATE())  AND m.eventstatus NOT IN ('completed','Internal') THEN 1 ELSE 0 END AS LiveType
 		FROM  dbo.Match m  WITH (NOLOCK) 
 		INNER JOIN dbo.Match_remark r WITH (NOLOCK) 
 			ON m.matchid = r.matchid		
 		WHERE   
 			m.eventstatus NOT IN ('completed','Internal')
 			AND (	
-					(CONVERT(DATE,m.kickofftime) > CONVERT(DATE,CURRENT_TIMESTAMP) AND @Type IN (0,3)) --- Early
-					OR (m.kickofftime <= CURRENT_TIMESTAMP AND @Type IN (0,1))   --- In Play 
-					OR (CONVERT(DATE,m.kickofftime) <= CONVERT(DATE,CURRENT_TIMESTAMP) AND m.kickofftime > CURRENT_TIMESTAMP AND @Type IN (0,2))  --- Today
+					( m.GlobalShowTime >= CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE()+1))  --- Begin of tomorrow	
+					  AND @Type IN (0,3)) --- Early
+					OR (m.GlobalShowTime <= CONVERT( SMALLDATETIME,GETDATE())  AND @Type IN (0,1))   --- In Play 
+					OR ( m.GlobalShowTime < CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE()+1)) --- Begin of tomorrow		
+						 AND m.GlobalShowTime > CONVERT(SMALLDATETIME,GETDATE())  AND @Type IN (0,2))  --- Today
 				)
 			AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),m.Sporttype) + ',%' OR @SporttypeList = '')				
 			AND EXISTS ( SELECT 1 FROM League l WITH (NOLOCK) 
 						 WHERE l.leagueid = m.leagueid 
-								-- AND l.isTest <= @isTest
+								AND l.isTest <= @isTest
 								AND (leagueid = @leagueid OR @leagueid = 0)								
 								)
 								
@@ -84,8 +88,8 @@ Param's Explanation:
 				m.HomeID, m.AwayID,  
 				m.livehomescore, m.liveawayscore, m.hthomescore, m.htawayscore, 
 				m.ShowTimeDT, r.OfferLive, 
-				CASE WHEN CONVERT(DATE,m.kickofftime) = CONVERT(DATE,CURRENT_TIMESTAMP) THEN 1 
-					ELSE CASE WHEN CONVERT(DATE,m.kickofftime) = DATEADD(DAY, -1, CONVERT(DATE,CURRENT_TIMESTAMP)) THEN 2
+				CASE WHEN m.GlobalShowTime >= CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE())) AND m.GlobalShowTime < CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE()+1)) THEN 1 --- today
+					ELSE CASE WHEN m.GlobalShowTime >= CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE()-1)) AND m.GlobalShowTime < CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE())) THEN 2   --- Yesterday
 						ELSE 0 
 						END 
 					END AS DateType,
@@ -94,13 +98,13 @@ Param's Explanation:
 		FROM  dbo.Match m  WITH (NOLOCK) 
 		INNER JOIN dbo.Match_remark r WITH (NOLOCK) 
 			ON m.matchid = r.matchid		
-		WHERE   CONVERT(DATE,m.kickofftime) IN (CONVERT(DATE,CURRENT_TIMESTAMP), DATEADD(DAY, -1, CONVERT(DATE,CURRENT_TIMESTAMP)))
-				AND m.kickofftime <= CURRENT_TIMESTAMP 
+		WHERE   m.GlobalShowTime >= CONVERT(SMALLDATETIME,CONVERT(DATE, GETDATE()-1)) --- Begin of yesterday				
+				AND m.GlobalShowTime <= CONVERT(SMALLDATETIME,GETDATE())  
 				AND @Type IN (0,5)  --- Started				
 			AND (','+@SporttypeList+',' LIKE '%,'+ CONVERT(VARCHAR(5),m.Sporttype) + ',%' OR @SporttypeList = '')				
 			AND EXISTS ( SELECT 1 FROM League l WITH (NOLOCK) 
 						 WHERE l.leagueid = m.leagueid 
-								-- AND l.isTest <= @isTest
+								AND l.isTest <= @isTest
 								AND (leagueid = @leagueid OR @leagueid = 0)								
 								)
 GO

@@ -16,6 +16,7 @@ AS
 	Revisions:
 		- 20190307@Percy: Initialize SP [RedmineID: #109693]
 		- 20190418@Percy: Return IsNeutral [RedmineID: #112032]
+		- 20190418@Percy: Support SB only [RedmineID: #109521]
 
 	Param's Explanation:
 		@Type:
@@ -38,6 +39,7 @@ BEGIN
 		INSERT INTO #Sports (SportTypeGroup, SportType)
 		SELECT DISTINCT SportTypeGroup, SportType FROM dbo.CS_SportBettypeMatrix WITH (NOLOCK)
 		WHERE SportTypeGroup = @SportTypeGroup
+			AND ProductID = 1 -- Sportsbook only
 			AND SportTypeGroup <> 9 -- Exclude Parlay
 			AND IsTest <= @isTest
 
