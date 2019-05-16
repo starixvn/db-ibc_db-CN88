@@ -52,18 +52,24 @@ BEGIN
 	-- VSOutright
 	INSERT INTO #tmpMatch (EventDate, SportTypeGroup, CompletedEvent, IncompletedEvent)
 	SELECT
-		EventDate			= o.eventdate
-		,SportTypeGroup		= s.SportTypeGroup
-		,CompletedEvent		= SUM(CASE WHEN o.EventStatus IN ('Completed', 'refund') THEN 1 ELSE 0 END)
-		,IncompletedEvent	= SUM(CASE WHEN o.EventStatus NOT IN ('Completed', 'refund') THEN 1 ELSE 0 END)
-	FROM dbo.VSOutright o WITH (NOLOCK)
-		INNER JOIN dbo.VSRaceInfo r WITH (NOLOCK) ON o.EventID = r.EventID
-		INNER JOIN #Sports s ON r.sporttype = s.SportType
-	WHERE o.eventdate BETWEEN @yesterday AND @today
-		AND o.EventStatus <> 'closed'
+		EventDate			= m.EventDate
+		,SportTypeGroup		= m.SportTypeGroup
+		,CompletedEvent		= SUM(CASE WHEN m.EventStatus IN ('Completed', 'refund') THEN 1 ELSE 0 END)
+		,IncompletedEvent	= SUM(CASE WHEN m.EventStatus NOT IN ('Completed', 'refund') THEN 1 ELSE 0 END)
+	FROM (
+		SELECT r.LeagueID, o.EventDate, s.SportTypeGroup, MAX(r.EventStatus) AS EventStatus
+		FROM dbo.VSOutright o WITH (NOLOCK)
+			INNER JOIN dbo.VSRaceInfo r WITH (NOLOCK) ON o.EventID = r.EventID
+			INNER JOIN #Sports s ON r.sporttype = s.SportType
+		WHERE o.eventdate BETWEEN @yesterday AND @today
+			AND r.EventStatus <> 'closed'
+		GROUP BY r.LeagueID, o.EventDate, s.SportTypeGroup, r.EventTime
+	) AS m
+		INNER JOIN dbo.League l WITH (NOLOCK) ON m.LeagueID = l.LeagueID
+	WHERE l.isTest <= @isTest
 	GROUP BY
-		o.EventDate
-		,s.SportTypeGroup
+		m.EventDate
+		,m.SportTypeGroup
 
 	;WITH CTE_Sports AS (
 		SELECT DISTINCT e.EventDate, s.SportTypeGroup
