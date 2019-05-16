@@ -12,6 +12,7 @@ AS
 
 	Revisions:
 		- 20190214@Percy: Initialize SP [RedmineID: #105338]
+		- 20190328@Percy: Exclude Keno/Lottery [RedmineID: #109521]
 */
 
 BEGIN
@@ -26,7 +27,7 @@ BEGIN
 	CREATE TABLE #Sports (SportTypeGroup INT, SportType INT)
 	INSERT INTO #Sports (SportTypeGroup, SportType)
 	SELECT DISTINCT SportTypeGroup, SportType FROM dbo.CS_SportBettypeMatrix WITH (NOLOCK)
-	WHERE SportTypeGroup <> 9 -- Exclude Parlay
+	WHERE SportTypeGroup NOT IN (9, 12) -- Exclude Parlay, Keno/Lottery
 		AND IsTest <= @isTest
 
 	CREATE TABLE #tmpMatch (EventDate SMALLDATETIME, SportTypeGroup INT, CompletedEvent INT, IncompletedEvent INT)
@@ -46,6 +47,22 @@ BEGIN
 		AND l.isTest <= @isTest
 	GROUP BY
 		m.EventDate
+		,s.SportTypeGroup
+
+	-- VSOutright
+	INSERT INTO #tmpMatch (EventDate, SportTypeGroup, CompletedEvent, IncompletedEvent)
+	SELECT
+		EventDate			= o.eventdate
+		,SportTypeGroup		= s.SportTypeGroup
+		,CompletedEvent		= SUM(CASE WHEN o.EventStatus IN ('Completed', 'refund') THEN 1 ELSE 0 END)
+		,IncompletedEvent	= SUM(CASE WHEN o.EventStatus NOT IN ('Completed', 'refund') THEN 1 ELSE 0 END)
+	FROM dbo.VSOutright o WITH (NOLOCK)
+		INNER JOIN dbo.VSRaceInfo r WITH (NOLOCK) ON o.EventID = r.EventID
+		INNER JOIN #Sports s ON r.sporttype = s.SportType
+	WHERE o.eventdate BETWEEN @yesterday AND @today
+		AND o.EventStatus <> 'closed'
+	GROUP BY
+		o.EventDate
 		,s.SportTypeGroup
 
 	;WITH CTE_Sports AS (

@@ -22,11 +22,13 @@ AS
 	DB: DBAGE.bodb02	
 	Revisions:
 		- 20190214@Sophia: Create new [RedmineID: #105660] 
+		- 20190329@Sophia: Implement Non Sports [Redmine: #109521]
+		
 	Param's Explanation:
 		- @CustId: AgentID
 		- @IsOwner: Upline view Member , @IsOwner = 0
 		- @ProductId: default = 1: Sportsbook
-		- @Bettype: default = 0: all
+		- @BettypeGroup: default = 0: all
 		- @SporttypeGroup: default = 0: All
 		- @IsLive: default = 2: All
 						= 1: Live
@@ -79,28 +81,23 @@ BEGIN
 				AND RoleID = 1
 	END
 	
-	
-	
 	--- 2. Get Bettype
 	------ Check SP Version
 	DECLARE @isTest BIT = 0
 	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
 
 	------ Get Bettype Matrix------	
-	DECLARE @BettypeList TABLE (ProductID INT, Bettype SMALLINT)
+	DECLARE @BettypeList TABLE (ProductID INT, Bettype SMALLINT, EventType TINYINT)
 	INSERT INTO @BettypeList
-	SELECT ProductID, Bettype FROM bodb02.dbo.CS_f_BettypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
-	--- End get Bettype 
-
+	SELECT DISTINCT ProductID, Bettype, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
 
 	--- 3. Get Sporttype
-	DECLARE @SporttypeList AS TABLE (Sporttype SMALLINT PRIMARY KEY, ProductID INT)	
-		 
+	DECLARE @SporttypeList TABLE (Sporttype SMALLINT PRIMARY KEY, ProductID INT)	
 	INSERT INTO @SporttypeList
-	SELECT DISTINCT Sporttype, ProductID FROM bodb02.dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
+	SELECT DISTINCT Sporttype, ProductID FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
 	
 	--- 4. get Outright by sports	
-	DECLARE @OutrightList AS TABLE (MatchID INT)
+	DECLARE @OutrightList TABLE (MatchID INT)
 
 	IF @BettypeGroup IN (10, 0) --- bettype is Outright or ALL
 	BEGIN 
@@ -111,7 +108,22 @@ BEGIN
 		WHERE l.Sporttype IN (SELECT Sporttype FROM @SporttypeList)
 			AND m.eventdate BETWEEN @FromDate AND @ToDate			
 	END 		 
-		
+	
+	--- 5. get VSOutright by sports	
+	DECLARE @VSOutrightList TABLE (MatchID INT)
+	
+	IF @SporttypeGroup IN (13, 0) 
+	BEGIN 
+		INSERT INTO @VSOutrightList (MatchID) 
+		SELECT r.EventID
+		FROM dbo.VSRaceInfo r WITH (NOLOCK)
+		WHERE r.Sporttype IN (SELECT Sporttype FROM @SporttypeList)
+			AND EXISTS (
+				SELECT 1 FROM dbo.VSOutright o WITH (NOLOCK)
+				WHERE o.EventID = r.EventID
+					AND o.eventdate BETWEEN @FromDate AND @ToDate	
+			)
+	END
   	
 	--- 5. Get report
 	------5.1. bettrans range
@@ -142,7 +154,8 @@ BEGIN
 									'' AS Name,
 									COUNT(TransID) AS Wagers,
 									SUM(Stake) AS Stake
-				FROM	dbo.bettrans b WITH (NOLOCK)							
+				FROM	dbo.bettrans b WITH (NOLOCK)
+						INNER JOIN @BettypeList bt ON bt.Bettype = b.Bettype
 				WHERE	b.winlostdate BETWEEN @FDate AND @TDate
 					AND b.StatusID IN (101,102,103)
 					AND CASE WHEN b.ExtraInfo LIKE '%p1%' THEN
@@ -150,13 +163,12 @@ BEGIN
 									ELSE 0
 								END <> 1
 					AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)	
-					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.Bettype)	
 					AND (
-						EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
-						OR
-						(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
-						OR @SporttypeGroup IN(0,9)  --- Parlay (sport)
-						)
+						bt.EventType = 0  --- bettrans only
+						OR EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) INNER JOIN @SporttypeList s ON m.sporttype = s.Sporttype WHERE m.MatchID = b.MatchID AND bt.EventType = 1)
+						OR EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID AND bt.EventType = 2)
+						OR EXISTS (SELECT 1 FROM @VSOutrightList r WHERE r.MatchID = b.MatchID AND bt.EventType = 3)
+					)
 					AND (   @IsLive = 2   --- all
 							OR
 							(b.bettype <> 29 AND b.Liveindicator = @IsLive)
@@ -168,8 +180,41 @@ BEGIN
 																	SELECT 1 AS IsLive WHERE @IsLive = 1																		
 																	)
 							)
-						)					  	
+						)		
+					AND b.Bettype <> 2799					
 				GROUP BY CustId
+				
+				-- Mix parlay of BRVS
+				IF (@BettypeGroup IN (2799,0) OR @SporttypeGroup IN(13,0) AND @IsLive IN (0,2))
+				BEGIN 				
+					INSERT INTO	#MemberCancelled (
+											CustId,
+											Username,
+											Name,
+											Wagers,
+											Stake 
+											) 											
+					SELECT
+									CustId,
+									'' AS Username,
+									'' AS Name,
+									COUNT(TransID) AS Wagers,
+									SUM(Stake) AS Stake
+					FROM dbo.bettrans b WITH (NOLOCK)
+						CROSS APPLY (
+							SELECT TOP 1 m.sporttype
+							FROM dbo.bettransm bm WITH (NOLOCK)
+								INNER JOIN dbo.match m WITH (NOLOCK) ON bm.matchid = m.matchid				
+							WHERE bm.refno = b.refno
+								  AND m.sporttype IN (Select Sporttype FROM @SporttypeList)
+							) AS s
+					WHERE b.matchid = 2799 AND b.bettype = 2799
+						AND b.winlostdate BETWEEN @FDate AND @TDate
+						AND b.StatusID IN (101,102,103)
+						AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)								
+					GROUP BY CustId
+				END			 
+				
 			END
 			ELSE
 			BEGIN 
@@ -188,7 +233,8 @@ BEGIN
 									COUNT(TransID) AS Wagers,
 									SUM(Stake) AS Stake
 
-				FROM	dbo.bettrans b WITH (NOLOCK)							
+				FROM	dbo.bettrans b WITH (NOLOCK)
+						INNER JOIN @BettypeList bt ON bt.Bettype = b.Bettype
 				WHERE	b.winlostdate BETWEEN @FDate AND @TDate
 					AND b.StatusID = 102
 					AND CASE WHEN b.ExtraInfo LIKE '%p1%' THEN
@@ -196,23 +242,22 @@ BEGIN
 									ELSE 0
 								END = 1
 					AND EXISTS (SELECT 1 FROM #MemberList sl WHERE sl.CustID = b.CustID)	
-					AND EXISTS (SELECT 1 FROM @BettypeList bt WHERE bt.Bettype = b.Bettype)	
 					AND (
-						EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.MatchID AND m.sporttype IN (Select Sporttype FROM @SporttypeList))
-						OR
-						(EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID) AND (@BettypeGroup IN (10,0))) --- Outright (bettype)
-						OR @SporttypeGroup IN(0,9)  --- Parlay (sport)
+						bt.EventType = 0  --- bettrans only
+						OR EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) INNER JOIN @SporttypeList s ON m.sporttype = s.Sporttype WHERE m.MatchID = b.MatchID AND bt.EventType = 1)
+						OR EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID AND bt.EventType = 2)
+						OR EXISTS (SELECT 1 FROM @VSOutrightList r WHERE r.MatchID = b.MatchID AND bt.EventType = 3)
 					)
-				AND (   @IsLive = 2   --- all
-						OR
-						(b.bettype <> 29 AND b.Liveindicator = @IsLive)
-						OR 
-						(b.bettype = 29 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
-																UNION 
-																SELECT 2 AS IsLive WHERE @IsLive = 0
-																UNION 
-																SELECT 1 AS IsLive WHERE @IsLive = 1																		
-																)
+					AND (   @IsLive = 2   --- all
+							OR
+							(b.bettype <> 29 AND b.Liveindicator = @IsLive)
+							OR 
+							(b.bettype = 29 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
+																	UNION 
+																	SELECT 2 AS IsLive WHERE @IsLive = 0
+																	UNION 
+																	SELECT 1 AS IsLive WHERE @IsLive = 1																		
+																	)
 							)
 						)					  	
 				GROUP BY CustId
