@@ -1,4 +1,4 @@
-/*<info serverAlias="DBAGE-bodb02,DBEXT-bodb02,DBACC-bodb02,DBTXN-bodb02,DB042-bodb02" selecters="bodbAdminNet,bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="1" isNested="0"></info>*/
+/*<info serverAlias="DBAGE-bodb02,DBEXT-bodb02,DBACC-bodb02,DBTXN-bodb02,DB042-bodb02" selecters="bodbAdminNet,bodbDownlineNet,bodbDownlineNetView" isFunction="1" isNested="0"></info>*/
 USE [bodb02]
 GO
 
@@ -16,7 +16,8 @@ ALTER FUNCTION [dbo].[CS_f_BettypeMatrix_Sel]
 	DB: DBAGE.bodb02, DBEXT.bodb02, DBACC.bodb02, DBPRO.bodb02,  DBTXN.bodb02, DB042.bodb02
 		
 	Revisions: 
-		- 20190225@Sophia: Create new [RedmineID: #105660] 
+		- 20190225@Sophia: Create new [RedmineID: #105660]
+		- 20190520@Percy: Return BetTypeGroup [RedmineID: #113849]
 
 	Paramters Explanation:
  		@ProductID, @SportType, @BetType, @SportTypeGroup
@@ -38,6 +39,7 @@ RETURNS TABLE
 RETURN
 SELECT DISTINCT
 	 ma.ProductID
+	,ma.BetTypeGroup
 	,ma.BetType
 	,ma.EventType
 	,ma.SubProduct
@@ -52,5 +54,4 @@ WHERE   (@ProductID		= 0  OR  ma.ProductID	= @ProductID)
 	AND (@BettypeGroup	= 0  OR  ma.BettypeGroup = @BettypeGroup)
 	AND (ma.IsTest <= @IsTest)
 	AND (ma.Enabled = 1)
-
 GO
