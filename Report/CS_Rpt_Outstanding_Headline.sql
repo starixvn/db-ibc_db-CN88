@@ -2,233 +2,200 @@
 USE [bodb02]
 GO
 
-ALTER PROCEDURE [dbo].[CS_Rpt_Outstanding_Headline]	
+ALTER PROCEDURE [dbo].[CS_Rpt_Outstanding_Headline]
 	@FromDate			SMALLDATETIME,
-	@ToDate				SMALLDATETIME,		
+	@ToDate				SMALLDATETIME,
 	@SporttypeGroup		SMALLINT = 0, -- all
 	@BettypeGroup		SMALLINT = 0, -- all
-	@IsLive				TINYINT = 2,  -- all 
+	@IsLive				TINYINT = 2,  -- all
 	@IsExcludedTest		BIT = 1
-
 AS
 
 /*
 	Created: 20190521@Sophia
-	Task: CN88 - Headline report 
-	DB: DBAGE.bodb02	
+	Task: CN88 - Headline Settled Report - Company view all Headlines
+	DB: DB042.bodb02
+	
 	Revisions:
-		- 20190521@Sophia: initial [Redmine: #113828]
+		- 20190521@Sophia: Initialize SP [Redmine: #113828]
 	 
 		
 	Param's Explanation:
 		- @SporttypeGroup: default = 0: All
 		- @BettypeGroup: default = 0: All
-		- @IsLive: (market)
-					default = 2: All
-						= 1: Live
-						= 0: Dead			
-	[CS_Rpt_Outstanding_Headline] '2019-04-28', '2019-05-05',0,0,2 
- 
+		- @IsLive: (market) default = 2: All
+									= 1: Live
+									= 0: Dead
 */
 
 BEGIN
-	SET NOCOUNT ON;
+	SET NOCOUNT ON
 
-	CREATE TABLE #SuperOutstanding
-	(
-		CustId			INT,
-		Wagers			INT,
-		Stake			MONEY, 
-		ValidStake		MONEY, 
-		MemberIncome	MONEY, 
-				
-		Agent			MONEY, 
-		AgentResult		MONEY,		
-		Master			MONEY,
-				
-		Super			MONEY,
-		SuperIncome		MONEY,
-		SuperResult		MONEY,
-		SuperStock		MONEY,
-		 
-		HeadlineIncome		MONEY,
-		HeadlineResult		MONEY,
-		HeadlineStock		MONEY
-		
-	) 	
-	
-	--- 1. Get Superlist
-	
-	CREATE TABLE #SuperList (SuperID INT PRIMARY KEY, UplineID INT)
-	
-	---- Company view all headline  
-	BEGIN 
-		INSERT INTO #SuperList (SuperID, UplineID)
-		SELECT  CustID, UplineID
-		FROM	dbo.CustSuper WITH (NOLOCK) 
-		WHERE	UplineID IS NOT NULL
-	END
-
-	--- 2. Get Bettype
-	------ Check SP Version
-	DECLARE @isTest BIT = 0
+	DECLARE @isTest BIT
 	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
 
-	------ Get Bettype Matrix------	
-	DECLARE @BettypeList TABLE (ProductID INT, Bettype SMALLINT, EventType TINYINT, RefTable TINYINT)
-	INSERT INTO @BettypeList
-	SELECT DISTINCT ProductID, Bettype, EventType, RefTable FROM dbo.CS_f_BettypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
+	CREATE TABLE #tblSportType (SportType INT)
+	INSERT INTO #tblSportType (SportType)
+	SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
 
-	--- 3. Get Sporttype
-	DECLARE @SporttypeList TABLE (Sporttype SMALLINT PRIMARY KEY, ProductID INT)	
-	INSERT INTO @SporttypeList
-	SELECT DISTINCT Sporttype, ProductID FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroup, @BettypeGroup, @isTest)	
+	DECLARE @HeadlineInfo TABLE (SuperID INT, UplineID INT, BetType INT, EventType TINYINT, RefTable TINYINT)
+	INSERT INTO @HeadlineInfo (SuperID, UplineID, BetType, EventType, RefTable)
+	SELECT c.CustID, c.UplineId, b.BetType, b.EventType, b.RefTable
+	FROM dbo.CustSuper c WITH (NOLOCK)
+		CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest) b
+	WHERE EXISTS (SELECT 1 FROM dbo.CS_CustSuper cs WITH (NOLOCK) WHERE cs.CustId = c.custid)
 	
-	--- 4. get Outright by sports	
-	DECLARE @OutrightList TABLE (MatchID INT)
+	CREATE TABLE #Outstanding
+	(
+		CustId		INT
+		,Wagers		INT
+		,Stake		MONEY
+	)
 
-	IF @BettypeGroup IN (10, 0) --- bettype is Outright or ALL
-	BEGIN 
-		INSERT INTO @OutrightList (MatchID) 
-		SELECT m.orid			
-		FROM dbo.Outright m WITH (NOLOCK)
-		INNER JOIN dbo.League l WITH (NOLOCK) ON m.LeagueId = l.LeagueId
-		WHERE l.Sporttype IN (SELECT Sporttype FROM @SporttypeList) 
-			AND m.eventdate BETWEEN @FromDate AND @ToDate			
-	END 		 
+	CREATE TABLE #tmpBettrans
+	(
+		CustId		INT
+		,matchid	INT
+		,eventtype	TINYINT
+		,Wagers		INT
+		,Stake		MONEY
+	)
 
-	--- 5. get VSOutright by sports	
-	DECLARE @VSOutrightList TABLE (MatchID INT)
-	
-	IF @SporttypeGroup IN (13, 0) 
-	BEGIN 
-		INSERT INTO @VSOutrightList (MatchID) 
-		SELECT r.EventID
-		FROM dbo.VSRaceInfo r WITH (NOLOCK)
-		WHERE r.Sporttype IN (SELECT Sporttype FROM @SporttypeList)
-			AND EXISTS (
-				SELECT 1 FROM dbo.VSOutright o WITH (NOLOCK)
-				WHERE o.EventID = r.EventID
-					AND o.eventdate BETWEEN @FromDate AND @ToDate	
-			)
-	END
-	
-	--- 5. Get report
-	DECLARE @FDate SMALLDATETIME, @TDate SMALLDATETIME;
-
-	SELECT  @FDate = @FromDate, @TDate = @ToDate;
-
-			INSERT INTO	#SuperOutstanding (
-								CustId,
-								Wagers,
-								Stake)		
+	-- bettrans
+	INSERT INTO #tmpBettrans
+	(
+		CustId
+		,matchid
+		,eventtype
+		,Wagers
+		,Stake
+	)
+	SELECT
+		c.UplineID
+		,b.matchid
+		,c.EventType
+		,COUNT(1) AS Wagers
+		,SUM(b.stake) AS stake
+	FROM @HeadlineInfo c
+		CROSS APPLY (
 			SELECT
-			  					srecommend,
-								COUNT(TransID) AS Wagers,
-								SUM(Stake) AS Stake
-			FROM	dbo.bettrans b WITH (NOLOCK)
-					INNER JOIN @BettypeList bt ON bt.Bettype = b.Bettype AND bt.RefTable = 0
-			WHERE	b.winlostdate BETWEEN @FDate AND @TDate
-				AND b.StatusID IN (0,1)
-				AND EXISTS (SELECT 1 FROM #SuperList sl WHERE sl.SuperID = b.srecommend)
-				AND (
-					bt.EventType = 0  --- bettrans only
-					OR EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) INNER JOIN @SporttypeList s ON m.sporttype = s.Sporttype WHERE m.MatchID = b.MatchID AND bt.EventType = 1)
-					OR EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.MatchID AND bt.EventType = 2)
-					OR EXISTS (SELECT 1 FROM @VSOutrightList r WHERE r.MatchID = b.MatchID AND bt.EventType = 3)
-				)
-				AND (   @IsLive = 2   --- all
-						OR
-						(b.bettype <> 29 AND b.Liveindicator = @IsLive)
-						OR 
-						(b.bettype = 29 AND b.livehomescore IN ( SELECT 0 AS IsLive WHERE @IsLive = 0
-																UNION 
-																SELECT 2 AS IsLive WHERE @IsLive = 0
-																UNION 
-																SELECT 1 AS IsLive WHERE @IsLive = 1																		
-																)
-						)
-					)
-				AND b.Bettype <> 2799 -- exclude VS mix Parlay	
-				AND (b.currency <> 20 OR @IsExcludedTest = 0)
-			GROUP BY srecommend
-
-			-- Mix parlay of BRVS
-			IF (@BettypeGroup IN (2799,0) OR @SporttypeGroup IN(13,0) AND @IsLive IN (0,2))
-			BEGIN 
-				INSERT INTO	#SuperOutstanding (
-								CustId,
-								Wagers,
-								Stake)		
-				SELECT
-			  					srecommend,
-								COUNT(TransID) AS Wagers,
-								SUM(Stake) AS Stake
-				FROM dbo.bettrans b WITH (NOLOCK)		
-				CROSS APPLY (
-					SELECT TOP 1 m.sporttype
-					FROM dbo.bettransm bm WITH (NOLOCK)
-						INNER JOIN dbo.match m WITH (NOLOCK) ON bm.matchid = m.matchid				
-					WHERE bm.refno = b.refno
-						  AND m.sporttype IN (Select Sporttype FROM @SporttypeList)
+				CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
+				,b.winlostdate
+				,b.stake
+			FROM dbo.bettrans b WITH (NOLOCK)
+				OUTER APPLY (
+						SELECT TOP 1 bm.matchid
+						FROM dbo.bettransm bm WITH (NOLOCK)
+						WHERE b.refno = bm.refno AND b.bettype = 2799
 					) AS s
-				WHERE b.matchid = 2799 AND b.bettype = 2799
-					AND b.winlostdate BETWEEN @FDate AND @TDate
-					AND b.StatusID IN (0,1)
-					AND EXISTS (SELECT 1 FROM #SuperList sl WHERE sl.SuperID = b.srecommend)
-					AND (b.currency <> 20 OR @IsExcludedTest = 0)
-				GROUP BY srecommend
-			END		
-
-			
-			------Translog table 
-			INSERT INTO	#SuperOutstanding (
-								CustId,
-								Wagers,
-								Stake)		
-			SELECT
-			  					srecommend,
-								COUNT(translogid) AS Wagers,
-								SUM(Stake) AS Stake
-			FROM	dbo.Translog b WITH (NOLOCK)
-					INNER JOIN @BettypeList bt ON bt.Bettype = b.gameID AND bt.RefTable = 3
-			WHERE	b.winlostdate BETWEEN @FDate AND @TDate
-				AND b.StatusID IN (0,1)
-				AND EXISTS (SELECT 1 FROM #SuperList sl WHERE sl.SuperID = b.srecommend)
+			WHERE b.srecommend = c.SuperID
+				AND b.bettype = c.BetType
+				AND b.statusID IN (0, 1)
+				AND c.RefTable = 0
 				AND (
-					bt.EventType = 0  --- translog only
-					OR EXISTS (SELECT 1 FROM dbo.Match m WITH (NOLOCK) WHERE m.MatchID = b.eventID AND bt.EventType = 1)
-					OR EXISTS (SELECT 1 FROM @OutrightList r WHERE r.MatchID = b.eventID AND bt.EventType = 2)
-					OR EXISTS (SELECT 1 FROM @VSOutrightList r WHERE r.MatchID = b.eventID AND bt.EventType = 3)
-				)
-				AND (   @IsLive = 2   --- all
-						OR  b.Liveindicator = @IsLive
-						 
-					)	
-				AND (b.currency <> 20 OR @IsExcludedTest = 0)					
-			GROUP BY srecommend
-			
-			
-	SELECT	c.CustId,
-			c.Username,  
-			SUM (Wagers) AS Wagers,
-			SUM (Stake) AS Stake,
-			0 AS ValidStake,
-			0 AS MemberIncome,			
-			
-			0 AS SuperComm, 
-			0 AS HouseWinloss,
-			0 AS HouseComm,
-			0 AS HouseIncome,			
-			0 AS HeadlineStock
-	FROM #SuperOutstanding s
-	INNER JOIN #SuperList sl ON sl.SuperID = s.CustID
-	INNER JOIN Customer c WITH (NOLOCK) 
-			ON c.CustID = sl.UplineID
-	WHERE C.RoleID = 0
-	GROUP BY c.CustId, c.Username 
-	
-	SET NOCOUNT OFF
+						@IsLive = 2
+						OR (b.bettype = 29 AND (@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1))
+						OR (b.bettype = 2799 AND @IsLive = 0)
+						OR (b.bettype NOT IN (29, 2799) AND b.liveindicator = @IsLive)
+					)
+				AND (@IsExcludedTest = 0 OR b.currency <> 20)
+		) AS b
+	WHERE b.winlostdate BETWEEN @FromDate AND @ToDate -- prevent using index on winlostdate
+	GROUP BY
+		c.UplineID
+		,b.matchid
+		,c.EventType
 
+	-- translog
+	INSERT INTO #tmpBettrans
+	(
+		CustId
+		,matchid
+		,eventtype
+		,Wagers
+		,Stake
+	)
+	SELECT
+		c.UplineID
+		,b.matchid
+		,c.EventType
+		,COUNT(1) AS Wagers
+		,SUM(b.stake) AS stake
+	FROM @HeadlineInfo c
+		CROSS APPLY (
+			SELECT
+				t.eventid AS matchid
+				,t.stake
+			FROM dbo.translog t WITH (NOLOCK)
+			WHERE t.srecommend = c.SuperID
+				AND t.gameID = c.BetType
+				AND t.statusID IN (0, 1)
+				AND t.winlostdate BETWEEN @FromDate AND @ToDate
+				AND c.RefTable = 3
+				AND (
+						@IsLive = 2
+						OR t.liveindicator = @IsLive
+					)
+				AND (@IsExcludedTest = 0 OR t.currency <> 20)
+		) AS b
+	GROUP BY
+		c.UplineID
+		,b.matchid
+		,c.EventType
+	-- End #tmpBettrans
+
+	INSERT INTO #Outstanding
+	(
+		CustId
+		,Wagers
+		,Stake
+	)
+	SELECT
+		b.CustId
+		,SUM(b.Wagers) AS Wagers
+		,SUM(b.Stake) AS Stake
+	FROM #tmpBettrans b
+		CROSS APPLY (
+			SELECT m.sporttype
+			FROM dbo.match m WITH (NOLOCK)
+			WHERE b.matchid = m.matchid AND b.eventtype = 1 -- included Betradar VS Parlay
+
+			UNION ALL
+			SELECT l.sporttype
+			FROM dbo.outright o WITH (NOLOCK)
+				INNER JOIN dbo.League l WITH (NOLOCK) ON o.leagueid = l.leagueid
+			WHERE b.matchid = o.orid AND b.eventtype = 2
+
+			UNION ALL
+			SELECT r.sporttype
+			FROM dbo.VSRaceInfo r WITH (NOLOCK)
+			WHERE b.matchid = r.EventID AND b.eventtype = 3
+
+			UNION ALL
+			SELECT 0 AS sporttype -- SB Parlay
+			WHERE b.matchid = 29 AND b.eventtype = 0
+		) AS m
+		INNER JOIN #tblSportType s ON m.sporttype = s.SportType
+	GROUP BY
+		b.CustId
+	OPTION (HASH GROUP)
+			
+	SELECT
+		c.CustId,
+		c.Username,
+		SUM(Wagers) AS Wagers,
+		SUM(Stake) AS Stake,
+		0 AS ValidStake,
+		0 AS MemberIncome,
+		0 AS SuperComm,
+		0 AS HouseWinloss,
+		0 AS HouseComm,
+		0 AS HouseIncome,
+		0 AS HeadlineStock
+	FROM #Outstanding o
+		INNER JOIN Customer c WITH (NOLOCK) ON o.CustID = c.CustID
+	WHERE c.RoleID = 0
+		AND (c.currency <> 20 OR @IsExcludedTest = 1)
+	GROUP BY c.CustId, c.Username 
 END
 GO
