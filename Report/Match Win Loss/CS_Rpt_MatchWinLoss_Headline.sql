@@ -29,12 +29,10 @@ BEGIN
 	CREATE TABLE #tblSportType (SportType INT)
 	INSERT INTO #tblSportType (SportType)
 	SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (1, @SportTypeGroup, @BetTypeGroup, @IsTest)
-	WHERE SportType <> 0 -- Remove Parlay
 
 	CREATE TABLE #tblBetType (BetTypeGroup INT, BetType INT, EventType TINYINT)
 	INSERT INTO #tblBetType (BetTypeGroup, BetType, EventType)
 	SELECT DISTINCT BetTypeGroup, BetType, EventType FROM dbo.CS_f_BettypeMatrix_Sel (1, @SportTypeGroup, @BetTypeGroup, @IsTest)
-	WHERE BetType <> 29 -- Remove Parlay
 
 	DECLARE @ExtraPT TABLE (SuperID INT , ExtraPT DECIMAL(9,8), WinlostDate SMALLDATETIME)
 	INSERT INTO @ExtraPT (SuperID, ExtraPT, WinlostDate)
@@ -91,7 +89,11 @@ BEGIN
 				FROM dbo.bettrans b WITH (NOLOCK)
 				WHERE e.SuperID = b.srecommend AND e.WinlostDate = b.winlostdate
 					AND b.statusID IN (111, 112, 113)
-					AND (@IsLive = 2 OR b.liveindicator = @IsLive)
+					AND (
+							@IsLive = 2
+							OR (b.bettype = 29 AND (@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1))
+							OR (b.bettype <> 29 AND b.liveindicator = @IsLive)
+						)
 					AND (@IsExcludedTest = 0 OR b.currency <> 20)
 			) AS b
 		GROUP BY
@@ -113,10 +115,14 @@ BEGIN
 						AND m.eventstatus = 'Completed' AND ISNULL(m.betstatus, '') <> 'Refund'
 					
 					UNION ALL
-					SELECT 0 AS leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, l.sporttype
+					SELECT l.leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, l.sporttype
 					FROM dbo.outright o WITH (NOLOCK)
 						INNER JOIN dbo.League l WITH (NOLOCK) ON o.leagueid = l.leagueid
 					WHERE b.matchid = o.orid AND bt.EventType = 2
+
+					UNION ALL
+					SELECT 0 AS leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, 0 AS sporttype -- SB Parlay
+					WHERE b.matchid = 29 AND bt.EventType = 0
 				) AS m
 			INNER JOIN #tblSportType s ON m.sporttype = s.SportType
 		GROUP BY
@@ -164,7 +170,11 @@ BEGIN
 				FROM dbo.bettrans14 b WITH (NOLOCK)
 				WHERE e.SuperID = b.srecommend AND e.WinlostDate = b.winlostdate
 					AND b.statusID IN (111, 112, 113)
-					AND (@IsLive = 2 OR b.liveindicator = @IsLive)
+					AND (
+							@IsLive = 2
+							OR (b.bettype = 29 AND (@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1))
+							OR (b.bettype <> 29 AND b.liveindicator = @IsLive)
+						)
 					AND (@IsExcludedTest = 0 OR b.currency <> 20)
 			) AS b
 		GROUP BY
@@ -190,6 +200,10 @@ BEGIN
 					FROM dbo.outright14 o WITH (NOLOCK)
 						INNER JOIN dbo.League l WITH (NOLOCK) ON o.leagueid = l.leagueid
 					WHERE b.matchid = o.orid AND bt.EventType = 2
+
+					UNION ALL
+					SELECT 0 AS leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, 0 AS sporttype -- SB Parlay
+					WHERE b.matchid = 29 AND bt.EventType = 0
 				) AS m
 			INNER JOIN #tblSportType s ON m.sporttype = s.SportType
 		GROUP BY
