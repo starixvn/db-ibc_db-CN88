@@ -11,7 +11,6 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Winloss_Headline]
 	@BettypeGroup		SMALLINT = 0, -- all
 	@IsLive				TINYINT = 2,  -- all
 	@IsExcludedTest		BIT = 1
-
 AS
 
 /*
@@ -46,7 +45,7 @@ BEGIN
 
 	DECLARE @ExtraPT TABLE (SuperID INT, ProductID INT, ExtraPT DECIMAL(9,8), FromDate DATETIME, ToDate DATETIME)
 	INSERT INTO @ExtraPT (SuperID, ProductID, ExtraPT, FromDate, ToDate)
-	SELECT cs.CustID, e.ProductID, ISNULL(e.ExtraPT, 0), e.FromDate, e.ToDate
+	SELECT cs.CustID, ISNULL(e.ProductID, 0), ISNULL(e.ExtraPT, 0), ISNULL(e.FromDate, @FromDate), ISNULL(e.ToDate, @ToDate)
 	FROM dbo.CS_CustSuper cs WITH (NOLOCK)
 		OUTER APPLY (
 			SELECT e.ProductID, e.FromDate, e.ToDate, SUM(e.ExtraPT) AS ExtraPT
@@ -63,7 +62,8 @@ BEGIN
 
 	DELETE e
 	FROM @ExtraPT e
-	WHERE NOT EXISTS (SELECT 1 FROM #tblBetType bt WHERE e.ProductID = bt.ProductID)
+	WHERE ProductID <> 0
+		AND NOT EXISTS (SELECT 1 FROM #tblBetType bt WHERE e.ProductID = bt.ProductID)
 
 	CREATE TABLE #SuperWinLoss
 	(
@@ -165,7 +165,7 @@ BEGIN
 						)
 					AND (@IsExcludedTest = 0 OR b.currency <> 20)
 			) AS b
-			INNER JOIN #tblBetType bt ON b.bettype = bt.bettype AND bt.ProductID = e.ProductID
+			INNER JOIN #tblBetType bt ON b.bettype = bt.bettype AND (e.ProductID = 0 OR bt.ProductID = e.ProductID)
 		GROUP BY
 			b.srecommend
 			,b.matchid
@@ -323,7 +323,7 @@ BEGIN
 		INNER JOIN dbo.CustSuper cs WITH (NOLOCK) ON s.CustId = cs.custid
 		INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.UplineId = c.custid
 	WHERE c.roleid = 0
-		AND (c.currency <> 20 OR @IsExcludedTest = 1)
+		AND (c.currency <> 20 OR @IsExcludedTest = 0)
 	GROUP BY
 		c.CustId
 		,c.Username
