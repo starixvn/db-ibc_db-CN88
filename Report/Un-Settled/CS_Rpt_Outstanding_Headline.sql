@@ -196,6 +196,8 @@ BEGIN
 		INNER JOIN Customer c WITH (NOLOCK) ON o.CustID = c.CustID
 	WHERE c.RoleID = 0
 		AND (c.currency <> 20 OR @IsExcludedTest = 1)
-	GROUP BY c.CustId, c.Username 
+	GROUP BY
+		c.CustId
+		,c.Username 
 END
 GO

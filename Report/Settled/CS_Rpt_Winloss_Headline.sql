@@ -58,9 +58,12 @@ BEGIN
 					@FromDate BETWEEN e.FromDate AND e.ToDate
 					OR @ToDate BETWEEN e.FromDate AND e.ToDate
 				)
-				AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE e.ProductID = bt.ProductID)
 			GROUP BY e.ProductID, e.FromDate, e.ToDate
 		) AS e
+
+	DELETE e
+	FROM @ExtraPT e
+	WHERE NOT EXISTS (SELECT 1 FROM #tblBetType bt WHERE e.ProductID = bt.ProductID)
 
 	CREATE TABLE #SuperWinLoss
 	(
@@ -259,6 +262,8 @@ BEGIN
 			AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 			AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
 			AND (@IsLive = 2 OR IsLive = @IsLive)
+		GROUP BY
+			CustId
 	END
 
 	-- CS_SumWinloss_Old
@@ -298,6 +303,8 @@ BEGIN
 			AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 			AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
 			AND (@IsLive = 2 OR IsLive = @IsLive)
+		GROUP BY
+			CustId
 	END
 
 	SELECT
@@ -317,7 +324,9 @@ BEGIN
 		INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.UplineId = c.custid
 	WHERE c.roleid = 0
 		AND (c.currency <> 20 OR @IsExcludedTest = 1)
-	GROUP BY c.CustId, c.Username
+	GROUP BY
+		c.CustId
+		,c.Username
 
 	DROP TABLE #SuperWinLoss
 	DROP TABLE #tblBetType
