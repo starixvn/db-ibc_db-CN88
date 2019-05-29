@@ -45,7 +45,7 @@ BEGIN
 				AND e.SubProduct = ''
 				AND @WinlostDate BETWEEN e.FromDate AND e.ToDate
 
-	CREATE TABLE #tmpBettrans (matchid INT, bettype INT, Wagers INT, Stake MONEY, ValidStake MONEY, MemberIncome MONEY, HeadlineResult MONEY, HeadlineStock MONEY)
+	CREATE TABLE #tmpBettrans (matchid INT, bettype INT, Wagers INT, Stake MONEY, ValidStake MONEY, MemberIncome MONEY, HouseIncome MONEY, HeadlineStock MONEY)
 
 	IF @WinlostDate > @MoveBetsDay
 	BEGIN
@@ -57,7 +57,7 @@ BEGIN
 			,Stake
 			,ValidStake
 			,MemberIncome
-			,HeadlineResult
+			,HouseIncome
 			,HeadlineStock
 		)
 		SELECT
@@ -67,10 +67,10 @@ BEGIN
 			,SUM(b.stake) AS Stake
 			,SUM(ABS(b.winlost - b.actual_stake)) AS ValidStake
 			,SUM(b.winlost - b.actual_stake + b.playercomm) AS MemberIncome
-			,SUM(
+			,-SUM(
 				b.winlost - b.actual_stake + b.awinlost + b.mwinlost + b.swinlost + b.scomm
 				- (CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT
-				) AS HeadlineResult
+				) AS HouseIncome
 			,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - e.ExtraPT)) AS HeadlineStock
 		FROM @ExtraPT e
 			CROSS APPLY (
@@ -104,7 +104,7 @@ BEGIN
 		SELECT
 			m.leagueid, m.matchid, m.homeid, m.awayid, bt.bettypegroup
 			,SUM(b.Wagers) AS Wagers, SUM(b.Stake) AS Stake, SUM(b.ValidStake) AS ValidStake, SUM(b.MemberIncome) AS MemberIncome
-			,SUM(b.HeadlineResult) AS HeadlineResult, SUM(b.HeadlineStock) AS HeadlineStock
+			,SUM(b.HouseIncome) AS HouseIncome, SUM(b.HeadlineStock) AS HeadlineStock
 		FROM #tmpBettrans b
 			INNER JOIN #tblBetType bt ON b.bettype = bt.bettype
 			CROSS APPLY
@@ -138,7 +138,7 @@ BEGIN
 			,Stake
 			,ValidStake
 			,MemberIncome
-			,HeadlineResult
+			,HouseIncome
 			,HeadlineStock
 		)
 		SELECT
@@ -148,10 +148,10 @@ BEGIN
 			,SUM(b.stake) AS Stake
 			,SUM(ABS(b.winlost - b.actual_stake)) AS ValidStake
 			,SUM(b.winlost - b.actual_stake + b.playercomm) AS MemberIncome
-			,SUM(
+			,-SUM(
 				b.winlost - b.actual_stake + b.awinlost + b.mwinlost + b.swinlost + b.scomm
 				- (CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT
-				) AS HeadlineResult
+				) AS HouseIncome
 			,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - e.ExtraPT)) AS HeadlineStock
 		FROM @ExtraPT e
 			CROSS APPLY (
@@ -185,7 +185,7 @@ BEGIN
 		SELECT
 			m.leagueid, m.matchid, m.homeid, m.awayid, bt.bettypegroup
 			,SUM(b.Wagers) AS Wagers, SUM(b.Stake) AS Stake, SUM(b.ValidStake) AS ValidStake, SUM(b.MemberIncome) AS MemberIncome
-			,SUM(b.HeadlineResult) AS HeadlineResult, SUM(b.HeadlineStock) AS HeadlineStock
+			,SUM(b.HouseIncome) AS HouseIncome, SUM(b.HeadlineStock) AS HeadlineStock
 		FROM #tmpBettrans b
 			INNER JOIN #tblBetType bt ON b.bettype = bt.bettype
 			OUTER APPLY
