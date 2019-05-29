@@ -127,11 +127,12 @@ BEGIN
 			,SUM(ABS(b.winlost - b.actual_stake)) AS ValidStake
 			,SUM(b.winlost - b.actual_stake + b.playercomm) AS MemberIncome
 			,SUM(b.scomm - b.acomm) AS SuperComm
-			,-SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - (b.winlost - b.actual_stake) * e.ExtraPT) AS HouseWinloss
+			,-SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * e.ExtraPT)) AS HouseWinloss
 			,-SUM(b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * e.ExtraPT END) AS HouseComm
-			,-SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost
-				- CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) * e.ExtraPT END
-				) AS HouseIncome
+			,-SUM( -- HouseIncome = HouseWinloss + HouseComm
+				b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * e.ExtraPT) -- HouseWinloss
+				+ b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * e.ExtraPT END -- HouseComm
+				) AS HouseIncome 
 			,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - e.ExtraPT)) AS HeadlineStock
 		FROM @ExtraPT e
 			CROSS APPLY (
@@ -253,8 +254,10 @@ BEGIN
 			,SUM(SuperComm) AS SuperComm
 			,-SUM(HeadlineWinloss + MemberWinloss + AgentWinloss + MasterWinloss + SuperWinloss) AS HouseWinloss
 			,-SUM(HeadlineComm + MemberComm + AgentComm + MasterComm + SuperComm) AS HouseComm
-			,-SUM(HeadlineWinloss + MemberWinloss + AgentWinloss + MasterWinloss + SuperWinloss
-				+ HeadlineComm + MemberComm + AgentComm + MasterComm + SuperComm) AS HouseIncome
+			,-SUM( -- HouseIncome = HouseWinloss + HouseComm
+				HeadlineWinloss + MemberWinloss + AgentWinloss + MasterWinloss + SuperWinloss -- HouseWinloss
+				+ HeadlineComm + MemberComm + AgentComm + MasterComm + SuperComm -- HouseComm
+				) AS HouseIncome
 			,SUM(HeadlineStock) AS HeadlineStock
 		FROM bodb_Summary.dbo.CS_SumWinloss s WITH (NOLOCK)
 		WHERE s.WinlostDate BETWEEN @FDate AND @TDate
@@ -294,8 +297,10 @@ BEGIN
 			,SUM(SuperComm) AS SuperComm
 			,-SUM(HeadlineWinloss + MemberWinloss + AgentWinloss + MasterWinloss + SuperWinloss) AS HouseWinloss
 			,-SUM(HeadlineComm + MemberComm + AgentComm + MasterComm + SuperComm) AS HouseComm
-			,-SUM(HeadlineWinloss + MemberWinloss + AgentWinloss + MasterWinloss + SuperWinloss
-				+ HeadlineComm + MemberComm + AgentComm + MasterComm + SuperComm) AS HouseIncome
+			,-SUM( -- HouseIncome = HouseWinloss + HouseComm
+				HeadlineWinloss + MemberWinloss + AgentWinloss + MasterWinloss + SuperWinloss -- HouseWinloss
+				+ HeadlineComm + MemberComm + AgentComm + MasterComm + SuperComm -- HouseComm
+				) AS HouseIncome
 			,SUM(HeadlineStock) AS HeadlineStock
 		FROM bodb_Summary.dbo.CS_SumWinloss_Old s WITH (NOLOCK)
 		WHERE s.WinlostDate BETWEEN @FDate AND @TDate
