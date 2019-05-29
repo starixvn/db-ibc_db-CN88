@@ -14,12 +14,12 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Winloss_Headline]
 AS
 
 /*
-	Created: 20190521@Sophia
+	Created: 20190521@Percy
 	Task: CN88 - Headline Settled Report - Company view all Headlines
 	DB: DBAGE.bodb02
 	
 	Revisions:
-		- 20190521@Sophia: Initialize SP [Redmine: #113828]
+		- 20190521@Percy: Initialize SP [Redmine: #113828]
 		
 	Param's Explanation:
 		- @SporttypeGroup: default = 0: All
@@ -215,8 +215,8 @@ BEGIN
 				WHERE b.matchid = r.EventID AND b.eventtype = 3
 
 				UNION ALL
-				SELECT 0 AS sporttype -- SB Parlay
-				WHERE b.matchid = 29 AND b.eventtype = 0
+				SELECT CASE WHEN b.matchid = 29 THEN 0 ELSE b.matchid END AS sporttype -- SB Parlay: sporttype = 0
+				WHERE b.matchid <> 2799 AND b.eventtype = 0
 			) AS m
 			INNER JOIN #tblSportType s ON m.sporttype = s.SportType
 		GROUP BY
