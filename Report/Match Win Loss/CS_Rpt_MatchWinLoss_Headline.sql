@@ -67,9 +67,9 @@ BEGIN
 			,SUM(b.stake) AS Stake
 			,SUM(ABS(b.winlost - b.actual_stake)) AS ValidStake
 			,SUM(b.winlost - b.actual_stake + b.playercomm) AS MemberIncome
-			,-SUM(
-				b.winlost - b.actual_stake + b.awinlost + b.mwinlost + b.swinlost + b.scomm
-				- (CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT
+			,-SUM( -- HouseIncome = HouseWinloss + HouseComm
+				b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * e.ExtraPT) -- HouseWinloss
+				+ b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * e.ExtraPT END -- HouseComm
 				) AS HouseIncome
 			,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - e.ExtraPT)) AS HeadlineStock
 		FROM @ExtraPT e
@@ -148,9 +148,9 @@ BEGIN
 			,SUM(b.stake) AS Stake
 			,SUM(ABS(b.winlost - b.actual_stake)) AS ValidStake
 			,SUM(b.winlost - b.actual_stake + b.playercomm) AS MemberIncome
-			,-SUM(
-				b.winlost - b.actual_stake + b.awinlost + b.mwinlost + b.swinlost + b.scomm
-				- (CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT
+			,-SUM( -- HouseIncome = HouseWinloss + HouseComm
+				b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * e.ExtraPT) -- HouseWinloss
+				+ b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * e.ExtraPT END -- HouseComm
 				) AS HouseIncome
 			,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - e.ExtraPT)) AS HeadlineStock
 		FROM @ExtraPT e
