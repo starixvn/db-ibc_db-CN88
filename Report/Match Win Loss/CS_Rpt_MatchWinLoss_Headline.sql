@@ -112,7 +112,7 @@ BEGIN
 					SELECT m.leagueid, m.matchid, m.homeid, m.awayid, m.sporttype
 					FROM dbo.match m WITH (NOLOCK)
 					WHERE b.matchid = m.matchid AND bt.EventType = 1
-						AND m.eventstatus = 'Completed' AND ISNULL(m.betstatus, '') <> 'Refund'
+						AND m.eventstatus = 'Completed'
 					
 					UNION ALL
 					SELECT l.leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, l.sporttype
@@ -193,7 +193,7 @@ BEGIN
 					SELECT m.leagueid, m.matchid, m.homeid, m.awayid, m.sporttype
 					FROM dbo.match14 m WITH (NOLOCK)
 					WHERE b.matchid = m.matchid AND bt.EventType = 1
-						AND m.eventstatus = 'Completed' AND ISNULL(m.betstatus, '') <> 'Refund'
+						AND m.eventstatus = 'Completed'
 					
 					UNION ALL
 					SELECT 0 AS leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, l.sporttype
