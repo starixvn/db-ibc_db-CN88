@@ -18,6 +18,7 @@ AS
 	Revisions:
 		- 20190214@Sophia: Create new [RedmineID: #105660] 
 		- 20190329@Sophia: Implement Non Sports [Redmine: #109521]
+		- 20190528@Sophia: Fix bug VS [Redmine: #113482]
 		
 	Param's Explanation:
 		- @CustId: MasterID or AgentID  
@@ -176,7 +177,7 @@ BEGIN
 		GROUP BY recommend
 			
 		-- Mix parlay of BRVS
-		IF (@BettypeGroup IN (2799,0) OR @SporttypeGroup IN(13,0) AND @IsLive IN (0,2))
+		IF (@BettypeGroup IN (2799,0) AND @SporttypeGroup IN(13,0) AND @IsLive IN (0,2))
 		BEGIN 
 			INSERT INTO	#AgentOutstanding (
 									CustId,
