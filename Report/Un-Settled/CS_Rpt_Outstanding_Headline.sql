@@ -73,7 +73,7 @@ BEGIN
 	SELECT
 		c.UplineID
 		,b.matchid
-		,c.EventType
+		,CASE WHEN c.BetType = 2799 THEN 1 ELSE c.EventType END AS EventType
 		,COUNT(1) AS Wagers
 		,SUM(b.stake) AS stake
 	FROM @HeadlineInfo c
@@ -104,7 +104,7 @@ BEGIN
 	GROUP BY
 		c.UplineID
 		,b.matchid
-		,c.EventType
+		,CASE WHEN c.BetType = 2799 THEN 1 ELSE c.EventType END
 
 	-- translog
 	INSERT INTO #tmpBettrans
@@ -198,6 +198,10 @@ BEGIN
 		AND (c.currency <> 20 OR @IsExcludedTest = 0)
 	GROUP BY
 		c.CustId
-		,c.Username 
+		,c.Username
+
+	DROP TABLE #Outstanding
+	DROP TABLE #tblSportType
+	DROP TABLE #tmpBettrans
 END
 GO
