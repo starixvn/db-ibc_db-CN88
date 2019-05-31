@@ -195,7 +195,7 @@ BEGIN
 	FROM #Outstanding o
 		INNER JOIN Customer c WITH (NOLOCK) ON o.CustID = c.CustID
 	WHERE c.RoleID = 0
-		AND (c.currency <> 20 OR @IsExcludedTest = 1)
+		AND (c.currency <> 20 OR @IsExcludedTest = 0)
 	GROUP BY
 		c.CustId
 		,c.Username 
