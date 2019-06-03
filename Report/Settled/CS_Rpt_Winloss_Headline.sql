@@ -160,7 +160,7 @@ BEGIN
 					AND b.statusID IN (111, 112, 113)
 					AND (
 							@IsLive = 2
-							OR (b.bettype = 29 AND (@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1))
+							OR (b.bettype = 29 AND ((@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1)))
 							OR (b.bettype = 2799 AND @IsLive = 0)
 							OR (b.bettype NOT IN (29, 2799) AND b.liveindicator = @IsLive)
 						)
