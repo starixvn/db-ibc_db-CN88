@@ -81,7 +81,7 @@ BEGIN
 					,b.winlost
 					,b.actual_stake
 					,b.playercomm
-					,awinlost
+					,b.awinlost
 					,b.mwinlost
 					,b.swinlost
 					,b.scomm
@@ -162,7 +162,7 @@ BEGIN
 					,b.winlost
 					,b.actual_stake
 					,b.playercomm
-					,awinlost
+					,b.awinlost
 					,b.mwinlost
 					,b.swinlost
 					,b.scomm
@@ -188,7 +188,7 @@ BEGIN
 			,SUM(b.HouseIncome) AS HouseIncome, SUM(b.HeadlineStock) AS HeadlineStock
 		FROM #tmpBettrans b
 			INNER JOIN #tblBetType bt ON b.bettype = bt.bettype
-			OUTER APPLY
+			CROSS APPLY
 				(
 					SELECT m.leagueid, m.matchid, m.homeid, m.awayid, m.sporttype
 					FROM dbo.match14 m WITH (NOLOCK)
