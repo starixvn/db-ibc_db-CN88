@@ -91,7 +91,7 @@ BEGIN
 					AND b.statusID IN (111, 112, 113)
 					AND (
 							@IsLive = 2
-							OR (b.bettype = 29 AND (@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1))
+							OR (b.bettype = 29 AND ((@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1)))
 							OR (b.bettype <> 29 AND b.liveindicator = @IsLive)
 						)
 					AND (@IsExcludedTest = 0 OR b.currency <> 20)
@@ -172,7 +172,7 @@ BEGIN
 					AND b.statusID IN (111, 112, 113)
 					AND (
 							@IsLive = 2
-							OR (b.bettype = 29 AND (@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1))
+							OR (b.bettype = 29 AND ((@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1)))
 							OR (b.bettype <> 29 AND b.liveindicator = @IsLive)
 						)
 					AND (@IsExcludedTest = 0 OR b.currency <> 20)
@@ -196,7 +196,7 @@ BEGIN
 						AND m.eventstatus = 'Completed'
 					
 					UNION ALL
-					SELECT 0 AS leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, l.sporttype
+					SELECT l.leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, l.sporttype
 					FROM dbo.outright14 o WITH (NOLOCK)
 						INNER JOIN dbo.League l WITH (NOLOCK) ON o.leagueid = l.leagueid
 					WHERE b.matchid = o.orid AND bt.EventType = 2
