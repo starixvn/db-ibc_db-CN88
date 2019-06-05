@@ -124,7 +124,7 @@ BEGIN
 	FROM @HeadlineInfo c
 		CROSS APPLY (
 			SELECT
-				t.eventid AS matchid
+				CASE WHEN c.EventType = 0 THEN 0 ELSE t.eventid END AS matchid
 				,t.stake
 			FROM dbo.translog t WITH (NOLOCK)
 			WHERE t.srecommend = c.SuperID
@@ -172,7 +172,7 @@ BEGIN
 			WHERE b.matchid = r.EventID AND b.eventtype = 3
 
 			UNION ALL
-			SELECT CASE WHEN b.matchid = 29 THEN 0 ELSE b.matchid END AS sporttype -- SB Parlay: sporttype = 0
+			SELECT 0 AS sporttype -- SB Parlay: sporttype = 0
 			WHERE b.matchid <> 2799 AND b.eventtype = 0
 		) AS m
 		INNER JOIN #tblSportType s ON m.sporttype = s.SportType
