@@ -45,19 +45,26 @@ BEGIN
 
 	DECLARE @ExtraPT TABLE (SuperID INT, ProductID INT, ExtraPT DECIMAL(9,8), FromDate DATETIME, ToDate DATETIME)
 	INSERT INTO @ExtraPT (SuperID, ProductID, ExtraPT, FromDate, ToDate)
-	SELECT cs.CustID, ISNULL(e.ProductID, 0), ISNULL(e.ExtraPT, 0), ISNULL(e.FromDate, @FromDate), ISNULL(e.ToDate, @ToDate)
+	SELECT cs.CustID, e.ProductID, ISNULL(e.ExtraPT, 0), e.FromDate, e.ToDate
 	FROM dbo.CS_CustSuper cs WITH (NOLOCK)
-		OUTER APPLY (
-			SELECT e.ProductID, e.FromDate, e.ToDate, SUM(e.ExtraPT) AS ExtraPT
-			FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
-			WHERE cs.CustId = e.SuperId
-				AND e.Sporttype = 0
-				AND e.SubProduct = ''
-				AND (
-					@FromDate BETWEEN e.FromDate AND e.ToDate
-					OR @ToDate BETWEEN e.FromDate AND e.ToDate
-				)
-			GROUP BY e.ProductID, e.FromDate, e.ToDate
+		CROSS APPLY (
+			SELECT ProductId, MAX(ExtraPT) AS ExtraPT, MAX(FromDate) AS FromDate, MIN(ToDate) AS ToDate
+			FROM (
+				SELECT DISTINCT e.ProductID, e.ExtraPT, e.FromDate, e.ToDate
+				FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
+				WHERE cs.CustId = e.SuperId
+					AND e.Sporttype = 0
+					AND e.SubProduct = ''
+					AND (
+						@FromDate BETWEEN e.FromDate AND e.ToDate
+						OR @ToDate BETWEEN e.FromDate AND e.ToDate
+					)
+
+				UNION ALL
+				SELECT DISTINCT ProductID AS ProductID, 0 AS ExtraPT, @FromDate AS FromDate, @ToDate AS ToDate
+				FROM #tblBetType
+			) AS r
+			GROUP BY ProductId
 		) AS e
 
 	DELETE e
@@ -166,7 +173,7 @@ BEGIN
 						)
 					AND (@IsExcludedTest = 0 OR b.currency <> 20)
 			) AS b
-			INNER JOIN #tblBetType bt ON b.bettype = bt.bettype AND (e.ProductID = 0 OR bt.ProductID = e.ProductID)
+			INNER JOIN #tblBetType bt ON b.bettype = bt.bettype AND bt.ProductID = e.ProductID
 		GROUP BY
 			b.srecommend
 			,b.matchid
