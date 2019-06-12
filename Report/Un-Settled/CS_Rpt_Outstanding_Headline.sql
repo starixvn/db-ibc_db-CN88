@@ -175,7 +175,7 @@ BEGIN
 			SELECT 0 AS sporttype -- SB Parlay: sporttype = 0
 			WHERE b.matchid <> 2799 AND b.eventtype = 0
 		) AS m
-		INNER JOIN #tblSportType s ON m.sporttype = s.SportType
+	WHERE EXISTS (SELECT 1 FROM #tblSportType s WHERE m.sporttype = s.SportType OR m.sporttype = 0)
 	GROUP BY
 		b.CustId
 	OPTION (HASH GROUP)
