@@ -13,6 +13,7 @@ AS
 	Revisions:
 		- 20190214@Percy: Initialize SP [RedmineID: #105660]
 		- 20190328@Percy: Display Virtual Sports Group [RedmineID: #109521]
+		- 20190510@Percy: Return ProductID (1 for SB, NULL for others) [RedmineID: #113849]
 */
 
 BEGIN
@@ -22,13 +23,14 @@ BEGIN
 	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
 
 	;WITH CTE_Sports AS (
-		SELECT DISTINCT sbm.SportTypeGroup, sbm.SportType, s.SportName
+		SELECT DISTINCT CASE WHEN sbm.ProductID = 1 THEN sbm.ProductID END AS ProductID, sbm.SportTypeGroup, sbm.SportType, s.SportName
 		FROM dbo.CS_SportBettypeMatrix sbm WITH (NOLOCK)
 			INNER JOIN dbo.Sports s WITH (NOLOCK) ON sbm.SportType = s.SportType
 		WHERE IsTest <= @isTest
 	)
 	SELECT
-		SportTypeGroup		= s.SportTypeGroup
+		ProductID			= s.ProductID
+		,SportTypeGroup		= s.SportTypeGroup
 		,DisplaySport		= CASE
 								WHEN s.SportTypeGroup = 99 THEN '99' -- Other Sports
 								WHEN s.SportTypeGroup IN (9, 13) THEN '' -- Parlay + Virtual Sports
@@ -48,7 +50,7 @@ BEGIN
 											FOR XML PATH('')), 1, 1, '') END
 	FROM CTE_Sports AS s
 		INNER JOIN dbo.CS_f_SportTypeGroup_OrderSel(1) f ON s.SportTypeGroup = f.SportTypeGroup
-	GROUP BY s.SportTypeGroup, f.OrderId
+	GROUP BY s.ProductID, s.SportTypeGroup, f.OrderId
 	ORDER BY f.OrderId
 END
 GO
