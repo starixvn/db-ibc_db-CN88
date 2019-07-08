@@ -3,6 +3,7 @@ USE [bodb02]
 GO
 
 ALTER PROCEDURE [dbo].[CS_Rpt_Winloss_Headline]
+	@ReportMode			TINYINT = 1,
 	@FromDate			SMALLDATETIME,
 	@ToDate				SMALLDATETIME,
 	@ArchiveDate		SMALLDATETIME,
@@ -20,8 +21,10 @@ AS
 	
 	Revisions:
 		- 20190521@Percy: Initialize SP [Redmine: #113828]
+		- 20190703@Percy: Temporarily add @ReportMode for web input - will implement later [RedmineID: #116082]
 		
 	Param's Explanation:
+		- @ReportMode: 1: current, 2: history
 		- @SporttypeGroup: default = 0: All
 		- @BettypeGroup: default = 0: All
 		- @IsLive: (market) default = 2: All
