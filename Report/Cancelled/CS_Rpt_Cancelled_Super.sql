@@ -1,4 +1,4 @@
-/*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" isFunction="0" isNested="0"></info>*/
 USE [bodb02]
 GO
 
@@ -23,6 +23,7 @@ AS
 		- 20190214@Sophia: Create new [RedmineID: #105660] 
 		- 20190329@Sophia: Implement Non Sports [Redmine: #109521]
 		- 20190528@Sophia: Fix bug VS [Redmine: #113482]
+		- 20190708@Percy: Remove column HeadlineStock [RedmineID: #116088]
 		
 	Param's Explanation:
 		- @CustId: SuperID or HeadlineID
@@ -75,9 +76,7 @@ BEGIN
 		
 		HeadlinePoss		MONEY,
 		HeadlineIncome		MONEY,
-		HeadlineResult		MONEY,
-		HeadlineStock		MONEY
-		
+		HeadlineResult		MONEY
 	) 
 	
 	
@@ -369,8 +368,7 @@ BEGIN
 			SUM (SuperStock) AS SuperStock, 
 								
 			SUM (HeadlineIncome) AS HeadlineIncome,
-			SUM (HeadlineResult) AS HeadlineResult,
-			SUM (HeadlineStock) AS HeadlineStock
+			SUM (HeadlineResult) AS HeadlineResult
 	FROM #SuperCancelled s
 	INNER JOIN Customer c WITH (NOLOCK) 
 		ON c.CustID = s.CustID
