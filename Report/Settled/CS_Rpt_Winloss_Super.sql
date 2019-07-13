@@ -1,4 +1,4 @@
-/*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" isFunction="0" isNested="0"></info>*/
 USE [bodb02]
 GO
 
@@ -23,6 +23,7 @@ AS
 		- 20190214@Sophia: Create new [RedmineID: #105660] 
 		- 20190329@Sophia: Implement Non Sports [Redmine: #109521]
 		- 20190528@Sophia: Fix bug VS [Redmine: #113482]
+		- 20190708@Percy: Remove column HeadlineStock [RedmineID: #116088]
 		
 	Param's Explanation:
 		- @CustId: SuperID or HeadlineID
@@ -75,8 +76,7 @@ BEGIN
 		
 		HeadlinePoss		MONEY,
 		HeadlineIncome		MONEY,
-		HeadlineResult		MONEY,
-		HeadlineStock		MONEY
+		HeadlineResult		MONEY
 		
 	) 
 	
@@ -194,8 +194,7 @@ BEGIN
 							SuperStock, 
 								
 							HeadlineIncome,
-							HeadlineResult,
-							HeadlineStock )		
+							HeadlineResult)		
 		SELECT
 			  				srecommend,
 							'' AS Username,
@@ -221,9 +220,7 @@ BEGIN
 							SUM ( 								
 									( -1 * (CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT)
 									+ ((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm) + (SWinlost + SComm - Acomm)) 
-								) AS HeadlineResult,
-							SUM (ABS(winlost - actual_stake) * (1 - tpositiontaking - e.ExtraPT)) AS HeadlineStock		
-										
+								) AS HeadlineResult
 		FROM	dbo.bettrans b WITH (NOLOCK)		
 			INNER JOIN @BettypeList bt
 				ON	bt.Bettype = b.bettype
@@ -279,8 +276,7 @@ BEGIN
 								SuperStock, 
 									
 								HeadlineIncome,
-								HeadlineResult,
-								HeadlineStock )		
+								HeadlineResult)		
 			SELECT
 								srecommend,
 								'' AS Username,
@@ -306,9 +302,7 @@ BEGIN
 								SUM ( 								
 										( -1 * (CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking) END) * e.ExtraPT)
 										+ ((Winlost - actual_stake + Playercomm) + (Awinlost + Comm - PlayerComm) + (MWinlost + AComm - Comm) + (SWinlost + SComm - Acomm)) 
-									) AS HeadlineResult,
-								SUM (ABS(winlost - actual_stake) * (1 - tpositiontaking - e.ExtraPT)) AS HeadlineStock	
-											
+									) AS HeadlineResult
 			FROM dbo.bettrans b WITH (NOLOCK)
 			INNER JOIN @BettypeList bt
 					ON	bt.Bettype = b.bettype
@@ -368,8 +362,7 @@ BEGIN
 								SuperStock, 
 								
 								HeadlineIncome,
-								HeadlineResult,
-								HeadlineStock )		
+								HeadlineResult)		
 			SELECT
 			  					CustId,
 								'' AS Username,
@@ -395,9 +388,7 @@ BEGIN
 										+ (AgentWinloss + AgentComm) 
 										+ (MasterWinloss + MasterComm) 
 										+ (SuperWinloss + SuperComm)
-									) AS HeadlineResult,
-								SUM (HeadlineStock) AS HeadlineStock	
-										
+									) AS HeadlineResult
 			FROM	bodb_Summary.dbo.CS_SumWinloss b WITH (NOLOCK)						
 			WHERE	b.winlostdate BETWEEN @FDate AND @TDate		
 				AND (@isLive = 2 OR isLive = @isLive)	
@@ -437,8 +428,7 @@ BEGIN
 									SuperStock, 
 									
 									HeadlineIncome,
-									HeadlineResult,
-									HeadlineStock )		
+									HeadlineResult)		
 				SELECT
 									CustId,
 									'' AS Username,
@@ -464,9 +454,7 @@ BEGIN
 											+ (AgentWinloss + AgentComm) 
 											+ (MasterWinloss + MasterComm) 
 											+ (SuperWinloss + SuperComm)
-										) AS HeadlineResult,
-									SUM (HeadlineStock) AS HeadlineStock	
-											
+										) AS HeadlineResult
 				FROM	bodb_Summary.dbo.CS_SumWinloss_Old b WITH (NOLOCK)						
 				WHERE	b.winlostdate BETWEEN @FDate AND @TDate		
 					AND (@isLive = 2 OR isLive = @isLive)	
@@ -499,8 +487,7 @@ BEGIN
 			SUM (SuperStock) AS SuperStock, 
 								
 			SUM (HeadlineIncome) AS HeadlineIncome,
-			SUM (HeadlineResult) AS HeadlineResult,
-			SUM (HeadlineStock) AS HeadlineStock
+			SUM (HeadlineResult) AS HeadlineResult
 	FROM #SuperWinLoss s
 	INNER JOIN Customer c WITH (NOLOCK) 
 		ON c.CustID = s.CustID
@@ -511,4 +498,3 @@ BEGIN
 
 END
 GO
- 
