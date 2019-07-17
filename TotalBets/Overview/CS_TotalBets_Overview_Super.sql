@@ -257,7 +257,9 @@ BEGIN
 						WHEN 6 THEN Stake6
 						WHEN 7 THEN Stake7
 						END), 0) AS Stake
-			FROM #TotalBets
+			FROM #TotalBets t
+				LEFT JOIN #EventInfo e ON t.MatchId = e.MatchId
+			WHERE t.BetType = 29 OR e.MatchId IS NOT NULL
 	END
 
 	DROP TABLE #Sports
