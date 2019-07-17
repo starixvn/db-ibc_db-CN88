@@ -6,7 +6,7 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Outstanding_Agent]
 	@CustId				INT = 0,	 
 	@IsOwner			BIT = 1,
 	@SubAccId			INT = 0,
-	@IsAllDownline		BIT = 0,
+	@IsAllDownline		BIT = 1,
 	@FromDate			SMALLDATETIME,
 	@ToDate				SMALLDATETIME,	 
 	@SporttypeGroup		SMALLINT = 0, -- all

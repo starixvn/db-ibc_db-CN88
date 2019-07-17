@@ -6,7 +6,7 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Cancelled_Member]
 	@CustId				INT = 0,
 	@IsOwner			BIT = 1,
 	@SubAccId			INT = 0,
-	@IsAllDownline		BIT = 0,
+	@IsAllDownline		BIT = 1,
 	@FromDate			SMALLDATETIME,
 	@ToDate				SMALLDATETIME,
 	@ArchiveDate		SMALLDATETIME,
@@ -39,21 +39,6 @@ AS
 		- @IsLive: default = 2: All
 						= 1: Live
 						= 0: Dead 
-	Sample:
-
-  EXEC [CS_Rpt_Cancelled_Member]
-	@CustId				= 13884934,	
-	@IsOwner			= 0,
-	@FromDate			= '2019-01-01',
-	@ToDate				= '2019-03-01',	
-	@ArchiveDate		= '2019-02-03',
-	@MoveBetsDay		= '2019-02-10',
-	@ProductId			= 1,
-	@SporttypeGroup		= 0, -- all
-	@BettypeGroup			= 0, -- all
-	@IsLive				= 2 
-	   
-
 */
 
 BEGIN

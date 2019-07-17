@@ -6,7 +6,7 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Cancelled_Super]
 	@CustId				INT = 0,
 	@IsOwner			BIT = 1,
 	@SubAccId			INT = 0,
-	@IsAllDownline		BIT = 0,
+	@IsAllDownline		BIT = 1,
 	@FromDate			SMALLDATETIME,
 	@ToDate				SMALLDATETIME,
 	@ArchiveDate		SMALLDATETIME,

@@ -5,7 +5,7 @@ GO
 ALTER PROCEDURE [dbo].[CS_TotalBets_WagerAccount_Event_Agent]
 	@CustID			INT,
 	@SubAccId		INT = 0,
-	@IsAllDownline	BIT = 0,
+	@IsAllDownline	BIT = 1,
 	@MatchId		INT = 0,
 	@BettypeGroup	SMALLINT = 0,
 	@Betteam		NVARCHAR(10) = '',

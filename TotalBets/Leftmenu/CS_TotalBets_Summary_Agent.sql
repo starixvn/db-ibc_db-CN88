@@ -6,7 +6,7 @@ GO
 ALTER PROCEDURE [dbo].[CS_TotalBets_Summary_Agent]
 	@CustId			INT,
 	@SubAccId		INT = 0,
-	@IsAllDownline	BIT = 0,
+	@IsAllDownline	BIT = 1,
 	@Type			TINYINT = 1
 AS
 

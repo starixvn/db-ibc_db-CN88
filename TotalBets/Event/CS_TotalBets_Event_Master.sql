@@ -5,7 +5,7 @@ GO
 ALTER PROCEDURE [dbo].[CS_TotalBets_Event_Master]
 	@CustID			INT ,
 	@SubAccId		INT = 0,
-	@IsAllDownline	BIT = 0,
+	@IsAllDownline	BIT = 1,
 	@Type			TINYINT = 1, 
 	@SporttypeGroup INT = 0,
 	@LeagueId		INT = 0,

@@ -5,7 +5,7 @@ GO
 ALTER PROCEDURE [dbo].[CS_TotalBets_WagerAccount_Outright_Agent]
 	@CustID			INT,
 	@SubAccId		INT = 0,
-	@IsAllDownline	BIT = 0,
+	@IsAllDownline	BIT = 1,
 	@MatchID		INT,
 	@StakeCondition TINYINT = 1,
 	@Stake			MONEY = 0 
