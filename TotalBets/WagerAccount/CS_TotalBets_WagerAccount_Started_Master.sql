@@ -1,31 +1,35 @@
-/*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="0"></info>*/	
+/*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" isFunction="0"></info>*/	
 USE bodb02
 GO 
 
 ALTER PROCEDURE [dbo].[CS_TotalBets_WagerAccount_Started_Master]
-	@CustID INT ,
-	@MatchId INT = 0,
-	@BettypeGroup SMALLINT = 0,
-	@Betteam NVARCHAR(10) = '',
-	@LiveIndicator BIT = 0,
+	@CustID			INT,
+	@SubAccId		INT = 0,
+	@IsAllDownline	BIT = 0,
+	@MatchId		INT = 0,
+	@BettypeGroup	SMALLINT = 0,
+	@Betteam		NVARCHAR(10) = '',
+	@LiveIndicator	BIT = 0,
 	@StakeCondition TINYINT = 1,
-	@Stake MONEY = 0 
+	@Stake			MONEY = 0
 AS
- 
-/*
-Created: 20190307@Sophia
-Task : CN88 Agent Wager Account of Total Bet -  by Started
-DB: DBAGE.bodb02
-Original:
 
-Revisions:
-    - 20190419@Sophia: initial SP [Redmine: #112032] 
+/*
+	Created: 20190307@Sophia
+	Task: CN88 Agent Wager Account of Total Bet -  by Started
+	DB: DBAGE.bodb02
+
+	Revisions:
+		- 20190419@Sophia: initial SP [Redmine: #112032]
+		- 20190713@Percy: Add sub account - permission on downlines [RedmineID: #116825]
 	
-Param's Explanation:
-	- @StakeCondition 	= 0 :  =
-						= 1 :  >  (default)
-						= 2 :  < 
-	- @CustID : SuperID
+	Param's Explanation:
+		- @SubAccId: sub account
+		- @IsAllDownline: is view all downlines
+		- @StakeCondition 	= 0 :  =
+							= 1 :  >  (default)
+							= 2 :  < 
+		- @CustID : SuperID
 */
 BEGIN
 	SET NOCOUNT ON
@@ -33,6 +37,16 @@ BEGIN
 	------ Check SP Version
 	DECLARE @isTest BIT = 0
 	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
+
+	/* ===== Get downline list by Sub Account ==== */
+	DECLARE @Downlines TABLE (DownlineId INT)
+
+	IF ISNULL(@SubAccId, 0) <> 0 AND ISNULL(@IsAllDownline, 0) = 0
+	BEGIN
+		INSERT INTO @Downlines (DownlineId)
+		SELECT DownlineId FROM dbo.CS_f_GetDownlineBySubAcc(@SubAccId)
+	END
+	/* ===== End Get downline list by Sub Account ==== */
 
 	--- Get Bettype	
 	DECLARE @BettypeList AS TABLE (bettype SMALLINT ) 
@@ -48,7 +62,8 @@ BEGIN
 				SUM (b.Stake) AS Stake 				
 			FROM bettrans b WITH (NOLOCK)
 			WHERE  	
-				b.srecommend = @CustId 
+				b.srecommend = @CustId
+				AND (@IsAllDownline = 1 OR EXISTS (SELECT 1 FROM @Downlines d WHERE b.mrecommend = d.DownlineId))
 				AND b.statusID IN (0,1,111,112,113)
 				AND b.bettype IN (Select Bettype FROM @BettypeList)
 				AND (b.betteam = @betteam OR @betteam = '')
@@ -64,8 +79,5 @@ BEGIN
 		INNER JOIN bodb02.dbo.Customer c WITH (NOLOCK) 
 				ON c.CustId = A.mrecommend
 		WHERE c.RoleID = 3
-	
-	
-	 
 END
 GO 
