@@ -79,8 +79,20 @@ BEGIN
 		END
 		ELSE -- Upline view
 		BEGIN
-			INSERT INTO @Customers (CustId)
-			SELECT CustId FROM dbo.Customer WITH (NOLOCK) WHERE mrecommend = @CustID AND roleid = 2
+			/* ===== Get downline list by Sub Account ==== */
+			IF ISNULL(@SubAccId, 0) <> 0 AND ISNULL(@IsAllDownline, 0) = 0
+			BEGIN
+				INSERT INTO @Customers (CustId)
+				SELECT DownlineId FROM dbo.CS_f_GetDownlineBySubAcc(@SubAccId)
+			END
+			/* ===== End Get downline list by Sub Account ==== */
+			ELSE
+			BEGIN
+				INSERT INTO @Customers (CustId)
+				SELECT CustId FROM dbo.Customer WITH (NOLOCK) WHERE mrecommend = @CustID AND roleid = 2
+			END
+
+			SELECT @IsAllDownline = 1
 		END
 	END
 	/* ===== End Get Customer List ===== */

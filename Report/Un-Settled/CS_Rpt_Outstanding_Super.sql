@@ -45,8 +45,6 @@ BEGIN
 	SET NOCOUNT ON
 
 	/* ===== Get SportBettypeMatrix ===== */
-		HeadlineResult		MONEY,
-		HeadlineStock		MONEY
 	BEGIN
 		DECLARE @isTest BIT = 0
 		SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
@@ -78,11 +76,25 @@ BEGIN
 		END
 		ELSE -- Upline view
 		BEGIN
-			INSERT INTO @Customers (CustId, BetType, EventType, RefTable)
-			SELECT cs.CustId, bt.BetType, bt.EventType, bt.RefTable
-			FROM dbo.CustSuper cs WITH (NOLOCK)
-				CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest) bt
-			WHERE cs.UplineId = @CustId
+			/* ===== Get downline list by Sub Account ==== */
+			IF ISNULL(@SubAccId, 0) <> 0 AND ISNULL(@IsAllDownline, 0) = 0
+			BEGIN
+				INSERT INTO @Customers (CustId, BetType, EventType, RefTable)
+				SELECT cs.DownlineId, bt.BetType, bt.EventType, bt.RefTable
+				FROM dbo.CS_f_GetDownlineBySubAcc(@SubAccId) cs
+					CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest) bt
+			END
+			/* ===== End Get downline list by Sub Account ==== */
+			ELSE
+			BEGIN
+				INSERT INTO @Customers (CustId, BetType, EventType, RefTable)
+				SELECT cs.CustId, bt.BetType, bt.EventType, bt.RefTable
+				FROM dbo.CustSuper cs WITH (NOLOCK)
+					CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest) bt
+				WHERE cs.UplineId = @CustId
+			END
+
+			SELECT @IsAllDownline = 1
 		END
 	END
 	/* ===== End Get Customer List ===== */
@@ -235,22 +247,22 @@ BEGIN
 	/* ===== Return data ===== */
 	BEGIN
 		SELECT
-			c.CustId,
-			c.Username,
-			SUM(Wagers) AS Wagers,
-			SUM(Stake) AS Stake,
-			0 AS ValidStake,
-			0 AS MemberIncome,
-			0 AS Agent,
-			0 AS AgentResult,
-			0 AS Master,
-			0 AS Super,
-			0 AS SuperIncome,
-			0 AS SuperResult,
-			0 AS SuperStock,
-			0 AS HeadlineIncome,
-			0 AS HeadlineResult,
-			0 AS HeadlineStock
+			c.CustId
+			,c.Username
+			,SUM(Wagers) AS Wagers
+			,SUM(Stake) AS Stake
+			,0 AS ValidStake
+			,0 AS MemberIncome
+			,0 AS Agent
+			,0 AS AgentResult
+			,0 AS Master
+			,0 AS Super
+			,0 AS SuperIncome
+			,0 AS SuperResult
+			,0 AS SuperStock
+			,0 AS HeadlineIncome
+			,0 AS HeadlineResult
+			,0 AS HeadlineStock
 		FROM #tmpOutstanding o
 			INNER JOIN Customer c WITH (NOLOCK) ON o.CustID = c.CustID
 		GROUP BY

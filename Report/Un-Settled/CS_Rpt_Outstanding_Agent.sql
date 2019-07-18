@@ -73,11 +73,25 @@ BEGIN
 		END
 		ELSE -- Upline view
 		BEGIN
-			INSERT INTO @Customers (CustId, BetType, EventType, RefTable)
-			SELECT c.CustId, bt.BetType, bt.EventType, bt.RefTable
-			FROM dbo.Customer c WITH (NOLOCK)
-				CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest) bt
-			WHERE c.srecommend = @CustId AND c.roleid = 3
+			/* ===== Get downline list by Sub Account ==== */
+			IF ISNULL(@SubAccId, 0) <> 0 AND ISNULL(@IsAllDownline, 0) = 0
+			BEGIN
+				INSERT INTO @Customers (CustId, BetType, EventType, RefTable)
+				SELECT cs.DownlineId, bt.BetType, bt.EventType, bt.RefTable
+				FROM dbo.CS_f_GetDownlineBySubAcc(@SubAccId) cs
+					CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest) bt
+			END
+			/* ===== End Get downline list by Sub Account ==== */
+			ELSE
+			BEGIN
+				INSERT INTO @Customers (CustId, BetType, EventType, RefTable)
+				SELECT c.CustId, bt.BetType, bt.EventType, bt.RefTable
+				FROM dbo.Customer c WITH (NOLOCK)
+					CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest) bt
+				WHERE c.srecommend = @CustId AND c.roleid = 3
+			END
+
+			SELECT @IsAllDownline = 1
 		END
 	END
 	/* ===== End Get Customer List ===== */

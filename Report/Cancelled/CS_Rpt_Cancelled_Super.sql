@@ -27,8 +27,8 @@ AS
 		- 20190329@Sophia: Implement Non Sports [Redmine: #109521]
 		- 20190528@Sophia: Fix bug VS [Redmine: #113482]
 		- 20190708@Percy: Remove column HeadlineStock [RedmineID: #116088]
-		- 20190719@Percy: Add back column HeadlineStock [RedmineID: #117297]
 		- 20190713@Percy: Add sub account - permission on downlines [RedmineID: #116825]
+		- 20190719@Percy: Add back column HeadlineStock [RedmineID: #117297]
 		
 	Param's Explanation:
 		- @CustId: SuperID or HeadlineID
@@ -55,8 +55,6 @@ BEGIN
 		CREATE TABLE #tblSportType (SportType INT)
 		INSERT INTO #tblSportType (SportType)
 		SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
-		HeadlineStock		MONEY
-		
 
 		CREATE TABLE #tblBetType (BetType INT, EventType TINYINT)
 		INSERT INTO #tblBetType (BetType, EventType)
@@ -84,8 +82,18 @@ BEGIN
 		END
 		ELSE -- Upline view
 		BEGIN
+			/* ===== Get downline list by Sub Account ==== */
+			IF ISNULL(@SubAccId, 0) <> 0 AND ISNULL(@IsAllDownline, 0) = 0
+			BEGIN
+				INSERT INTO @Customers (CustId)
+				SELECT DownlineId FROM dbo.CS_f_GetDownlineBySubAcc(@SubAccId)
+			END
+			/* ===== End Get downline list by Sub Account ==== */
+
 			INSERT INTO @Customers (CustId)
 			SELECT CustId FROM dbo.CustSuper WITH (NOLOCK) WHERE UplineID = @CustID
+
+			SELECT @IsAllDownline = 1
 		END
 	END
 	/* ===== End Get Customer List ===== */
@@ -326,6 +334,7 @@ BEGIN
 			,NULL AS SuperStock
 			,NULL AS HeadlineIncome
 			,NULL AS HeadlineResult
+			,NULL AS HeadlineStock
 		FROM #tmpSumCancelled s
 			INNER JOIN dbo.Customer c WITH (NOLOCK) ON c.CustID = s.CustID
 		GROUP BY

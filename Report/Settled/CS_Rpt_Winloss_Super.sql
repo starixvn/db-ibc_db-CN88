@@ -47,8 +47,6 @@ BEGIN
 	SET NOCOUNT ON
 
 	/* ===== Get SportBettypeMatrix ===== */
-		HeadlineResult		MONEY,
-		HeadlineStock		MONEY
 	BEGIN
 		DECLARE @isTest BIT = 0
 		SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
@@ -99,29 +97,61 @@ BEGIN
 		END
 		ELSE -- Upline view
 		BEGIN
-			INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate)
-			SELECT cs.CustId, e.ProductId, ISNULL(e.ExtraPT, 0), e.FromDate, e.ToDate
-			FROM dbo.CustSuper cs WITH (NOLOCK)
-				CROSS APPLY (
-					SELECT ProductId, MAX(ExtraPT) AS ExtraPT, MAX(FromDate) AS FromDate, MIN(ToDate) AS ToDate
-					FROM (
-						SELECT DISTINCT e.ProductId, e.ExtraPT, e.FromDate, e.ToDate
-						FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
-						WHERE cs.CustId = e.SuperId
-							AND e.Sporttype = 0
-							AND e.SubProduct = ''
-							AND (
-								@FromDate BETWEEN e.FromDate AND e.ToDate
-								OR @ToDate BETWEEN e.FromDate AND e.ToDate
-							)
+			/* ===== Get downline list by Sub Account ==== */
+			IF ISNULL(@SubAccId, 0) <> 0 AND ISNULL(@IsAllDownline, 0) = 0
+			BEGIN
+				INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate)
+				SELECT cs.DownlineId, e.ProductId, ISNULL(e.ExtraPT, 0), e.FromDate, e.ToDate
+				FROM dbo.CS_f_GetDownlineBySubAcc(@SubAccId) cs
+					CROSS APPLY (
+						SELECT ProductId, MAX(ExtraPT) AS ExtraPT, MAX(FromDate) AS FromDate, MIN(ToDate) AS ToDate
+						FROM (
+							SELECT DISTINCT e.ProductId, e.ExtraPT, e.FromDate, e.ToDate
+							FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
+							WHERE cs.DownlineId = e.SuperId
+								AND e.Sporttype = 0
+								AND e.SubProduct = ''
+								AND (
+									@FromDate BETWEEN e.FromDate AND e.ToDate
+									OR @ToDate BETWEEN e.FromDate AND e.ToDate
+								)
 
-						UNION ALL
-						SELECT DISTINCT ProductId AS ProductId, 0 AS ExtraPT, @FromDate AS FromDate, @ToDate AS ToDate
-						FROM #tblBetType
-					) AS r
-					GROUP BY ProductId
-				) AS e
-			WHERE cs.UplineId = @CustId
+							UNION ALL
+							SELECT DISTINCT ProductId AS ProductId, 0 AS ExtraPT, @FromDate AS FromDate, @ToDate AS ToDate
+							FROM #tblBetType
+						) AS r
+						GROUP BY ProductId
+					) AS e
+			END
+			/* ===== End Get downline list by Sub Account ==== */
+			ELSE
+			BEGIN
+				INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate)
+				SELECT cs.CustId, e.ProductId, ISNULL(e.ExtraPT, 0), e.FromDate, e.ToDate
+				FROM dbo.CustSuper cs WITH (NOLOCK)
+					CROSS APPLY (
+						SELECT ProductId, MAX(ExtraPT) AS ExtraPT, MAX(FromDate) AS FromDate, MIN(ToDate) AS ToDate
+						FROM (
+							SELECT DISTINCT e.ProductId, e.ExtraPT, e.FromDate, e.ToDate
+							FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
+							WHERE cs.CustId = e.SuperId
+								AND e.Sporttype = 0
+								AND e.SubProduct = ''
+								AND (
+									@FromDate BETWEEN e.FromDate AND e.ToDate
+									OR @ToDate BETWEEN e.FromDate AND e.ToDate
+								)
+
+							UNION ALL
+							SELECT DISTINCT ProductId AS ProductId, 0 AS ExtraPT, @FromDate AS FromDate, @ToDate AS ToDate
+							FROM #tblBetType
+						) AS r
+						GROUP BY ProductId
+					) AS e
+				WHERE cs.UplineId = @CustId
+			END
+
+			SELECT @IsAllDownline = 1
 		END
 
 		DELETE c
@@ -151,6 +181,7 @@ BEGIN
 			,SuperStock		MONEY
 			,HeadlineIncome	MONEY
 			,HeadlineResult	MONEY
+			,HeadlineStock	MONEY
 		)
 
 		-- bettrans
@@ -172,6 +203,7 @@ BEGIN
 			,SuperStock		MONEY
 			,HeadlineIncome	MONEY
 			,HeadlineResult	MONEY
+			,HeadlineStock	MONEY
 		)
 
 		IF @ToDate > @MoveBetsDay
@@ -197,6 +229,7 @@ BEGIN
 				,SuperStock
 				,HeadlineIncome
 				,HeadlineResult
+				,HeadlineStock
 			)
 			SELECT
 				b.srecommend
@@ -219,7 +252,8 @@ BEGIN
 				,-SUM(b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * c.ExtraPT END) AS HeadlineIncome
 				,SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost + b.scomm
 					- b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * c.ExtraPT END
-					) AS HeadlineResult 
+					) AS HeadlineResult
+				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - c.ExtraPT)) AS HeadlineStock
 			FROM @Customers c
 				CROSS APPLY (
 					SELECT
@@ -281,6 +315,7 @@ BEGIN
 				,SuperStock
 				,HeadlineIncome
 				,HeadlineResult
+				,HeadlineStock
 			)
 			SELECT
 				b.srecommend			AS CustId
@@ -297,6 +332,7 @@ BEGIN
 				,SUM(SuperStock)		AS SuperStock
 				,SUM(HeadlineIncome)	AS HeadlineIncome
 				,SUM(HeadlineResult)	AS HeadlineResult
+				,SUM(HeadlineStock)		AS HeadlineStock
 			FROM #tmpBettrans b
 				CROSS APPLY (
 					SELECT m.sporttype
@@ -351,6 +387,7 @@ BEGIN
 					,SuperStock
 					,HeadlineIncome
 					,HeadlineResult
+					,HeadlineStock
 				)
 				SELECT
 					s.CustId
@@ -375,6 +412,7 @@ BEGIN
 						+ MasterWinloss + MasterComm
 						+ SuperWinloss + SuperComm
 						+ HeadlineWinloss + HeadlineComm)	AS HeadlineResult
+					,SUM(HeadlineStock)		AS HeadlineStock
 				FROM bodb_Summary.dbo.CS_SumWinloss s WITH (NOLOCK)
 				WHERE s.WinlostDate BETWEEN @FDate AND @TDate
 					AND EXISTS (SELECT 1 FROM @Customers c WHERE s.CustID = c.CustId)
@@ -402,8 +440,8 @@ BEGIN
 					,SuperStock
 					,HeadlineIncome
 					,HeadlineResult
+					,HeadlineStock
 				)
-								HeadlineStock )		
 				SELECT
 					s.CustId
 					,SUM(Wagers)			AS Wagers
@@ -427,6 +465,7 @@ BEGIN
 						+ MasterWinloss + MasterComm
 						+ SuperWinloss + SuperComm
 						+ HeadlineWinloss + HeadlineComm)	AS HeadlineResult
+					,SUM(HeadlineStock)		AS HeadlineStock
 				FROM bodb_Summary.dbo.CS_SumWinloss s WITH (NOLOCK)
 				WHERE s.WinlostDate BETWEEN @FDate AND @TDate
 					AND EXISTS (SELECT 1 FROM @Downlines c WHERE s.CustID = c.DownlineId)
@@ -462,6 +501,7 @@ BEGIN
 					,SuperStock
 					,HeadlineIncome
 					,HeadlineResult
+					,HeadlineStock
 				)
 				SELECT
 					s.CustId
@@ -486,6 +526,7 @@ BEGIN
 						+ MasterWinloss + MasterComm
 						+ SuperWinloss + SuperComm
 						+ HeadlineWinloss + HeadlineComm)	AS HeadlineResult
+					,SUM(HeadlineStock)		AS HeadlineStock
 				FROM bodb_Summary.dbo.CS_SumWinloss_Old s WITH (NOLOCK)
 				WHERE s.WinlostDate BETWEEN @FDate AND @TDate
 					AND EXISTS (SELECT 1 FROM @Customers c WHERE s.CustID = c.CustId)
@@ -513,8 +554,8 @@ BEGIN
 					,SuperStock
 					,HeadlineIncome
 					,HeadlineResult
+					,HeadlineStock
 				)
-									HeadlineStock )		
 				SELECT
 					s.CustId
 					,SUM(Wagers)			AS Wagers
@@ -538,6 +579,7 @@ BEGIN
 						+ MasterWinloss + MasterComm
 						+ SuperWinloss + SuperComm
 						+ HeadlineWinloss + HeadlineComm)	AS HeadlineResult
+					,SUM(HeadlineStock)		AS HeadlineStock
 				FROM bodb_Summary.dbo.CS_SumWinloss_Old s WITH (NOLOCK)
 				WHERE s.WinlostDate BETWEEN @FDate AND @TDate
 					AND EXISTS (SELECT 1 FROM @Downlines c WHERE s.CustID = c.DownlineId)
@@ -573,6 +615,7 @@ BEGIN
 			,SUM(SuperStock)		AS SuperStock
 			,SUM(HeadlineIncome)	AS HeadlineIncome
 			,SUM(HeadlineResult)	AS HeadlineResult
+			,SUM(HeadlineStock)		AS HeadlineStock
 		FROM #tmpSumWinloss s
 			INNER JOIN dbo.Customer c WITH (NOLOCK) ON c.CustID = s.CustID
 		GROUP BY
@@ -583,7 +626,5 @@ BEGIN
 	/* ===== End Return result ===== */
 
 	DROP TABLE #tmpSumWinloss
-			SUM (HeadlineStock) AS HeadlineStock
 END
 GO
- 
