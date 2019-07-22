@@ -24,6 +24,7 @@ AS
 		- 20190329@Sophia: Implement Non Sports [Redmine: #109521]
 		- 20190528@Sophia: Fix bug VS [Redmine: #113482]
 		- 20190708@Percy: Remove column HeadlineStock [RedmineID: #116088]
+		- 20190719@Percy: Add back column HeadlineStock [RedmineID: #117297]
 		
 	Param's Explanation:
 		- @CustId: SuperID or HeadlineID
@@ -35,21 +36,6 @@ AS
 		- @IsLive: default = 2: All
 						= 1: Live
 						= 0: Dead
-						
-						
-		EXEC [CS_Rpt_Cancelled_Super] 
-			@CustId				= 2,
-			@IsOwner			= 1, 
-			@FromDate			= '2019-01-01',
-			@ToDate				= '2019-03-01',	
-			@ArchiveDate		= '2019-02-03',
-			@MoveBetsDay		= '2019-02-08',
-			@ProductId			= 1,
-			@SporttypeGroup		= 0, -- all
-			@BettypeGroup		= 10, -- all
-			@IsLive				= 0 -- all
-			
-
 */
 
 BEGIN
@@ -76,7 +62,9 @@ BEGIN
 		
 		HeadlinePoss		MONEY,
 		HeadlineIncome		MONEY,
-		HeadlineResult		MONEY
+		HeadlineResult		MONEY,
+		HeadlineStock		MONEY
+		
 	) 
 	
 	
@@ -368,7 +356,8 @@ BEGIN
 			SUM (SuperStock) AS SuperStock, 
 								
 			SUM (HeadlineIncome) AS HeadlineIncome,
-			SUM (HeadlineResult) AS HeadlineResult
+			SUM (HeadlineResult) AS HeadlineResult,
+			SUM (HeadlineStock) AS HeadlineStock
 	FROM #SuperCancelled s
 	INNER JOIN Customer c WITH (NOLOCK) 
 		ON c.CustID = s.CustID
