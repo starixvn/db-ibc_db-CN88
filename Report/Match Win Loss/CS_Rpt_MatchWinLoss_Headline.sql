@@ -24,6 +24,8 @@ AS
 BEGIN
 	SET NOCOUNT ON
 
+	DECLARE @n INT = 2147483647
+
 	DECLARE @IsTest BIT
 	SELECT  @IsTest = dbo.f_CheckSPVersion(@@PROCID)
 
@@ -32,13 +34,13 @@ BEGIN
 	SELECT DISTINCT ProductID, SportType, SportTypeGroup
 	FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
 
-	CREATE TABLE #tblBetType (ProductID INT, BetTypeGroup INT, BetType INT, EventType TINYINT)
-	INSERT INTO #tblBetType (ProductID, BetTypeGroup, BetType, EventType)
-	SELECT DISTINCT ProductID, BetTypeGroup, BetType, EventType
+	CREATE TABLE #tblBetType (ProductID INT, BetTypeGroup INT, BetType INT, EventType TINYINT, IsNonSports BIT)
+	INSERT INTO #tblBetType (ProductID, BetTypeGroup, BetType, EventType, IsNonSports)
+	SELECT DISTINCT ProductID, BetTypeGroup, BetType, EventType, 0
 	FROM dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
 
 	UPDATE bt
-	SET bt.BetTypeGroup = st.SportTypeGroup
+	SET bt.BetTypeGroup = st.SportTypeGroup, bt.IsNonSports = 1
 	FROM #tblBetType bt
 		INNER JOIN #tblSportType st ON bt.ProductID = st.ProductID
 	WHERE bt.ProductID IN (3,8,28,5,27)
@@ -75,6 +77,7 @@ BEGIN
 		,bettype		INT
 		,bettypegroup	INT
 		,productid		INT
+		,IsNonSports	BIT
 		,eventtype		TINYINT
 		,Wagers			INT
 		,Stake			MONEY
@@ -92,6 +95,7 @@ BEGIN
 			,bettype
 			,bettypegroup
 			,productid
+			,IsNonSports
 			,eventtype
 			,Wagers
 			,Stake
@@ -105,6 +109,7 @@ BEGIN
 			,b.bettype
 			,bt.BetTypeGroup
 			,bt.ProductId
+			,bt.IsNonSports
 			,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END AS eventtype
 			,COUNT(1) AS Wagers
 			,SUM(b.stake) AS Stake
@@ -117,7 +122,7 @@ BEGIN
 			,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - e.ExtraPT)) AS HeadlineStock
 		FROM @ExtraPT e
 			CROSS APPLY (
-				SELECT
+				SELECT TOP (@n)
 					CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
 					,b.bettype
 					,b.stake
@@ -151,11 +156,12 @@ BEGIN
 			,b.bettype
 			,bt.BetTypeGroup
 			,bt.ProductId
+			,bt.IsNonSports
 			,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END
-		OPTION (HASH GROUP)
+		OPTION (HASH GROUP, OPTIMIZE FOR (@n = 1))
 
 		SELECT
-			m.leagueid, m.matchid, m.homeid, m.awayid, b.bettypegroup, CASE WHEN b.productid = 1 THEN 0 ELSE 1 END AS IsNonSports
+			m.leagueid, m.matchid, m.homeid, m.awayid, b.bettypegroup, b.IsNonSports
 			,SUM(b.Wagers) AS Wagers, SUM(b.Stake) AS Stake, SUM(b.ValidStake) AS ValidStake, SUM(b.MemberIncome) AS MemberIncome
 			,SUM(b.HouseIncome) AS HouseIncome, SUM(b.HeadlineStock) AS HeadlineStock
 		FROM #tmpBettrans b
@@ -164,7 +170,13 @@ BEGIN
 					SELECT m.leagueid, m.matchid, m.homeid, m.awayid, m.sporttype
 					FROM dbo.match m WITH (NOLOCK)
 					WHERE b.matchid = m.matchid AND b.EventType = 1
-						AND m.eventstatus = 'Completed'
+						AND m.eventstatus = 'Completed' AND b.IsNonSports = 0
+
+					UNION ALL
+					SELECT 0 AS leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, m.sporttype
+					FROM dbo.match m WITH (NOLOCK)
+					WHERE b.matchid = m.matchid AND b.EventType = 1
+						AND m.eventstatus = 'Completed' AND b.IsNonSports = 1
 					
 					UNION ALL
 					SELECT l.leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, l.sporttype
@@ -184,7 +196,7 @@ BEGIN
 				) AS m
 			INNER JOIN #tblSportType s ON m.sporttype = s.SportType
 		GROUP BY
-			m.leagueid, m.matchid, m.homeid, m.awayid, b.bettypegroup, CASE WHEN b.productid = 1 THEN 0 ELSE 1 END
+			m.leagueid, m.matchid, m.homeid, m.awayid, b.bettypegroup, b.IsNonSports
 		OPTION (HASH GROUP)
 	END
 	ELSE
@@ -195,6 +207,7 @@ BEGIN
 			,bettype
 			,bettypegroup
 			,productid
+			,IsNonSports
 			,eventtype
 			,Wagers
 			,Stake
@@ -208,6 +221,7 @@ BEGIN
 			,b.bettype
 			,bt.BetTypeGroup
 			,bt.ProductId
+			,bt.IsNonSports
 			,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END AS eventtype
 			,COUNT(1) AS Wagers
 			,SUM(b.stake) AS Stake
@@ -220,7 +234,7 @@ BEGIN
 			,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - e.ExtraPT)) AS HeadlineStock
 		FROM @ExtraPT e
 			CROSS APPLY (
-				SELECT
+				SELECT TOP (@n)
 					CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
 					,b.bettype
 					,b.stake
@@ -254,11 +268,12 @@ BEGIN
 			,b.bettype
 			,bt.BetTypeGroup
 			,bt.ProductId
+			,bt.IsNonSports
 			,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END
-		OPTION (HASH GROUP)
+		OPTION (HASH GROUP, OPTIMIZE FOR (@n = 1))
 
 		SELECT
-			m.leagueid, m.matchid, m.homeid, m.awayid, b.bettypegroup, CASE WHEN b.productid = 1 THEN 0 ELSE 1 END AS IsNonSports
+			m.leagueid, m.matchid, m.homeid, m.awayid, b.bettypegroup, b.IsNonSports
 			,SUM(b.Wagers) AS Wagers, SUM(b.Stake) AS Stake, SUM(b.ValidStake) AS ValidStake, SUM(b.MemberIncome) AS MemberIncome
 			,SUM(b.HouseIncome) AS HouseIncome, SUM(b.HeadlineStock) AS HeadlineStock
 		FROM #tmpBettrans b
@@ -267,7 +282,13 @@ BEGIN
 					SELECT m.leagueid, m.matchid, m.homeid, m.awayid, m.sporttype
 					FROM dbo.match14 m WITH (NOLOCK)
 					WHERE b.matchid = m.matchid AND b.EventType = 1
-						AND m.eventstatus = 'Completed'
+						AND m.eventstatus = 'Completed' AND b.IsNonSports = 0
+
+					UNION ALL
+					SELECT 0 AS leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, m.sporttype
+					FROM dbo.match14 m WITH (NOLOCK)
+					WHERE b.matchid = m.matchid AND b.EventType = 1
+						AND m.eventstatus = 'Completed' AND b.IsNonSports = 1
 					
 					UNION ALL
 					SELECT l.leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, l.sporttype
@@ -287,7 +308,7 @@ BEGIN
 				) AS m
 			INNER JOIN #tblSportType s ON m.sporttype = s.SportType
 		GROUP BY
-			m.leagueid, m.matchid, m.homeid, m.awayid, b.bettypegroup, CASE WHEN b.productid = 1 THEN 0 ELSE 1 END
+			m.leagueid, m.matchid, m.homeid, m.awayid, b.bettypegroup, b.IsNonSports
 		OPTION (HASH GROUP)
 	END
 
