@@ -28,9 +28,9 @@ BEGIN
 
 	DECLARE @Targets TABLE (TargetId INT)
 	INSERT INTO @Targets (TargetId)
-	SELECT val, 0 FROM dbo.strSplit(@TargetIds, ',')
+	SELECT val FROM dbo.strSplit(@TargetIds, ',')
 	UNION ALL
-	SELECT @CustId, 0
+	SELECT @CustId
 
 	/* ===== Sub Account ===== */
 	DECLARE @SubMsg TABLE (MessageId INT, BettransId VARCHAR(MAX))
@@ -44,7 +44,7 @@ BEGIN
 
 	DECLARE @Msg TABLE (MessageId INT)
 	INSERT INTO @Msg (MessageId)
-	SELECT DISTINCT TOP (@TotalMessage) m.MessageId
+	SELECT TOP (@TotalMessage) m.MessageId
 	FROM dbo.Msg m WITH (NOLOCK)
 		INNER JOIN dbo.MsgTarget mt WITH (NOLOCK) ON m.MessageId = mt.MessageId
 	WHERE m.PostTime BETWEEN @FromDate AND @LastPostTime

@@ -2,7 +2,7 @@
 USE bodb_Message
 GO
 
-CREATE PROCEDURE [dbo].[CS_Msg_GetPrivateMessage]
+ALTER PROCEDURE [dbo].[CS_Msg_GetPrivateMessage]
 	@CustId			INT
 	,@SubAccId		INT = 0
 	,@Special		INT = 2
