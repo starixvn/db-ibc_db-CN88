@@ -77,7 +77,10 @@ BEGIN
 				CROSS APPLY (
 					SELECT m.MessageId FROM @Msg m WHERE mt.MessageId = m.MessageId
 				) AS m
-			WHERE EXISTS (SELECT 1 FROM bodb02.dbo.CS_SubAccManagement sa WITH (NOLOCK) WHERE mt.TargetId = sa.DownlineId)
+			WHERE EXISTS (
+				SELECT 1 FROM bodb02.dbo.CS_SubAccManagement sa WITH (NOLOCK)
+				WHERE mt.TargetId = sa.DownlineId AND sa.SubAccId = @SubAccId
+			)
 		)
 		INSERT INTO @SubMsg (MessageId, BettransId)
 		SELECT

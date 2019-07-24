@@ -42,9 +42,9 @@ BEGIN
 	END
 	/* ===== End Sub Account ===== */
 
-	DECLARE @Msg TABLE (MessageId INT)
-	INSERT INTO @Msg (MessageId)
-	SELECT TOP (@TotalMessage) m.MessageId
+	DECLARE @Msg TABLE (MessageId INT, TargetId INT)
+	INSERT INTO @Msg (MessageId, TargetId)
+	SELECT TOP (@TotalMessage) m.MessageId, mt.TargetId
 	FROM dbo.Msg m WITH (NOLOCK)
 		INNER JOIN dbo.MsgTarget mt WITH (NOLOCK) ON m.MessageId = mt.MessageId
 	WHERE m.PostTime BETWEEN @FromDate AND @LastPostTime
@@ -55,6 +55,9 @@ BEGIN
 		AND EXISTS (SELECT 1 FROM @Targets t WHERE mt.TargetID = t.TargetID)
 		AND (
 			@IsAllDownline = 1
+			OR EXISTS (
+				SELECT 1 FROM @Targets t WHERE mt.TargetID = t.TargetID AND t.TargetId <> @CustId
+			)
 			OR EXISTS (
 				SELECT 1
 				FROM dbo.MsgTarget s WITH (NOLOCK)
@@ -72,7 +75,10 @@ BEGIN
 				CROSS APPLY (
 					SELECT m.MessageId FROM @Msg m WHERE mt.MessageId = m.MessageId
 				) AS m
-			WHERE EXISTS (SELECT 1 FROM bodb02.dbo.CS_SubAccManagement sa WITH (NOLOCK) WHERE mt.TargetId = sa.DownlineId)
+			WHERE EXISTS (
+				SELECT 1 FROM bodb02.dbo.CS_SubAccManagement sa WITH (NOLOCK)
+				WHERE mt.TargetId = sa.DownlineId AND sa.SubAccId = @SubAccId
+				)
 		)
 		INSERT INTO @SubMsg (MessageId, BettransId)
 		SELECT
@@ -94,7 +100,7 @@ BEGIN
 	FROM dbo.Msg m WITH(NOLOCK)
 		INNER JOIN dbo.MsgTarget mt with (NOLOCK) ON m.MessageId = mt.MessageId
 		CROSS APPLY (
-			SELECT tmp.MessageId FROM @Msg tmp WHERE m.MessageId = tmp.MessageId
+			SELECT tmp.MessageId FROM @Msg tmp WHERE m.MessageId = tmp.MessageId AND mt.TargetId = tmp.TargetId
 		) AS tmp
 		LEFT JOIN @SubMsg sm ON m.MessageId = sm.MessageId AND @IsAllDownline = 0
 	ORDER BY m.TopLevel ASC, m.Posttime	DESC
