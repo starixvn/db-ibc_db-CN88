@@ -94,7 +94,7 @@ BEGIN
 		-- bettrans
 		CREATE TABLE #tmpBettrans
 		(
-			recommend	INT
+			custid		INT
 			,matchid	INT
 			,eventtype	TINYINT
 			,Wagers		INT
@@ -108,14 +108,14 @@ BEGIN
 		
 			INSERT INTO #tmpBettrans
 			(
-				recommend
+				custid
 				,matchid
 				,eventtype
 				,Wagers
 				,Stake
 			)
 			SELECT
-				b.recommend
+				b.custid
 				,b.matchid
 				,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END AS eventtype
 				,COUNT(1) AS Wagers
@@ -123,7 +123,7 @@ BEGIN
 			FROM @Customers c
 				CROSS APPLY (
 					SELECT TOP (@n)
-						b.recommend
+						b.custid
 						,CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
 						,b.winlostdate
 						,b.bettype
@@ -150,7 +150,7 @@ BEGIN
 				INNER JOIN #tblBetType bt ON b.bettype = bt.bettype
 			WHERE b.winlostdate BETWEEN @FromDate AND @ToDate
 			GROUP BY
-				b.recommend
+				b.custid
 				,b.matchid
 				,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END
 			OPTION (OPTIMIZE FOR (@n = 1))
@@ -162,7 +162,7 @@ BEGIN
 				,Stake
 			)
 			SELECT
-				b.recommend AS CustId
+				b.custid
 				,SUM(b.Wagers) AS Wagers
 				,SUM(b.Stake) AS Stake
 			FROM #tmpBettrans b
@@ -188,7 +188,7 @@ BEGIN
 				) AS m
 				INNER JOIN #tblSportType s ON m.sporttype = s.SportType
 			GROUP BY
-				b.recommend
+				b.custid
 		END
 		-- End bettrans
 
