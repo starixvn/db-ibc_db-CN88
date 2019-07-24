@@ -44,6 +44,8 @@ AS
 BEGIN
 	SET NOCOUNT ON
 
+	DECLARE @n INT = 2147483647
+
 	/* ===== Get SportBettypeMatrix ===== */
 	BEGIN
 		DECLARE @isTest BIT = 0
@@ -120,7 +122,7 @@ BEGIN
 				,SUM(b.stake) AS Stake
 			FROM @Customers c
 				CROSS APPLY (
-					SELECT
+					SELECT TOP (@n)
 						b.recommend
 						,CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
 						,b.winlostdate
@@ -151,7 +153,7 @@ BEGIN
 				b.recommend
 				,b.matchid
 				,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END
-			OPTION (HASH GROUP)
+			OPTION (OPTIMIZE FOR (@n = 1))
 
 			INSERT INTO #tmpSumCancelled
 			(
@@ -187,7 +189,6 @@ BEGIN
 				INNER JOIN #tblSportType s ON m.sporttype = s.SportType
 			GROUP BY
 				b.recommend
-			OPTION (HASH GROUP)
 		END
 		-- End bettrans
 

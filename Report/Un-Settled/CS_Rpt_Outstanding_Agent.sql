@@ -41,6 +41,8 @@ AS
 BEGIN
 	SET NOCOUNT ON
 
+	DECLARE @n INT = 2147483647
+
 	/* ===== Get SportBettypeMatrix ===== */
 	BEGIN
 		DECLARE @isTest BIT = 0
@@ -88,7 +90,7 @@ BEGIN
 				SELECT c.CustId, bt.BetType, bt.EventType, bt.RefTable
 				FROM dbo.Customer c WITH (NOLOCK)
 					CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest) bt
-				WHERE c.srecommend = @CustId AND c.roleid = 3
+				WHERE c.mrecommend = @CustId AND c.roleid = 2
 			END
 
 			SELECT @IsAllDownline = 1
@@ -133,7 +135,7 @@ BEGIN
 			,SUM(b.stake) AS stake
 		FROM @Customers c
 			CROSS APPLY (
-				SELECT
+				SELECT TOP (@n)
 					b.recommend
 					,CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
 					,b.winlostdate
@@ -161,6 +163,7 @@ BEGIN
 			b.recommend
 			,b.matchid
 			,CASE WHEN c.BetType = 2799 THEN 1 ELSE c.EventType END
+		OPTION (OPTIMIZE FOR (@n = 1))
 
 		-- translog
 		INSERT INTO #tmpBettrans
@@ -179,7 +182,7 @@ BEGIN
 			,SUM(b.stake) AS stake
 		FROM @Customers c
 			CROSS APPLY (
-				SELECT
+				SELECT TOP (@n)
 					t.recommend
 					,CASE WHEN c.EventType = 0 THEN 0 ELSE t.eventid END AS matchid
 					,t.stake
@@ -199,6 +202,7 @@ BEGIN
 			b.recommend
 			,b.matchid
 			,c.EventType
+		OPTION (OPTIMIZE FOR (@n = 1))
 
 		INSERT INTO #tmpOutstanding
 		(
@@ -234,7 +238,6 @@ BEGIN
 		WHERE EXISTS (SELECT 1 FROM #tblSportType s WHERE m.sporttype = s.SportType OR m.sporttype = 0)
 		GROUP BY
 			b.CustId
-		OPTION (HASH GROUP)
 	END
 	/* ===== End Get data ===== */
 
@@ -244,24 +247,26 @@ BEGIN
 	/* ===== Return data ===== */
 	BEGIN
 		SELECT
-			c.CustId,
-			c.Username,
-			SUM(Wagers) AS Wagers,
-			SUM(Stake) AS Stake,
-			0 AS ValidStake,
-			0 AS MemberIncome,
-			0 AS AgentCurrency,
-			0 AS Agent,
-			0 AS AgentIncome,
-			0 AS AgentResult,
-			0 AS MasterStock,
-			0 AS MasterIncome,
-			0 AS MasterResult
+			c.CustId
+			,c.Username
+			,c.FirstName AS Name
+			,SUM(Wagers) AS Wagers
+			,SUM(Stake) AS Stake
+			,0 AS ValidStake
+			,0 AS MemberIncome
+			,0 AS AgentCurrency
+			,0 AS Agent
+			,0 AS AgentIncome
+			,0 AS AgentResult
+			,0 AS MasterStock
+			,0 AS MasterIncome
+			,0 AS MasterResult
 		FROM #tmpOutstanding o
 			INNER JOIN Customer c WITH (NOLOCK) ON o.CustID = c.CustID
 		GROUP BY
 			c.CustId
 			,c.Username
+			,c.FirstName
 	END
 	/* ===== End Return data ===== */
 

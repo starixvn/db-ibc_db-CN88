@@ -43,6 +43,8 @@ AS
 BEGIN
 	SET NOCOUNT ON
 
+	DECLARE @n INT = 2147483647
+
 	/* ===== Get SportBettypeMatrix ===== */
 	BEGIN
 		DECLARE @isTest BIT = 0
@@ -137,7 +139,7 @@ BEGIN
 				,SUM((b.winlost - b.actual_stake + b.playercomm) * (1 - b.apositiontaking)) AS AgentResultA
 			FROM @Customers c
 				CROSS APPLY (
-					SELECT
+					SELECT TOP (@n)
 						b.custid
 						,CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
 						,b.bettype
@@ -168,7 +170,7 @@ BEGIN
 				b.custid
 				,b.matchid
 				,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END
-			OPTION (HASH GROUP)
+			OPTION (OPTIMIZE FOR (@n = 1))
 
 			INSERT INTO #tmpSumWinloss
 			(
@@ -212,7 +214,6 @@ BEGIN
 				INNER JOIN #tblSportType s ON m.sporttype = s.SportType
 			GROUP BY
 				b.custid
-			OPTION (HASH GROUP)
 		END
 		-- End bettrans
 

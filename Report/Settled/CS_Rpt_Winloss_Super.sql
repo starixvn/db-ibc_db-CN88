@@ -46,6 +46,8 @@ AS
 BEGIN
 	SET NOCOUNT ON
 
+	DECLARE @n INT = 2147483647
+
 	/* ===== Get SportBettypeMatrix ===== */
 	BEGIN
 		DECLARE @isTest BIT = 0
@@ -256,7 +258,7 @@ BEGIN
 				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - c.ExtraPT)) AS HeadlineStock
 			FROM @Customers c
 				CROSS APPLY (
-					SELECT
+					SELECT TOP (@n)
 						b.srecommend
 						,CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
 						,b.bettype
@@ -297,7 +299,7 @@ BEGIN
 				b.srecommend
 				,b.matchid
 				,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END
-			OPTION (HASH GROUP)
+			OPTION (OPTIMIZE FOR (@n = 1))
 
 			INSERT INTO #tmpSumWinloss
 			(
@@ -357,7 +359,6 @@ BEGIN
 				INNER JOIN #tblSportType s ON m.sporttype = s.SportType
 			GROUP BY
 				b.srecommend
-			OPTION (HASH GROUP)
 		END
 		-- End bettrans
 
