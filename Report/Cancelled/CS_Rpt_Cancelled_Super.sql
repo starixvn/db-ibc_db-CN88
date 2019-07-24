@@ -154,13 +154,13 @@ BEGIN
 							FROM dbo.bettransm bm WITH (NOLOCK)
 							WHERE b.refno = bm.refno AND b.bettype = 2799
 						) AS s
+						OUTER APPLY (SELECT CAST(('<xml>' + ISNULL(b.ExtraInfo, '') + '</xml>') AS XML).value('data(/xml/p1/@ab)[1]','TINYINT')) AS t(c)
 					WHERE c.CustId = b.srecommend
 						AND (@IsAllDownline = 1 OR EXISTS (SELECT 1 FROM @Downlines d WHERE b.mrecommend = d.DownlineId))
 						AND b.statusID IN (101, 102, 103)
-						AND CASE WHEN b.ExtraInfo LIKE '%p1%' THEN
-										ISNULL(CAST(('<xml>' + b.ExtraInfo + '</xml>') AS XML).value('data(/xml/p1/@ab)[1]','TINYINT'), 0)
-									ELSE 0
-								END <> 1
+						AND @ReportType = CASE	WHEN b.ExtraInfo LIKE '%p1%' AND t.c = 1 THEN 2  --- Abnormal bet
+												ELSE 1  --- Cancelled
+											END
 						AND (
 							@IsLive = 2
 							OR (b.bettype = 29 AND ((@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1)))
@@ -235,6 +235,7 @@ BEGIN
 					,SUM(s.Stake) AS Stake
 				FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
 				WHERE s.WinlostDate BETWEEN @FDate AND @TDate
+					AND s.CancelType = @ReportType
 					AND EXISTS (SELECT 1 FROM @Customers c WHERE s.CustID = c.CustId)
 					AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 					AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
@@ -256,6 +257,7 @@ BEGIN
 					,SUM(s.Stake) AS Stake
 				FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
 				WHERE s.WinlostDate BETWEEN @FDate AND @TDate
+					AND s.CancelType = @ReportType
 					AND EXISTS (SELECT 1 FROM @Downlines c WHERE s.CustID = c.DownlineId)
 					AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 					AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
@@ -283,6 +285,7 @@ BEGIN
 					,SUM(s.Stake) AS Stake
 				FROM bodb_Summary.dbo.CS_SumCancelled_Old s WITH (NOLOCK)
 				WHERE s.WinlostDate BETWEEN @FDate AND @TDate
+					AND s.CancelType = @ReportType
 					AND EXISTS (SELECT 1 FROM @Customers c WHERE s.CustID = c.CustId)
 					AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 					AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
@@ -304,6 +307,7 @@ BEGIN
 					,SUM(s.Stake) AS Stake
 				FROM bodb_Summary.dbo.CS_SumCancelled_Old s WITH (NOLOCK)
 				WHERE s.WinlostDate BETWEEN @FDate AND @TDate
+					AND s.CancelType = @ReportType
 					AND EXISTS (SELECT 1 FROM @Downlines c WHERE s.CustID = c.DownlineId)
 					AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 					AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
