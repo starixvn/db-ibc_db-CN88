@@ -191,7 +191,7 @@ BEGIN
 					WHERE b.matchid = r.EventID AND b.EventType = 3
 
 					UNION ALL
-					SELECT 0 AS leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, 0 AS sporttype -- SB Parlay
+					SELECT 0 AS leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, CASE WHEN b.matchid = 29 THEN 0 ELSE b.matchid END AS sporttype -- SB Parlay: sporttype = 0
 					WHERE b.matchid <> 2799 AND b.EventType = 0
 				) AS m
 			INNER JOIN #tblSportType s ON m.sporttype = s.SportType
@@ -303,7 +303,7 @@ BEGIN
 					WHERE b.matchid = r.EventID AND b.EventType = 3
 
 					UNION ALL
-					SELECT 0 AS leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, 0 AS sporttype -- SB Parlay
+					SELECT 0 AS leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, CASE WHEN b.matchid = 29 THEN 0 ELSE b.matchid END AS sporttype -- SB Parlay: sporttype = 0
 					WHERE b.matchid <> 2799 AND b.EventType = 0
 				) AS m
 			INNER JOIN #tblSportType s ON m.sporttype = s.SportType
