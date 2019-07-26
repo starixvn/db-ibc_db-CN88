@@ -444,7 +444,7 @@ BEGIN
 					,HeadlineStock
 				)
 				SELECT
-					s.CustId
+					@CustId
 					,SUM(Wagers)			AS Wagers
 					,SUM(Stake)				AS Stake
 					,SUM(ValidStake)		AS ValidStake
@@ -473,8 +473,6 @@ BEGIN
 					AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 					AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
 					AND (@IsLive = 2 OR IsLive = @IsLive)
-				GROUP BY
-					s.CustId
 			END
 		END
 
@@ -558,7 +556,7 @@ BEGIN
 					,HeadlineStock
 				)
 				SELECT
-					s.CustId
+					@CustId
 					,SUM(Wagers)			AS Wagers
 					,SUM(Stake)				AS Stake
 					,SUM(ValidStake)		AS ValidStake
@@ -587,8 +585,6 @@ BEGIN
 					AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 					AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
 					AND (@IsLive = 2 OR IsLive = @IsLive)
-				GROUP BY
-					s.CustId
 			END
 		END
 	END
