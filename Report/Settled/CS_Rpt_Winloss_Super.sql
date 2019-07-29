@@ -473,6 +473,7 @@ BEGIN
 					AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 					AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
 					AND (@IsLive = 2 OR IsLive = @IsLive)
+				HAVING COUNT(1) > 0
 			END
 		END
 
@@ -585,6 +586,7 @@ BEGIN
 					AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 					AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
 					AND (@IsLive = 2 OR IsLive = @IsLive)
+				HAVING COUNT(1) > 0
 			END
 		END
 	END
