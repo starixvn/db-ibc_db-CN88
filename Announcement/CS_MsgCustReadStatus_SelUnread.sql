@@ -6,7 +6,7 @@ ALTER PROCEDURE [dbo].[CS_MsgCustReadStatus_SelUnread]
 	@CustId		INT
 	,@SubAccId	INT = 0
 	,@IsTest	BIT = 0
-	,@TargetId2	VARCHAR(100) = '0'
+	,@TargetId	VARCHAR(100) = '0'
 AS
 
 /*
@@ -24,11 +24,11 @@ BEGIN
 	DECLARE @Targets TABLE (MsgType INT, TargetID INT)
 
 	-- Targerts
-	IF @TargetId2 <> '0'
+	IF @TargetId <> '0'
 	BEGIN
 		INSERT INTO @Targets (MsgType, TargetID)
 		SELECT 3, val
-		FROM dbo.strSplit(@TargetId2, ',')
+		FROM dbo.strSplit(@TargetId, ',')
 
 		INSERT INTO @Targets (MsgType, TargetID)
 		SELECT MsgType, CONVERT(INT, LEFT(RTRIM(TargetID), 2) + '00' + RIGHT(RTRIM(TargetID), 2) + '0')
@@ -85,7 +85,7 @@ BEGIN
 				SELECT 1
 				FROM dbo.MsgTarget s WITH (NOLOCK)
 					INNER JOIN bodb02.dbo.CS_SubAccManagement sa WITH (NOLOCK) ON s.TargetId = sa.DownlineId
-				WHERE s.MessageId = m.MessageId AND m.MsgType = 1 AND sa.SubAccId = @SubAccId
+				WHERE s.MessageId = m.MessageId AND s.TargetId = mt.TargetId AND m.MsgType = 1 AND sa.SubAccId = @SubAccId
 			)
 		)
 END
