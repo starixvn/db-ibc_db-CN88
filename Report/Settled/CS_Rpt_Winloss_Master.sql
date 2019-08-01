@@ -332,7 +332,7 @@ BEGIN
 						+ MasterWinloss + MasterComm)		AS MasterResult
 					,SUM(MasterStock)		AS MasterStock
 					,SUM(Super)				AS Super
-					,SUM(SuperWinloss + SuperWinloss)		AS SuperIncome
+					,SUM(SuperWinloss + SuperComm)			AS SuperIncome
 					,SUM(MemberWinloss + MemberComm
 						+ AgentWinloss + AgentComm
 						+ MasterWinloss + MasterComm
@@ -381,7 +381,7 @@ BEGIN
 						+ MasterWinloss + MasterComm)		AS MasterResult
 					,SUM(MasterStock)		AS MasterStock
 					,SUM(Super)				AS Super
-					,SUM(SuperWinloss + SuperWinloss)		AS SuperIncome
+					,SUM(SuperWinloss + SuperComm)			AS SuperIncome
 					,SUM(MemberWinloss + MemberComm
 						+ AgentWinloss + AgentComm
 						+ MasterWinloss + MasterComm
@@ -437,7 +437,7 @@ BEGIN
 						+ MasterWinloss + MasterComm)		AS MasterResult
 					,SUM(MasterStock)		AS MasterStock
 					,SUM(Super)				AS Super
-					,SUM(SuperWinloss + SuperWinloss)		AS SuperIncome
+					,SUM(SuperWinloss + SuperComm)			AS SuperIncome
 					,SUM(MemberWinloss + MemberComm
 						+ AgentWinloss + AgentComm
 						+ MasterWinloss + MasterComm
@@ -486,7 +486,7 @@ BEGIN
 						+ MasterWinloss + MasterComm)		AS MasterResult
 					,SUM(MasterStock)		AS MasterStock
 					,SUM(Super)				AS Super
-					,SUM(SuperWinloss + SuperWinloss)		AS SuperIncome
+					,SUM(SuperWinloss + SuperComm)			AS SuperIncome
 					,SUM(MemberWinloss + MemberComm
 						+ AgentWinloss + AgentComm
 						+ MasterWinloss + MasterComm
