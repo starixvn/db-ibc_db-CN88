@@ -4,6 +4,8 @@ GO
 
 ALTER PROCEDURE [dbo].[CS_TotalBets_Detail_Agent]
 	@CustId			INT,
+	@SubAccId		INT = 0,
+	@IsAllDownline	BIT = 1,
 	@Type			TINYINT = 1,
 	@SportTypeGroup	SMALLINT = 1
 AS
@@ -17,8 +19,11 @@ AS
 		- 20190307@Percy: Initialize SP [RedmineID: #109693]
 		- 20190418@Percy: Return IsNeutral [RedmineID: #112032]
 		- 20190418@Percy: Support SB only [RedmineID: #109521]
+		- 20190713@Percy: Add sub account - permission on downlines [RedmineID: #116825]
 
 	Param's Explanation:
+		@SubAccId: sub account
+		@IsAllDownline: is view all downlines
 		@Type:
 			1 = 'Inplay'
 			2 = 'Today'
@@ -31,6 +36,16 @@ BEGIN
 
 	DECLARE @isTest BIT
 	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
+
+	/* ===== Get downline list by Sub Account ==== */
+	DECLARE @Downlines TABLE (DownlineId INT)
+
+	IF ISNULL(@SubAccId, 0) <> 0 AND ISNULL(@IsAllDownline, 0) = 0
+	BEGIN
+		INSERT INTO @Downlines (DownlineId)
+		SELECT DownlineId FROM dbo.CS_f_GetDownlineBySubAcc(@SubAccId)
+	END
+	/* ===== End Get downline list by Sub Account ==== */
 
 	/* ===== Get Data ===== */
 	BEGIN
@@ -72,6 +87,7 @@ BEGIN
 		FROM dbo.bettrans b WITH (NOLOCK)
 		WHERE b.recommend = @CustId
 			AND b.statusId IN (0, 1)
+			AND (@IsAllDownline = 1 OR EXISTS (SELECT 1 FROM @Downlines d WHERE b.custid = d.DownlineId))
 		GROUP BY
 			b.matchid
 			,CASE WHEN b.bettype IN (10) THEN b.bettype ELSE 0 END

@@ -1,50 +1,54 @@
-/*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="0"></info>*/	
+/*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" isFunction="0"></info>*/	
 USE bodb02
 GO 
 
 ALTER PROCEDURE [dbo].[CS_TotalBets_Started_Super]
-	@CustID INT ,	
-	@DateType TINYINT = 0,
+	@CustID			INT,
+	@SubAccId		INT = 0,
+	@IsAllDownline	BIT = 1,
+	@DateType		TINYINT = 0,
 	@SporttypeGroup INT = 0,
-	@LeagueId INT = 0,
+	@LeagueId		INT = 0,
 	@StakeCondition TINYINT = 1,
-	@Stake MONEY = 0,
-	@PossType TINYINT = 0,
-	@IsLive TINYINT = 2
+	@Stake			MONEY = 0,
+	@PossType		TINYINT = 0,
+	@IsLive			TINYINT = 2
 AS
- 
+
 /*
-Created: 20190325@Sophia
-Task : CN88 - Total Bet for Started: Super view downline
-DB: DBAGE.bodb02
-Original:
+	Created: 20190325@Sophia
+	Task: CN88 - Total Bet for Started: Super view downline
+	DB: DBAGE.bodb02
 
-Revisions:
-    - 20190325@Sophia: initial SP [Redmine: #109693] 
+	Revisions:
+		- 20190325@Sophia: initial SP [Redmine: #109693]
+		- 20190713@Percy: Add sub account - permission on downlines [RedmineID: #116825]
 	
-Param's Explanation:
-	- @StakeCondition 	= 0 :  =
-						= 1 :  >  (default)
-						= 2 :  < 
-	- @PossType : 
-				= 0:	Full Percentage
-				= 1:	Company %: Shown on SMA
-				= 2:	SMA %: Shown on SMA
-				= 3:	MA%: Shown on SMA, MA
-				= 4:	Agent%: Shown on SMA, MA, Agent
-				= 5:	SMA + MA + Agent%: Shown on SMA
-				= 6:	SMA + MA %: Shown on SMA
-				= 7:	MA + Agent %: Shown on SMA, MA
+	Param's Explanation:
+		- @SubAccId: sub account
+		- @IsAllDownline: is view all downlines
+		- @StakeCondition 	= 0 :  =
+							= 1 :  >  (default)
+							= 2 :  < 
+		- @PossType : 
+					= 0:	Full Percentage
+					= 1:	Company %: Shown on SMA
+					= 2:	SMA %: Shown on SMA
+					= 3:	MA%: Shown on SMA, MA
+					= 4:	Agent%: Shown on SMA, MA, Agent
+					= 5:	SMA + MA + Agent%: Shown on SMA
+					= 6:	SMA + MA %: Shown on SMA
+					= 7:	MA + Agent %: Shown on SMA, MA
 
-	- @Type = 5: Started
-	- @DateType = 0: all
-				= 1: Today
-				= 2: Yesterday 
-	- @IsLive: mean Market on UI 
-			default = 2: All
-					= 1: Live
-					= 0: Dead
-	- @CustID = SuperID
+		- @Type = 5: Started
+		- @DateType = 0: all
+					= 1: Today
+					= 2: Yesterday 
+		- @IsLive: mean Market on UI 
+				default = 2: All
+						= 1: Live
+						= 0: Dead
+		- @CustID = SuperID
 */
 BEGIN
 	SET NOCOUNT ON
@@ -52,6 +56,16 @@ BEGIN
 	------ Check SP Version
 	DECLARE @isTest BIT = 0
 	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
+
+	/* ===== Get downline list by Sub Account ==== */
+	DECLARE @Downlines TABLE (DownlineId INT)
+
+	IF ISNULL(@SubAccId, 0) <> 0 AND ISNULL(@IsAllDownline, 0) = 0
+	BEGIN
+		INSERT INTO @Downlines (DownlineId)
+		SELECT DownlineId FROM dbo.CS_f_GetDownlineBySubAcc(@SubAccId)
+	END
+	/* ===== End Get downline list by Sub Account ==== */
 
 	--- Get Sporttype
 	
@@ -125,7 +139,8 @@ BEGIN
 				INNER JOIN #EventInfo AS m ON m.matchid = b.matchid 	
 				CROSS APPLY dbo.CS_f_BettypeGroupMatrix_Sel (1,0,b.Bettype,@IsTest) AS bg
 			WHERE  	
-				b.srecommend = @CustId 
+				b.srecommend = @CustId
+				AND (@IsAllDownline = 1 OR EXISTS (SELECT 1 FROM @Downlines d WHERE b.mrecommend = d.DownlineId))
 				AND b.statusID IN (0, 1, 111, 112, 113) 			
 				AND (
 						(@StakeCondition = 0 AND b.Stake = @Stake) 
@@ -204,7 +219,3 @@ BEGIN
 	DROP TABLE #EventInfo
 END
 GO
-GRANT EXECUTE ON [dbo].[CS_TotalBets_Started_Super] TO [bodbDownlineNet]
-GO
-GRANT EXECUTE ON [dbo].[CS_TotalBets_Started_Super] TO [bodbDownlineNetView]
-GO 

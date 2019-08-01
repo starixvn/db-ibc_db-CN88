@@ -1,56 +1,72 @@
-/*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="0"></info>*/	
+/*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" isFunction="0"></info>*/	
 USE bodb02
 GO 
 
 ALTER PROCEDURE [dbo].[CS_TotalBets_Bettype_Started_Master]
-	@CustID INT ,	
-	@MatchId INT = 0,
+	@CustID			INT,
+	@SubAccId		INT = 0,
+	@IsAllDownline	BIT = 1,
+	@MatchId		INT = 0,
 	@StakeCondition TINYINT = 1,
-	@Stake MONEY = 0,
-	@PossType TINYINT = 0,
-	@IsLive TINYINT = 2
+	@Stake			MONEY = 0,
+	@PossType		TINYINT = 0,
+	@IsLive			TINYINT = 2
 AS
- 
+
 /*
-Created: 20190419@Sophia
-Task : CN88 - Total Bet drilldown bettype from Started: Super view downline
-DB: DBAGE.bodb02
-Original:
+	Created: 20190419@Sophia
+	Task: CN88 - Total Bet drilldown bettype from Started: Super view downline
+	DB: DBAGE.bodb02
+	Original:
 
-Revisions:
-    - 20190419@Sophia: initial SP [Redmine: #112032] 
+	Revisions:
+		- 20190419@Sophia: initial SP [Redmine: #112032]
+		- 20190713@Percy: Add sub account - permission on downlines [RedmineID: #116825]
 	
-Param's Explanation:
-	- @StakeCondition 	= 0 :  =
-						= 1 :  >  (default)
-						= 2 :  < 
-	- @PossType : 
-				= 0:	Full Percentage
-				= 1:	Company %: Shown on SMA
-				= 2:	SMA %: Shown on SMA
-				= 3:	MA%: Shown on SMA, MA
-				= 4:	Agent%: Shown on SMA, MA, Agent
-				= 5:	SMA + MA + Agent%: Shown on SMA
-				= 6:	SMA + MA %: Shown on SMA
-				= 7:	MA + Agent %: Shown on SMA, MA
+	Param's Explanation:
+		- @SubAccId: sub account
+		- @IsAllDownline: is view all downlines
+		- @StakeCondition 	= 0 :  =
+							= 1 :  >  (default)
+							= 2 :  < 
+		- @PossType : 
+					= 0:	Full Percentage
+					= 1:	Company %: Shown on SMA
+					= 2:	SMA %: Shown on SMA
+					= 3:	MA%: Shown on SMA, MA
+					= 4:	Agent%: Shown on SMA, MA, Agent
+					= 5:	SMA + MA + Agent%: Shown on SMA
+					= 6:	SMA + MA %: Shown on SMA
+					= 7:	MA + Agent %: Shown on SMA, MA
 
-	 - @Type = 0:  All, 
-		  = 1: In-play, 
-		  = 2: Today, 
-		  = 3: Early,
-		  = 4: Outright
+		 - @Type = 0:  All, 
+			  = 1: In-play, 
+			  = 2: Today, 
+			  = 3: Early,
+			  = 4: Outright
 
-	- @IsLive: default = 2: All
-					= 1: Live
-					= 0: Dead
-	- @CustID = MasterID
+		- @IsLive: default = 2: All
+						= 1: Live
+						= 0: Dead
+		- @CustID = MasterID
 */
+
 BEGIN
 	SET NOCOUNT ON
 
  	------ Check SP Version
 	DECLARE @isTest BIT = 0
 	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
+
+	/* ===== Get downline list by Sub Account ==== */
+	DECLARE @Downlines TABLE (DownlineId INT)
+
+	IF ISNULL(@SubAccId, 0) <> 0 AND ISNULL(@IsAllDownline, 0) = 0
+	BEGIN
+		INSERT INTO @Downlines (DownlineId)
+		SELECT DownlineId FROM dbo.CS_f_GetDownlineBySubAcc(@SubAccId)
+	END
+	/* ===== End Get downline list by Sub Account ==== */
 	
 	SELECT 	MatchID,
 			B.BettypeGroup As BettypeGroup,
@@ -75,7 +91,8 @@ BEGIN
 				SUM (b.Stake * (mpositiontaking + apositiontaking)) AS Stake7
 			FROM bettrans b WITH (NOLOCK)				
 			WHERE  	
-				b.mrecommend = @CustId 
+				b.mrecommend = @CustId
+				AND (@IsAllDownline = 1 OR EXISTS (SELECT 1 FROM @Downlines d WHERE b.recommend = d.DownlineId))
 				AND b.statusID IN (0,1,111,112,113) 
 				AND b.bettype <> 10				
 				AND (
@@ -99,7 +116,5 @@ BEGIN
 			B.BettypeGroup,
 			CASE WHEN B.BettypeGroup IN (1,2,3,5,7,8,12,15,17,18,20,21,177,184) THEN Betteam ELSE '' END,
 			Liveindicator
-	
-	 
 END
-GO 
+GO
