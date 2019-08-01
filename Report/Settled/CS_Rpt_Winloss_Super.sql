@@ -28,6 +28,7 @@ AS
 		- 20190708@Percy: Remove column HeadlineStock [RedmineID: #116088]
 		- 20190713@Percy: Add sub account - permission on downlines [RedmineID: #116825]
 		- 20190719@Percy: Add back column HeadlineStock [RedmineID: #117297]
+		- 20190801@Percy: Change way get ExtraPT amount [RedmineID: #117909]
 		
 	Param's Explanation:
 		- @CustId: SuperID or HeadlineID 
@@ -65,26 +66,14 @@ BEGIN
 
 	/* ===== Get Customer List ===== */
 	BEGIN
+		DECLARE @CustList  TABLE (CustId INT)
 		DECLARE @Customers TABLE (CustId INT, ProductId INT, ExtraPT DECIMAL(9,8), FromDate DATETIME, ToDate DATETIME, RowNum INT)
 		DECLARE @Downlines TABLE (DownlineId INT)
 		
 		IF @IsOwner = 1 -- View owner
 		BEGIN
-			INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate, RowNum)
-			SELECT SuperId, ProductId, ExtraPT, FromDate, ToDate, ROW_NUMBER() OVER(PARTITION BY SuperId, ProductId ORDER BY FromDate) AS RowNum
-			FROM (
-				SELECT DISTINCT e.SuperId, e.ProductId, e.ExtraPT
-						,CASE WHEN e.FromDate < @FromDate THEN @FromDate ELSE e.FromDate END AS FromDate
-						,CASE WHEN e.ToDate > @ToDate THEN @ToDate ELSE e.ToDate END AS ToDate
-				FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
-				WHERE e.SuperId = @CustId
-					AND e.Sporttype = 0
-					AND e.SubProduct = ''
-					AND (
-						@FromDate BETWEEN e.FromDate AND e.ToDate
-						OR @ToDate BETWEEN e.FromDate AND e.ToDate
-					)
-			) AS e
+			INSERT INTO @CustList (CustId)
+			VALUES (@CustId)
 
 			/* ===== Get downline list by Sub Account ==== */
 			IF ISNULL(@SubAccId, 0) <> 0 AND ISNULL(@IsAllDownline, 0) = 0
@@ -99,47 +88,37 @@ BEGIN
 			/* ===== Get downline list by Sub Account ==== */
 			IF ISNULL(@SubAccId, 0) <> 0 AND ISNULL(@IsAllDownline, 0) = 0
 			BEGIN
-				INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate, RowNum)
-				SELECT cs.DownlineId, e.ProductId, e.ExtraPT, e.FromDate, e.ToDate, ROW_NUMBER() OVER(PARTITION BY cs.DownlineId, e.ProductId ORDER BY e.FromDate) AS RowNum
-				FROM dbo.CS_f_GetDownlineBySubAcc(@SubAccId) cs
-					CROSS APPLY (
-						SELECT DISTINCT e.ProductId, e.ExtraPT
-								,CASE WHEN e.FromDate < @FromDate THEN @FromDate ELSE e.FromDate END AS FromDate
-								,CASE WHEN e.ToDate > @ToDate THEN @ToDate ELSE e.ToDate END AS ToDate
-						FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
-						WHERE cs.DownlineId = e.SuperId
-							AND e.Sporttype = 0
-							AND e.SubProduct = ''
-							AND (
-								@FromDate BETWEEN e.FromDate AND e.ToDate
-								OR @ToDate BETWEEN e.FromDate AND e.ToDate
-							)
-					) AS e
+				INSERT INTO @CustList (CustId)
+				SELECT DownlineId FROM dbo.CS_f_GetDownlineBySubAcc(@SubAccId)
 			END
 			/* ===== End Get downline list by Sub Account ==== */
 			ELSE
 			BEGIN
-				INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate, RowNum)
-				SELECT cs.CustId, e.ProductId, e.ExtraPT, e.FromDate, e.ToDate, ROW_NUMBER() OVER(PARTITION BY cs.CustId, e.ProductId ORDER BY e.FromDate) AS RowNum
-				FROM dbo.CustSuper cs WITH (NOLOCK)
-					CROSS APPLY (
-						SELECT DISTINCT e.ProductId, e.ExtraPT
-								,CASE WHEN e.FromDate < @FromDate THEN @FromDate ELSE e.FromDate END AS FromDate
-								,CASE WHEN e.ToDate > @ToDate THEN @ToDate ELSE e.ToDate END AS ToDate
-						FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
-						WHERE cs.CustId = e.SuperId
-							AND e.Sporttype = 0
-							AND e.SubProduct = ''
-							AND (
-								@FromDate BETWEEN e.FromDate AND e.ToDate
-								OR @ToDate BETWEEN e.FromDate AND e.ToDate
-							)
-					) AS e
-				WHERE cs.UplineId = @CustId
+				INSERT INTO @CustList (CustId)
+				SELECT CustId
+				FROM dbo.CustSuper WITH (NOLOCK)
+				WHERE UplineId = @CustId
 			END
 
 			SELECT @IsAllDownline = 1
 		END
+
+		INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate, RowNum)
+		SELECT SuperId, ProductId, ExtraPT, FromDate, ToDate, ROW_NUMBER() OVER(PARTITION BY SuperId, ProductId ORDER BY FromDate) AS RowNum
+		FROM @CustList c
+			CROSS APPLY (
+				SELECT DISTINCT e.SuperId, e.ProductId, e.ExtraPT
+						,CASE WHEN e.FromDate < @FromDate THEN @FromDate ELSE e.FromDate END AS FromDate
+						,CASE WHEN e.ToDate > @ToDate THEN @ToDate ELSE e.ToDate END AS ToDate
+				FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
+				WHERE e.SuperId = c.CustId
+					AND e.Sporttype = 0
+					AND e.SubProduct = ''
+					AND (
+						e.FromDate BETWEEN @FromDate AND @ToDate
+						OR e.ToDate BETWEEN @FromDate AND @ToDate
+					)
+			) AS e
 
 		DELETE c
 		FROM @Customers c
@@ -160,10 +139,17 @@ BEGIN
 						ELSE DATEADD(DAY, -1, c2.FromDate)
 						END AS ToDate
 			FROM @Customers c1
-				FULL OUTER JOIN @Customers c2 ON c1.CustId = c2.CustId AND c1.ProductId = c2.ProductId
-			WHERE c1.RowNum + 1 = c2.RowNum
+				FULL OUTER JOIN @Customers c2 ON c1.CustId = c2.CustId AND c1.ProductId = c2.ProductId AND c1.RowNum + 1 = c2.RowNum
 		) AS c
 		WHERE FromDate <= ToDate
+
+		-- Products not have setting ExtraPT on this date range
+		INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate)
+		SELECT l.CustId, p.ProductId, 0 AS ExtraPT, @FromDate, @ToDate
+		FROM @CustList l
+			CROSS APPLY (
+				SELECT DISTINCT t.ProductId FROM #tblBetType t WHERE NOT EXISTS (SELECT 1 FROM @Customers c WHERE c.ProductID = t.ProductID)
+			) AS p
 	END
 	/* ===== End Get Customer List ===== */
 

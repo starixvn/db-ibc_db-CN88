@@ -22,6 +22,7 @@ AS
 	Revisions:
 		- 20190521@Percy: Initialize SP [Redmine: #113828]
 		- 20190703@Percy: Temporarily add @ReportMode for web input - will implement later [RedmineID: #116082]
+		- 20190801@Percy: Change way get ExtraPT amount [RedmineID: #117909]
 		
 	Param's Explanation:
 		- @ReportMode: 1: current, 2: history
@@ -59,8 +60,8 @@ BEGIN
 				AND e.Sporttype = 0
 				AND e.SubProduct = ''
 				AND (
-					@FromDate BETWEEN e.FromDate AND e.ToDate
-					OR @ToDate BETWEEN e.FromDate AND e.ToDate
+					e.FromDate BETWEEN @FromDate AND @ToDate
+					OR e.ToDate BETWEEN @FromDate AND @ToDate
 				)
 		) AS e
 
@@ -83,10 +84,17 @@ BEGIN
 					ELSE DATEADD(DAY, -1, e2.FromDate)
 					END AS ToDate
 		FROM @ExtraPT e1
-			FULL OUTER JOIN @ExtraPT e2 ON e1.SuperID = e2.SuperID AND e1.ProductId = e2.ProductId
-		WHERE e1.RowNum + 1 = e2.RowNum
+			FULL OUTER JOIN @ExtraPT e2 ON e1.SuperID = e2.SuperID AND e1.ProductId = e2.ProductId AND e1.RowNum + 1 = e2.RowNum
 	) AS c
 	WHERE FromDate <= ToDate
+
+	-- Products not have setting ExtraPT on this date range
+	INSERT INTO @ExtraPT (SuperID, ProductId, ExtraPT, FromDate, ToDate)
+	SELECT cs.CustId, p.ProductId, 0 AS ExtraPT, @FromDate, @ToDate
+	FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+		CROSS APPLY (
+			SELECT DISTINCT t.ProductId FROM #tblBetType t WHERE NOT EXISTS (SELECT 1 FROM @ExtraPT e WHERE e.ProductID = t.ProductID)
+		) AS p
 
 	CREATE TABLE #SuperWinLoss
 	(
@@ -179,7 +187,7 @@ BEGIN
 						FROM dbo.bettransm bm WITH (NOLOCK)
 						WHERE b.refno = bm.refno AND b.bettype = 2799
 					) AS s
-				WHERE e.SuperID = b.srecommend AND b.winlostdate BETWEEN e.FromDate AND e.ToDate AND b.winlostdate BETWEEN @FDate AND @TDate
+				WHERE e.SuperID = b.srecommend AND b.winlostdate BETWEEN e.FromDate AND e.ToDate
 					AND b.statusID IN (111, 112, 113)
 					AND (
 							@IsLive = 2
