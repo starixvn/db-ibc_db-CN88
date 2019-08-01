@@ -65,15 +65,17 @@ BEGIN
 
 	/* ===== Get Customer List ===== */
 	BEGIN
-		DECLARE @Customers TABLE (CustId INT, ProductId INT, ExtraPT DECIMAL(9,8), FromDate DATETIME, ToDate DATETIME)
+		DECLARE @Customers TABLE (CustId INT, ProductId INT, ExtraPT DECIMAL(9,8), FromDate DATETIME, ToDate DATETIME, RowNum INT)
 		DECLARE @Downlines TABLE (DownlineId INT)
 		
 		IF @IsOwner = 1 -- View owner
 		BEGIN
-			INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate)
-			SELECT @CustId, ProductId, MAX(ExtraPT) AS ExtraPT, MAX(FromDate) AS FromDate, MIN(ToDate) AS ToDate
+			INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate, RowNum)
+			SELECT SuperId, ProductId, ExtraPT, FromDate, ToDate, ROW_NUMBER() OVER(PARTITION BY SuperId, ProductId ORDER BY FromDate) AS RowNum
 			FROM (
-				SELECT DISTINCT e.ProductId, e.ExtraPT, e.FromDate, e.ToDate
+				SELECT DISTINCT e.SuperId, e.ProductId, e.ExtraPT
+						,CASE WHEN e.FromDate < @FromDate THEN @FromDate ELSE e.FromDate END AS FromDate
+						,CASE WHEN e.ToDate > @ToDate THEN @ToDate ELSE e.ToDate END AS ToDate
 				FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
 				WHERE e.SuperId = @CustId
 					AND e.Sporttype = 0
@@ -82,12 +84,7 @@ BEGIN
 						@FromDate BETWEEN e.FromDate AND e.ToDate
 						OR @ToDate BETWEEN e.FromDate AND e.ToDate
 					)
-
-				UNION ALL
-				SELECT DISTINCT ProductId AS ProductId, 0 AS ExtraPT, @FromDate AS FromDate, @ToDate AS ToDate
-				FROM #tblBetType
-			) AS r
-			GROUP BY ProductId
+			) AS e
 
 			/* ===== Get downline list by Sub Account ==== */
 			IF ISNULL(@SubAccId, 0) <> 0 AND ISNULL(@IsAllDownline, 0) = 0
@@ -102,53 +99,41 @@ BEGIN
 			/* ===== Get downline list by Sub Account ==== */
 			IF ISNULL(@SubAccId, 0) <> 0 AND ISNULL(@IsAllDownline, 0) = 0
 			BEGIN
-				INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate)
-				SELECT cs.DownlineId, e.ProductId, ISNULL(e.ExtraPT, 0), e.FromDate, e.ToDate
+				INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate, RowNum)
+				SELECT cs.DownlineId, e.ProductId, e.ExtraPT, e.FromDate, e.ToDate, ROW_NUMBER() OVER(PARTITION BY cs.DownlineId, e.ProductId ORDER BY e.FromDate) AS RowNum
 				FROM dbo.CS_f_GetDownlineBySubAcc(@SubAccId) cs
 					CROSS APPLY (
-						SELECT ProductId, MAX(ExtraPT) AS ExtraPT, MAX(FromDate) AS FromDate, MIN(ToDate) AS ToDate
-						FROM (
-							SELECT DISTINCT e.ProductId, e.ExtraPT, e.FromDate, e.ToDate
-							FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
-							WHERE cs.DownlineId = e.SuperId
-								AND e.Sporttype = 0
-								AND e.SubProduct = ''
-								AND (
-									@FromDate BETWEEN e.FromDate AND e.ToDate
-									OR @ToDate BETWEEN e.FromDate AND e.ToDate
-								)
-
-							UNION ALL
-							SELECT DISTINCT ProductId AS ProductId, 0 AS ExtraPT, @FromDate AS FromDate, @ToDate AS ToDate
-							FROM #tblBetType
-						) AS r
-						GROUP BY ProductId
+						SELECT DISTINCT e.ProductId, e.ExtraPT
+								,CASE WHEN e.FromDate < @FromDate THEN @FromDate ELSE e.FromDate END AS FromDate
+								,CASE WHEN e.ToDate > @ToDate THEN @ToDate ELSE e.ToDate END AS ToDate
+						FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
+						WHERE cs.DownlineId = e.SuperId
+							AND e.Sporttype = 0
+							AND e.SubProduct = ''
+							AND (
+								@FromDate BETWEEN e.FromDate AND e.ToDate
+								OR @ToDate BETWEEN e.FromDate AND e.ToDate
+							)
 					) AS e
 			END
 			/* ===== End Get downline list by Sub Account ==== */
 			ELSE
 			BEGIN
-				INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate)
-				SELECT cs.CustId, e.ProductId, ISNULL(e.ExtraPT, 0), e.FromDate, e.ToDate
+				INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate, RowNum)
+				SELECT cs.CustId, e.ProductId, e.ExtraPT, e.FromDate, e.ToDate, ROW_NUMBER() OVER(PARTITION BY cs.CustId, e.ProductId ORDER BY e.FromDate) AS RowNum
 				FROM dbo.CustSuper cs WITH (NOLOCK)
 					CROSS APPLY (
-						SELECT ProductId, MAX(ExtraPT) AS ExtraPT, MAX(FromDate) AS FromDate, MIN(ToDate) AS ToDate
-						FROM (
-							SELECT DISTINCT e.ProductId, e.ExtraPT, e.FromDate, e.ToDate
-							FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
-							WHERE cs.CustId = e.SuperId
-								AND e.Sporttype = 0
-								AND e.SubProduct = ''
-								AND (
-									@FromDate BETWEEN e.FromDate AND e.ToDate
-									OR @ToDate BETWEEN e.FromDate AND e.ToDate
-								)
-
-							UNION ALL
-							SELECT DISTINCT ProductId AS ProductId, 0 AS ExtraPT, @FromDate AS FromDate, @ToDate AS ToDate
-							FROM #tblBetType
-						) AS r
-						GROUP BY ProductId
+						SELECT DISTINCT e.ProductId, e.ExtraPT
+								,CASE WHEN e.FromDate < @FromDate THEN @FromDate ELSE e.FromDate END AS FromDate
+								,CASE WHEN e.ToDate > @ToDate THEN @ToDate ELSE e.ToDate END AS ToDate
+						FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
+						WHERE cs.CustId = e.SuperId
+							AND e.Sporttype = 0
+							AND e.SubProduct = ''
+							AND (
+								@FromDate BETWEEN e.FromDate AND e.ToDate
+								OR @ToDate BETWEEN e.FromDate AND e.ToDate
+							)
 					) AS e
 				WHERE cs.UplineId = @CustId
 			END
@@ -158,8 +143,27 @@ BEGIN
 
 		DELETE c
 		FROM @Customers c
-		WHERE c.ProductId <> 0
-			AND NOT EXISTS (SELECT 1 FROM #tblBetType bt WHERE c.ProductId = bt.ProductId)
+		WHERE NOT EXISTS (SELECT 1 FROM #tblBetType bt WHERE c.ProductId = bt.ProductId)
+
+		INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate)
+		SELECT CustId, ProductId, 0 AS ExtraPT, FromDate, ToDate
+		FROM (
+			SELECT
+				ISNULL(c1.CustId, c2.CustId) AS CustId
+				,ISNULL(c1.ProductId, c2.ProductId) AS ProductId
+				,CASE	WHEN c1.FromDate IS NULL THEN @FromDate
+						WHEN c2.FromDate IS NULL THEN DATEADD(DAY, 1, c1.ToDate)
+						ELSE DATEADD(DAY, 1, c1.ToDate)
+						END AS FromDate
+				,CASE	WHEN c1.ToDate IS NULL THEN DATEADD(DAY, -1, c2.FromDate)
+						WHEN c2.ToDate IS NULL THEN @ToDate
+						ELSE DATEADD(DAY, -1, c2.FromDate)
+						END AS ToDate
+			FROM @Customers c1
+				FULL OUTER JOIN @Customers c2 ON c1.CustId = c2.CustId AND c1.ProductId = c2.ProductId
+			WHERE c1.RowNum + 1 = c2.RowNum
+		) AS c
+		WHERE FromDate <= ToDate
 	END
 	/* ===== End Get Customer List ===== */
 
@@ -251,9 +255,9 @@ BEGIN
 				,SUM(b.swinlost + b.scomm - b.acomm) AS SuperIncome
 				,SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost + b.scomm) AS SuperResult
 				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking)) AS SuperStock
-				,-SUM(b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * c.ExtraPT END) AS HeadlineIncome
+				,-SUM(CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE (b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking)) * c.ExtraPT END) AS HeadlineIncome
 				,SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost + b.scomm
-					- b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * c.ExtraPT END
+					- CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE (b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking)) * c.ExtraPT END
 					) AS HeadlineResult
 				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - c.ExtraPT)) AS HeadlineStock
 			FROM @Customers c
@@ -401,7 +405,7 @@ BEGIN
 						+ AgentWinloss + AgentComm)			AS AgentResult
 					,SUM(Master)			AS Master
 					,SUM(Super)				AS Super
-					,SUM(SuperWinloss + SuperWinloss)		AS SuperIncome
+					,SUM(SuperWinloss + SuperComm)			AS SuperIncome
 					,SUM(MemberWinloss + MemberComm
 						+ AgentWinloss + AgentComm
 						+ MasterWinloss + MasterComm
@@ -454,7 +458,7 @@ BEGIN
 						+ AgentWinloss + AgentComm)			AS AgentResult
 					,SUM(Master)			AS Master
 					,SUM(Super)				AS Super
-					,SUM(SuperWinloss + SuperWinloss)		AS SuperIncome
+					,SUM(SuperWinloss + SuperComm)			AS SuperIncome
 					,SUM(MemberWinloss + MemberComm
 						+ AgentWinloss + AgentComm
 						+ MasterWinloss + MasterComm
@@ -514,7 +518,7 @@ BEGIN
 						+ AgentWinloss + AgentComm)			AS AgentResult
 					,SUM(Master)			AS Master
 					,SUM(Super)				AS Super
-					,SUM(SuperWinloss + SuperWinloss)		AS SuperIncome
+					,SUM(SuperWinloss + SuperComm)			AS SuperIncome
 					,SUM(MemberWinloss + MemberComm
 						+ AgentWinloss + AgentComm
 						+ MasterWinloss + MasterComm
@@ -567,7 +571,7 @@ BEGIN
 						+ AgentWinloss + AgentComm)			AS AgentResult
 					,SUM(Master)			AS Master
 					,SUM(Super)				AS Super
-					,SUM(SuperWinloss + SuperWinloss)		AS SuperIncome
+					,SUM(SuperWinloss + SuperComm)			AS SuperIncome
 					,SUM(MemberWinloss + MemberComm
 						+ AgentWinloss + AgentComm
 						+ MasterWinloss + MasterComm
