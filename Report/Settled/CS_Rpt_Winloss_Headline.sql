@@ -59,10 +59,8 @@ BEGIN
 			WHERE cs.CustId = e.SuperId
 				AND e.Sporttype = 0
 				AND e.SubProduct = ''
-				AND (
-					e.FromDate BETWEEN @FromDate AND @ToDate
-					OR e.ToDate BETWEEN @FromDate AND @ToDate
-				)
+				AND @FromDate <= e.ToDate
+				AND @ToDate >= e.FromDate
 		) AS e
 
 	DELETE e
@@ -89,11 +87,15 @@ BEGIN
 	WHERE FromDate <= ToDate
 
 	-- Products not have setting ExtraPT on this date range
+	DECLARE @Products TABLE (ProductId INT)
+	INSERT INTO @Products (ProductId)
+	SELECT DISTINCT ProductId FROM #tblBetType
+
 	INSERT INTO @ExtraPT (SuperID, ProductId, ExtraPT, FromDate, ToDate)
 	SELECT cs.CustId, p.ProductId, 0 AS ExtraPT, @FromDate, @ToDate
 	FROM dbo.CS_CustSuper cs WITH (NOLOCK)
 		CROSS APPLY (
-			SELECT DISTINCT t.ProductId FROM #tblBetType t WHERE NOT EXISTS (SELECT 1 FROM @ExtraPT e WHERE e.ProductID = t.ProductID)
+			SELECT p.ProductId FROM @Products p WHERE NOT EXISTS (SELECT 1 FROM @ExtraPT e WHERE e.ProductID = p.ProductID AND cs.CustId = e.SuperID)
 		) AS p
 
 	CREATE TABLE #SuperWinLoss

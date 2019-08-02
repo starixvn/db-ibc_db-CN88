@@ -114,10 +114,8 @@ BEGIN
 				WHERE e.SuperId = c.CustId
 					AND e.Sporttype = 0
 					AND e.SubProduct = ''
-					AND (
-						e.FromDate BETWEEN @FromDate AND @ToDate
-						OR e.ToDate BETWEEN @FromDate AND @ToDate
-					)
+					AND @FromDate <= e.ToDate
+					AND @ToDate >= e.FromDate
 			) AS e
 
 		DELETE c
@@ -144,11 +142,15 @@ BEGIN
 		WHERE FromDate <= ToDate
 
 		-- Products not have setting ExtraPT on this date range
+		DECLARE @Products TABLE (ProductId INT)
+		INSERT INTO @Products (ProductId)
+		SELECT DISTINCT ProductId FROM #tblBetType
+
 		INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate)
 		SELECT l.CustId, p.ProductId, 0 AS ExtraPT, @FromDate, @ToDate
 		FROM @CustList l
 			CROSS APPLY (
-				SELECT DISTINCT t.ProductId FROM #tblBetType t WHERE NOT EXISTS (SELECT 1 FROM @Customers c WHERE c.ProductID = t.ProductID)
+				SELECT p.ProductId FROM @Products p WHERE NOT EXISTS (SELECT 1 FROM @Customers c WHERE c.ProductID = p.ProductID AND c.CustId = l.CustId)
 			) AS p
 	END
 	/* ===== End Get Customer List ===== */
