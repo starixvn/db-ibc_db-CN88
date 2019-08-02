@@ -189,7 +189,7 @@ BEGIN
 						FROM dbo.bettransm bm WITH (NOLOCK)
 						WHERE b.refno = bm.refno AND b.bettype = 2799
 					) AS s
-				WHERE e.SuperID = b.srecommend AND b.winlostdate BETWEEN e.FromDate AND e.ToDate
+				WHERE e.SuperID = b.srecommend AND b.winlostdate BETWEEN e.FromDate AND e.ToDate AND b.winlostdate BETWEEN @FDate AND @TDate
 					AND b.statusID IN (111, 112, 113)
 					AND (
 							@IsLive = 2
