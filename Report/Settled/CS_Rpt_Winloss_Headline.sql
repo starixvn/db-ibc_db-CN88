@@ -22,6 +22,7 @@ AS
 	Revisions:
 		- 20190521@Percy: Initialize SP [Redmine: #113828]
 		- 20190703@Percy: Temporarily add @ReportMode for web input - will implement later [RedmineID: #116082]
+		- 20190801@Percy: Change way get ExtraPT amount [RedmineID: #117909]
 		
 	Param's Explanation:
 		- @ReportMode: 1: current, 2: history
@@ -46,34 +47,56 @@ BEGIN
 	INSERT INTO #tblBetType (ProductID, BetType, EventType)
 	SELECT DISTINCT ProductID, BetType, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
 
-	DECLARE @ExtraPT TABLE (SuperID INT, ProductID INT, ExtraPT DECIMAL(9,8), FromDate DATETIME, ToDate DATETIME)
-	INSERT INTO @ExtraPT (SuperID, ProductID, ExtraPT, FromDate, ToDate)
-	SELECT cs.CustID, e.ProductID, ISNULL(e.ExtraPT, 0), e.FromDate, e.ToDate
+	DECLARE @ExtraPT TABLE (SuperID INT, ProductID INT, ExtraPT DECIMAL(9,8), FromDate DATETIME, ToDate DATETIME, RowNum INT)
+	INSERT INTO @ExtraPT (SuperID, ProductID, ExtraPT, FromDate, ToDate, RowNum)
+	SELECT cs.CustID, e.ProductID, e.ExtraPT, e.FromDate, e.ToDate, ROW_NUMBER() OVER(PARTITION BY cs.CustID, e.ProductID ORDER BY e.FromDate) AS RowNum
 	FROM dbo.CS_CustSuper cs WITH (NOLOCK)
 		CROSS APPLY (
-			SELECT ProductId, MAX(ExtraPT) AS ExtraPT, MAX(FromDate) AS FromDate, MIN(ToDate) AS ToDate
-			FROM (
-				SELECT DISTINCT e.ProductID, e.ExtraPT, e.FromDate, e.ToDate
-				FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
-				WHERE cs.CustId = e.SuperId
-					AND e.Sporttype = 0
-					AND e.SubProduct = ''
-					AND (
-						@FromDate BETWEEN e.FromDate AND e.ToDate
-						OR @ToDate BETWEEN e.FromDate AND e.ToDate
-					)
-
-				UNION ALL
-				SELECT DISTINCT ProductID AS ProductID, 0 AS ExtraPT, @FromDate AS FromDate, @ToDate AS ToDate
-				FROM #tblBetType
-			) AS r
-			GROUP BY ProductId
+			SELECT DISTINCT e.ProductID, e.ExtraPT
+					,CASE WHEN e.FromDate < @FromDate THEN @FromDate ELSE e.FromDate END AS FromDate
+					,CASE WHEN e.ToDate > @ToDate THEN @ToDate ELSE e.ToDate END AS ToDate
+			FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
+			WHERE cs.CustId = e.SuperId
+				AND e.Sporttype = 0
+				AND e.SubProduct = ''
+				AND @FromDate <= e.ToDate
+				AND @ToDate >= e.FromDate
 		) AS e
 
 	DELETE e
 	FROM @ExtraPT e
-	WHERE ProductID <> 0
-		AND NOT EXISTS (SELECT 1 FROM #tblBetType bt WHERE e.ProductID = bt.ProductID)
+	WHERE NOT EXISTS (SELECT 1 FROM #tblBetType bt WHERE e.ProductId = bt.ProductId)
+
+	INSERT INTO @ExtraPT (SuperID, ProductId, ExtraPT, FromDate, ToDate)
+	SELECT SuperID, ProductId, 0 AS ExtraPT, FromDate, ToDate
+	FROM (
+		SELECT
+			ISNULL(e1.SuperID, e2.SuperID) AS SuperID
+			,ISNULL(e1.ProductId, e2.ProductId) AS ProductId
+			,CASE	WHEN e1.FromDate IS NULL THEN @FromDate
+					WHEN e2.FromDate IS NULL THEN DATEADD(DAY, 1, e1.ToDate)
+					ELSE DATEADD(DAY, 1, e1.ToDate)
+					END AS FromDate
+			,CASE	WHEN e1.ToDate IS NULL THEN DATEADD(DAY, -1, e2.FromDate)
+					WHEN e2.ToDate IS NULL THEN @ToDate
+					ELSE DATEADD(DAY, -1, e2.FromDate)
+					END AS ToDate
+		FROM @ExtraPT e1
+			FULL OUTER JOIN @ExtraPT e2 ON e1.SuperID = e2.SuperID AND e1.ProductId = e2.ProductId AND e1.RowNum + 1 = e2.RowNum
+	) AS c
+	WHERE FromDate <= ToDate
+
+	-- Products not have setting ExtraPT on this date range
+	DECLARE @Products TABLE (ProductId INT)
+	INSERT INTO @Products (ProductId)
+	SELECT DISTINCT ProductId FROM #tblBetType
+
+	INSERT INTO @ExtraPT (SuperID, ProductId, ExtraPT, FromDate, ToDate)
+	SELECT cs.CustId, p.ProductId, 0 AS ExtraPT, @FromDate, @ToDate
+	FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+		CROSS APPLY (
+			SELECT p.ProductId FROM @Products p WHERE NOT EXISTS (SELECT 1 FROM @ExtraPT e WHERE e.ProductID = p.ProductID AND cs.CustId = e.SuperID)
+		) AS p
 
 	CREATE TABLE #SuperWinLoss
 	(
