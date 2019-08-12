@@ -67,6 +67,7 @@ CREATE TABLE [dbo].[CS_SumWinloss_Active](
 	[HeadlineComm] [money] NULL,
 	[HeadlineStock] [money] NULL,
 	[HeadlineId] [int] NULL,
+	[HouseTurnover] [money] NULL,
 	CONSTRAINT [PK_CS_SumWinloss_Active] PRIMARY KEY NONCLUSTERED 
 	(
 		[CustID] ASC,
@@ -83,4 +84,12 @@ GO
 GRANT SELECT ON [dbo].[CS_SumWinloss_Active] TO [bodbDownlineNet]
 GO
 GRANT SELECT ON [dbo].[CS_SumWinloss_Active] TO [bodbDownlineNetView]
+GO
+
+ALTER TABLE dbo.CS_SumWinloss
+	ADD [HouseTurnover] [money] NULL
+GO
+
+ALTER TABLE dbo.CS_SumWinloss_Old
+	ADD [HouseTurnover] [money] NULL
 GO
