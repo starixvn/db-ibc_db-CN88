@@ -65,6 +65,7 @@ BEGIN
 			,MasterResult	MONEY
 			,Super			MONEY
 			,SuperResult	MONEY
+			,SuperStock		MONEY
 			,HeadlineResult	MONEY
 			,HeadlineStock	MONEY
 		)
@@ -94,6 +95,7 @@ BEGIN
 				,MasterResult	MONEY
 				,Super			MONEY
 				,SuperResult	MONEY
+				,SuperStock		MONEY
 				,HeadlineResult	MONEY
 				,HeadlineStock	MONEY
 			)
@@ -112,6 +114,7 @@ BEGIN
 				,MasterResult
 				,Super
 				,SuperResult
+				,SuperStock
 				,HeadlineResult
 				,HeadlineStock
 			)
@@ -130,6 +133,7 @@ BEGIN
 					+ ABS(b.winlost - b.actual_stake) * (1 - b.apositiontaking - b.mpositiontaking) * b.sdiscount
 								) AS Super
 				,SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost + b.scomm) AS SuperResult
+				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking)) AS SuperStock
 				,SUM( -- HeadlineResult = -HouseIncome = -(HouseWinloss + HouseComm)
 					b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * e.ExtraPT) -- HouseWinloss
 					+ b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * e.ExtraPT END -- HouseComm
@@ -204,6 +208,7 @@ BEGIN
 				,MasterResult
 				,Super
 				,SuperResult
+				,SuperStock
 				,HeadlineResult
 				,HeadlineStock
 			)
@@ -218,6 +223,7 @@ BEGIN
 				,SUM(MasterResult)		AS MasterResult
 				,SUM(Super)				AS Super
 				,SUM(SuperResult)		AS SuperResult
+				,SUM(SuperStock)		AS SuperStock
 				,SUM(HeadlineResult)	AS HeadlineResult
 				,SUM(HeadlineStock)		AS HeadlineStock
 			FROM #tmpBettrans b
@@ -270,6 +276,7 @@ BEGIN
 					,MasterResult
 					,Super
 					,SuperResult
+					,SuperStock
 					,HeadlineResult
 					,HeadlineStock
 				)
@@ -290,6 +297,7 @@ BEGIN
 						+ AgentWinloss + AgentComm
 						+ MasterWinloss + MasterComm
 						+ SuperWinloss + SuperComm)			AS SuperResult
+					,SUM(SuperStock)	AS SuperStock
 					,SUM(MemberWinloss + MemberComm
 						+ AgentWinloss + AgentComm
 						+ MasterWinloss + MasterComm
@@ -314,6 +322,7 @@ BEGIN
 							,HeadlineComm
 							,Agent
 							,Super
+							,SuperStock
 							,HeadlineStock
 						FROM bodb_Summary.dbo.CS_SumWinloss s WITH (NOLOCK)
 						WHERE s.custid = cs.custid
@@ -347,6 +356,7 @@ BEGIN
 				,MasterResult
 				,Super
 				,SuperResult
+				,SuperStock
 				,HeadlineResult
 				,HeadlineStock
 			)
@@ -367,6 +377,7 @@ BEGIN
 					+ AgentWinloss + AgentComm
 					+ MasterWinloss + MasterComm
 					+ SuperWinloss + SuperComm)			AS SuperResult
+				,SUM(SuperStock)	AS SuperStock
 				,SUM(MemberWinloss + MemberComm
 					+ AgentWinloss + AgentComm
 					+ MasterWinloss + MasterComm
@@ -391,6 +402,7 @@ BEGIN
 						,HeadlineComm
 						,Agent
 						,Super
+						,SuperStock
 						,HeadlineStock
 					FROM bodb_Summary.dbo.CS_SumWinloss_Old s WITH (NOLOCK)
 					WHERE s.custid = cs.custid
@@ -423,6 +435,7 @@ BEGIN
 			,SUM(s.MasterResult)	AS MasterResult
 			,SUM(s.Super)			AS Super
 			,SUM(s.SuperResult)		AS SuperResult
+			,SUM(s.SuperStock)		AS SuperStock
 			,SUM(s.HeadlineResult)	AS HeadlineResult
 			,SUM(s.HeadlineStock)	AS HeadlineStock
 		FROM #SuperWinLoss s
