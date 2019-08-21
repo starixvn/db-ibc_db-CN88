@@ -1,11 +1,11 @@
 /*<info serverAlias="DBAGE-bodb02" executers="bodbAdminNet" isFunction="0" isNested="0"></info>*/
 ALTER PROCEDURE [dbo].[CS_Rpt_MatchWinLoss_Headline]
-	@WinlostDate	SMALLDATETIME,
-	@SportTypeGroup	SMALLINT = 0,
-	@BetTypeGroup	SMALLINT = 0,
-	@IsLive			TINYINT = 2, -- market
-	@IsExcludedTest	BIT = 0,
-	@MoveBetsDay	SMALLDATETIME
+	@WinlostDate		SMALLDATETIME,
+	@SporttypeGroups	VARCHAR(MAX) = '0', -- all
+	@BetTypeGroup		SMALLINT = 0,
+	@IsLive				TINYINT = 2, -- market
+	@IsExcludedTest		BIT = 0,
+	@MoveBetsDay		SMALLDATETIME
 AS
 
 /*
@@ -17,6 +17,7 @@ AS
 		- 20190520@Percy: Initiliaze SP [RedmineID: #113849]
 		- 20190719@Percy: Add Non-Sports [RedmineID: #11701]
 		- 20190828@Percy: Using index hint on bettrans14 [RedmineID: #119331]
+		- 20190821@Percy: Change single SportTypeGroup to multiple [RedmineID: #118833]
 */
 
 BEGIN
@@ -30,12 +31,12 @@ BEGIN
 	CREATE TABLE #tblSportType (ProductID INT, SportType INT, SportTypeGroup INT)
 	INSERT INTO #tblSportType (ProductID, SportType, SportTypeGroup)
 	SELECT DISTINCT ProductID, SportType, SportTypeGroup
-	FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
+	FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest)
 
 	CREATE TABLE #tblBetType (ProductID INT, BetTypeGroup INT, BetType INT, EventType TINYINT, IsNonSports BIT)
 	INSERT INTO #tblBetType (ProductID, BetTypeGroup, BetType, EventType, IsNonSports)
 	SELECT DISTINCT ProductID, BetTypeGroup, BetType, EventType, 0
-	FROM dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
+	FROM dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest)
 
 	UPDATE bt
 	SET bt.BetTypeGroup = st.SportTypeGroup, bt.IsNonSports = 1

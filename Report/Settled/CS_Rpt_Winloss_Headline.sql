@@ -5,7 +5,7 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Winloss_Headline]
 	@ToDate				SMALLDATETIME,
 	@ArchiveDate		SMALLDATETIME,
 	@MoveBetsDay		SMALLDATETIME,
-	@SporttypeGroup		SMALLINT = 0, -- all
+	@SporttypeGroups	VARCHAR(MAX) = '0', -- all
 	@BettypeGroup		SMALLINT = 0, -- all
 	@IsLive				TINYINT = 2,  -- all
 	@IsExcludedTest		BIT = 1
@@ -20,6 +20,7 @@ AS
 		- 20190521@Percy: Initialize SP [Redmine: #113828]
 		- 20190703@Percy: Temporarily add @ReportMode for web input - will implement later [RedmineID: #116082]
 		- 20190801@Percy: Change way get ExtraPT amount [RedmineID: #117909]
+		- 20190821@Percy: Change single SportTypeGroup to multiple [RedmineID: #118833]
 		
 	Param's Explanation:
 		- @ReportMode: 1: current, 2: history
@@ -38,11 +39,11 @@ BEGIN
 
 	CREATE TABLE #tblSportType (SportType INT)
 	INSERT INTO #tblSportType (SportType)
-	SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
+	SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroups, @BetTypeGroup, @IsTest)
 
 	CREATE TABLE #tblBetType (ProductID INT, BetType INT, EventType TINYINT)
 	INSERT INTO #tblBetType (ProductID, BetType, EventType)
-	SELECT DISTINCT ProductID, BetType, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
+	SELECT DISTINCT ProductID, BetType, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SporttypeGroups, @BetTypeGroup, @IsTest)
 
 	DECLARE @ExtraPT TABLE (SuperID INT, ProductID INT, ExtraPT DECIMAL(9,8), FromDate DATETIME, ToDate DATETIME, RowNum INT)
 	INSERT INTO @ExtraPT (SuperID, ProductID, ExtraPT, FromDate, ToDate, RowNum)
