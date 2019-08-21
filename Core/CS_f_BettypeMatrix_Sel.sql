@@ -1,32 +1,26 @@
-/*<info serverAlias="DBAGE-bodb02,DBEXT-bodb02,DBACC-bodb02,DBTXN-bodb02,DB042-bodb02" selecters="bodbAdminNet,bodbDownlineNet,bodbDownlineNetView" isFunction="1" isNested="0"></info>*/
+/*<info serverAlias="DBAGE-bodb02,DBEXT-bodb02,DBACC-bodb02,DBTXN-bodb02,DB042-bodb02" selecters="bodbAdminNet,bodbDownlineNet,bodbDownlineNetView" isFunction="1" isNested="1"></info>*/
 ALTER FUNCTION [dbo].[CS_f_BettypeMatrix_Sel]
 (
-	@ProductID			SMALLINT = 0
-	,@SportTypeGroup	SMALLINT = 0
-	,@BettypeGroup		SMALLINT = 0
-	,@IsTest			BIT		 = 0
+	@ProductID			SMALLINT		= 0
+	,@SportTypeGroups	VARCHAR(MAX)	= '0'
+	,@BettypeGroup		SMALLINT		= 0
+	,@IsTest			BIT				= 0
 ) 
 /*
 	Creator: Sophia
 	Date: 20190225
 	Task: Get Bettype Matrix for CN88 
-	DB: DBAGE.bodb02, DBEXT.bodb02, DBACC.bodb02, DBPRO.bodb02,  DBTXN.bodb02, DB042.bodb02
+	DB: DBAGE.bodb02, DBEXT.bodb02, DBACC.bodb02, DBPRO.bodb02, DBTXN.bodb02, DB042.bodb02
 		
 	Revisions: 
 		- 20190225@Sophia: Create new [RedmineID: #105660]
 		- 20190520@Percy: Return BetTypeGroup [RedmineID: #113849]
+		- 20190821@Percy: Change single SportTypeGroup to multiple [RedmineID: #118833]
 
 	Paramters Explanation:
  		@ProductID, @SportType, @BetType, @SportTypeGroup
 			0	: get all
 			<>0 : check condition
-		@IsLive : check paramer
-			0	: None-live
-			1	: Live
-			2	: None-live & Live
-		@ProductPrefix:
-			''  : get all
-			<>'': Check ProductPrefix column on dbo.Product table
 		@IsTest:
 			1: Get all products and bettypes
 			0: Get only products and bettypes which are not being tested
@@ -46,9 +40,8 @@ SELECT DISTINCT
 FROM
 	dbo.CS_SportBettypeMatrix ma WITH(NOLOCK)
 	INNER JOIN dbo.Products p WITH(NOLOCK) ON p.ProductID = ma.ProductID
-WHERE   (@ProductID		= 0  OR  ma.ProductID	= @ProductID)
-	AND (@SportTypeGroup= 0  OR  ma.SportTypeGroup = @SportTypeGroup)
-	AND (@BettypeGroup	= 0  OR  ma.BettypeGroup = @BettypeGroup)
+WHERE   (@ProductID = 0			OR ma.ProductID	= @ProductID)
+	AND (@SportTypeGroups = '0' OR ',' + @SportTypeGroups + ',' LIKE '%,' + CONVERT(VARCHAR(10), ma.SportTypeGroup) + ',%')
+	AND (@BettypeGroup	= 0		OR ma.BettypeGroup = @BettypeGroup)
 	AND (ma.IsTest <= @IsTest)
-	AND (ma.Enabled = 1)
 GO

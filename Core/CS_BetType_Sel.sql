@@ -10,6 +10,7 @@ AS
 	Revisions:
 		- 20190214@Percy: Initialize SP [RedmineID: #105338]
 		- 20190515@Sophia: Add SportTypeGroup = 0 [RedmineID: #109521]
+		- 20190821@Percy: Remove SportTypeGroup = 0, Return ProductID = 1 for Sportsbook [RedmineID: #118833]
 */
 
 BEGIN
@@ -18,19 +19,9 @@ BEGIN
 	DECLARE @isTest BIT
 	SELECT  @isTest = dbo.f_CheckSPVersion(@@PROCID)
 
-	---- SportTypeGroup = 0 will get all BettypeGroup 
-	SELECT DISTINCT 0 AS SportTypeGroup, sbm.BettypeGroup, b.typenamee AS TypeName
+	SELECT DISTINCT CASE WHEN sbm.ProductID = 1 THEN sbm.ProductID END AS ProductID, sbm.SportTypeGroup, sbm.BettypeGroup, b.typenamee AS TypeName
 	FROM dbo.BetType b WITH (NOLOCK)
 		INNER JOIN dbo.CS_SportBettypeMatrix sbm WITH (NOLOCK) ON b.TypeId = sbm.BettypeGroup
 	WHERE sbm.Enabled = 1 AND sbm.IsTest <= @isTest
-
-	UNION ALL 
-	
-	SELECT DISTINCT sbm.SportTypeGroup, sbm.BettypeGroup, b.typenamee AS TypeName
-	FROM dbo.BetType b WITH (NOLOCK)
-		INNER JOIN dbo.CS_SportBettypeMatrix sbm WITH (NOLOCK) ON b.TypeId = sbm.BettypeGroup
-	WHERE sbm.Enabled = 1 AND sbm.IsTest <= @isTest
-	
-	
 END
 GO
