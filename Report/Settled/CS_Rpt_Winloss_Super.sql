@@ -8,7 +8,7 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Winloss_Super]
 	@ToDate				SMALLDATETIME,
 	@ArchiveDate		SMALLDATETIME,
 	@MoveBetsDay		SMALLDATETIME,
-	@SporttypeGroup		SMALLINT = 0, -- all
+	@SporttypeGroups	VARCHAR(MAX) = '0', -- all
 	@BettypeGroup		SMALLINT = 0, -- all
 	@IsLive				TINYINT = 2  -- all
 AS
@@ -26,6 +26,7 @@ AS
 		- 20190713@Percy: Add sub account - permission on downlines [RedmineID: #116825]
 		- 20190719@Percy: Add back column HeadlineStock [RedmineID: #117297]
 		- 20190801@Percy: Change way get ExtraPT amount [RedmineID: #117909]
+		- 20190821@Percy: Change single SportTypeGroup to multiple [RedmineID: #118833]
 		
 	Param's Explanation:
 		- @CustId: SuperID or HeadlineID 
@@ -53,11 +54,11 @@ BEGIN
 
 		CREATE TABLE #tblSportType (SportType INT)
 		INSERT INTO #tblSportType (SportType)
-		SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
+		SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest)
 
 		CREATE TABLE #tblBetType (ProductId INT, BetType INT, EventType TINYINT)
 		INSERT INTO #tblBetType (ProductId, BetType, EventType)
-		SELECT DISTINCT ProductId, BetType, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
+		SELECT DISTINCT ProductId, BetType, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest)
 	END
 	/* ===== End Get SportBettypeMatrix ===== */
 

@@ -6,7 +6,7 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Outstanding_Member]
 	@IsAllDownline		BIT = 1,
 	@FromDate			SMALLDATETIME,
 	@ToDate				SMALLDATETIME,
-	@SporttypeGroup		SMALLINT = 0, -- all
+	@SporttypeGroups	VARCHAR(MAX) = '0', -- all
 	@BettypeGroup		SMALLINT = 0, -- all
 	@IsLive				TINYINT = 2 -- all
 AS
@@ -21,6 +21,7 @@ AS
 		- 20190329@Sophia: Implement Non Sports [Redmine: #109521]
 		- 20190528@Sophia: Fix bug VS [Redmine: #113482]
 		- 20190713@Percy: Add sub account - permission on downlines [RedmineID: #116825]
+		- 20190821@Percy: Change single SportTypeGroup to multiple [RedmineID: #118833]
 		
 	Param's Explanation:
 		- @CustId: AgentID
@@ -47,7 +48,7 @@ BEGIN
 
 		CREATE TABLE #tblSportType (SportType INT)
 		INSERT INTO #tblSportType (SportType)
-		SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
+		SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest)
 	END
 	/* ===== End Get SportBettypeMatrix ===== */
 
@@ -61,7 +62,7 @@ BEGIN
 			INSERT INTO @Customers (CustId, BetType, EventType, RefTable)
 			SELECT c.DownlineId, bt.BetType, bt.EventType, bt.RefTable
 			FROM dbo.CS_f_GetDownlineBySubAcc(@SubAccId) c
-				CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest) bt
+				CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest) bt
 		END
 		/* ===== End Get downline list by Sub Account ==== */
 		ELSE
@@ -69,7 +70,7 @@ BEGIN
 			INSERT INTO @Customers (CustId, BetType, EventType, RefTable)
 			SELECT c.CustId, bt.BetType, bt.EventType, bt.RefTable
 			FROM dbo.Customer c WITH (NOLOCK)
-				CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest) bt
+				CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest) bt
 			WHERE c.recommend = @CustId AND c.roleid = 1
 		END
 	END

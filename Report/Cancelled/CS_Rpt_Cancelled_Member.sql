@@ -8,7 +8,7 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Cancelled_Member]
 	@ToDate				SMALLDATETIME,
 	@ArchiveDate		SMALLDATETIME,
 	@MoveBetsDay		SMALLDATETIME,
-	@SporttypeGroup		SMALLINT = 0, -- all
+	@SporttypeGroups	VARCHAR(MAX) = '0', -- all
 	@BettypeGroup		SMALLINT = 0, -- all
 	@IsLive				TINYINT = 2, -- all
 	@ReportType 		TINYINT = 1
@@ -24,6 +24,7 @@ AS
 		- 20190329@Sophia: Implement Non Sports [Redmine: #109521]
 		- 20190528@Sophia: Fix bug VS [Redmine: #113482]
 		- 20190713@Percy: Add sub account - permission on downlines [RedmineID: #116825]
+		- 20190821@Percy: Change single SportTypeGroup to multiple [RedmineID: #118833]
 		
 	Param's Explanation:
 		- @CustId: AgentID
@@ -50,11 +51,11 @@ BEGIN
 
 		CREATE TABLE #tblSportType (SportType INT)
 		INSERT INTO #tblSportType (SportType)
-		SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
+		SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest)
 
 		CREATE TABLE #tblBetType (BetType INT, EventType TINYINT)
 		INSERT INTO #tblBetType (BetType, EventType)
-		SELECT DISTINCT BetType, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
+		SELECT DISTINCT BetType, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest)
 	END
 	/* ===== End Get SportBettypeMatrix ===== */
 
