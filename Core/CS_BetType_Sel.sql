@@ -22,6 +22,6 @@ BEGIN
 	SELECT DISTINCT CASE WHEN sbm.ProductID = 1 THEN sbm.ProductID END AS ProductID, sbm.SportTypeGroup, sbm.BettypeGroup, b.typenamee AS TypeName
 	FROM dbo.BetType b WITH (NOLOCK)
 		INNER JOIN dbo.CS_SportBettypeMatrix sbm WITH (NOLOCK) ON b.TypeId = sbm.BettypeGroup
-	WHERE sbm.Enabled = 1 AND sbm.IsTest <= @isTest
+	WHERE sbm.IsTest <= @isTest
 END
 GO
