@@ -23,5 +23,6 @@ BEGIN
 	FROM dbo.BetType b WITH (NOLOCK)
 		INNER JOIN dbo.CS_SportBettypeMatrix sbm WITH (NOLOCK) ON b.TypeId = sbm.BettypeGroup
 	WHERE sbm.IsTest <= @isTest
+	ORDER BY sbm.BettypeGroup
 END
 GO
