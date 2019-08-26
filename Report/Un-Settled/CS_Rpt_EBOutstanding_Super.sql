@@ -211,6 +211,8 @@ BEGIN
 			,0 AS HeadlineIncome
 			,0 AS HeadlineResult
 			,0 AS HeadlineStock
+			,0 AS Rebate
+			,0 AS RebateRoundDown -- Round down abs 100
 		FROM #SuperOutstanding o
 			INNER JOIN Customer c WITH (NOLOCK) ON o.CustID = c.CustID
 			CROSS APPLY (

@@ -361,6 +361,27 @@ BEGIN
 
 	/* ===== Return Data ===== */
 	BEGIN
+		DECLARE @RebateRate FLOAT = 0.1 -- 10% of HeadlineResult
+
+		;WITH CTE_SuperWinLoss AS
+		(
+			SELECT
+				CustId
+				,SUM(Wagers)		AS Wagers
+				,SUM(Stake)			AS Stake
+				,SUM(ValidStake)	AS ValidStake
+				,SUM(MemberWinloss)	AS MemberWinloss
+				,SUM(MemberComm)	AS MemberComm
+				,SUM(MemberWinloss + MemberComm)	AS MemberIncome
+				,SUM(SuperComm)		AS SuperComm
+				,SUM(HouseWinloss)	AS HouseWinloss
+				,SUM(HouseComm)		AS HouseComm
+				,SUM(HouseTurnover)	AS HouseTurnover
+				,SUM(HouseWinloss + HouseComm)		AS HouseIncome
+				,-SUM(HouseWinloss + HouseComm)		AS HeadlineResult
+				,SUM(HeadlineStock)	AS HeadlineStock
+			FROM #SuperWinLoss
+		)
 		SELECT
 			c.CustId
 			,c.Username
@@ -369,15 +390,16 @@ BEGIN
 			,SUM(s.ValidStake)		AS ValidStake
 			,SUM(s.MemberWinloss)	AS MemberWinloss
 			,SUM(s.MemberComm)		AS MemberComm
-			,SUM(s.MemberWinloss + MemberComm)	AS MemberIncome
+			,SUM(s.MemberIncome)	AS MemberIncome
 			,SUM(s.SuperComm)		AS SuperComm
 			,SUM(s.HouseWinloss)	AS HouseWinloss
 			,SUM(s.HouseComm)		AS HouseComm
 			,SUM(s.HouseTurnover)	AS HouseTurnover
-			,SUM(s.HouseWinloss + HouseComm)	AS HouseIncome
-			,-SUM(s.HouseWinloss + HouseComm)	AS HeadlineResult
+			,SUM(s.HouseIncome)		AS HouseIncome
+			,SUM(s.HeadlineResult)	AS HeadlineResult
 			,SUM(s.HeadlineStock)	AS HeadlineStock
-		FROM #SuperWinLoss s
+			,SUM(SIGN(-HeadlineResult) * FLOOR(ABS(HeadlineResult*@RebateRate/100.0))*100.0) AS RebateRoundDown
+		FROM CTE_SuperWinLoss s
 			INNER JOIN dbo.CustSuper cs WITH (NOLOCK) ON s.CustId = cs.custid
 			INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.UplineId = c.custid
 		WHERE c.roleid = 0

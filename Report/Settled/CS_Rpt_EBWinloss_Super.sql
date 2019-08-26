@@ -66,6 +66,7 @@ BEGIN
 			,Super			MONEY
 			,SuperResult	MONEY
 			,SuperStock		MONEY
+			,HeadlineIncome	MONEY
 			,HeadlineResult	MONEY
 			,HeadlineStock	MONEY
 		)
@@ -96,6 +97,7 @@ BEGIN
 				,Super			MONEY
 				,SuperResult	MONEY
 				,SuperStock		MONEY
+				,HeadlineIncome	MONEY
 				,HeadlineResult	MONEY
 				,HeadlineStock	MONEY
 			)
@@ -115,6 +117,7 @@ BEGIN
 				,Super
 				,SuperResult
 				,SuperStock
+				,HeadlineIncome
 				,HeadlineResult
 				,HeadlineStock
 			)
@@ -134,6 +137,10 @@ BEGIN
 								) AS Super
 				,SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost + b.scomm) AS SuperResult
 				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking)) AS SuperStock
+				,SUM( -- HeadlineIncome = HeadlineWinloss + HeadlineComm
+					- (b.winlost - b.actual_stake) * e.ExtraPT -- HeadlineWinloss
+					- CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * e.ExtraPT END -- HeadlineComm
+					) AS HeadlineIncome
 				,SUM( -- HeadlineResult = -HouseIncome = -(HouseWinloss + HouseComm)
 					b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * e.ExtraPT) -- HouseWinloss
 					+ b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * e.ExtraPT END -- HouseComm
@@ -209,6 +216,7 @@ BEGIN
 				,Super
 				,SuperResult
 				,SuperStock
+				,HeadlineIncome
 				,HeadlineResult
 				,HeadlineStock
 			)
@@ -224,6 +232,7 @@ BEGIN
 				,SUM(Super)				AS Super
 				,SUM(SuperResult)		AS SuperResult
 				,SUM(SuperStock)		AS SuperStock
+				,SUM(HeadlineIncome)	AS HeadlineIncome
 				,SUM(HeadlineResult)	AS HeadlineResult
 				,SUM(HeadlineStock)		AS HeadlineStock
 			FROM #tmpBettrans b
@@ -277,6 +286,7 @@ BEGIN
 					,Super
 					,SuperResult
 					,SuperStock
+					,HeadlineIncome
 					,HeadlineResult
 					,HeadlineStock
 				)
@@ -298,6 +308,7 @@ BEGIN
 						+ MasterWinloss + MasterComm
 						+ SuperWinloss + SuperComm)			AS SuperResult
 					,SUM(SuperStock)	AS SuperStock
+					,SUM(HeadlineWinloss + HeadlineComm)	AS HeadlineIncome
 					,SUM(MemberWinloss + MemberComm
 						+ AgentWinloss + AgentComm
 						+ MasterWinloss + MasterComm
@@ -357,6 +368,7 @@ BEGIN
 				,Super
 				,SuperResult
 				,SuperStock
+				,HeadlineIncome
 				,HeadlineResult
 				,HeadlineStock
 			)
@@ -378,6 +390,7 @@ BEGIN
 					+ MasterWinloss + MasterComm
 					+ SuperWinloss + SuperComm)			AS SuperResult
 				,SUM(SuperStock)	AS SuperStock
+				,SUM(HeadlineWinloss + HeadlineComm)	AS HeadlineIncome
 				,SUM(MemberWinloss + MemberComm
 					+ AgentWinloss + AgentComm
 					+ MasterWinloss + MasterComm
@@ -421,37 +434,61 @@ BEGIN
 
 	/* ===== Return Data ===== */
 	BEGIN
+		DECLARE @RebateRate FLOAT = 0.1 -- 10% of HeadlineResult
+
 		SELECT
-			u.CustId AS HeadlineId
-			,u.Username AS HeadlineUsername
-			,c.CustId
-			,c.Username
-			,SUM(s.Wagers)			AS Wagers
-			,SUM(s.Stake)			AS Stake
-			,SUM(s.ValidStake)		AS ValidStake
-			,SUM(s.MemberIncome)	AS MemberIncome
-			,SUM(s.Agent)			AS Agent
-			,SUM(s.AgentResult)		AS AgentResult
-			,SUM(s.MasterResult)	AS MasterResult
-			,SUM(s.Super)			AS Super
-			,SUM(s.SuperResult)		AS SuperResult
-			,SUM(s.SuperStock)		AS SuperStock
-			,SUM(s.HeadlineResult)	AS HeadlineResult
-			,SUM(s.HeadlineStock)	AS HeadlineStock
-		FROM #SuperWinLoss s
-			INNER JOIN dbo.Customer c WITH (NOLOCK) ON s.custid = c.custid
-			CROSS APPLY (
-				SELECT TOP (1) c.custid, c.username
-				FROM dbo.CustSuper cs WITH (NOLOCK)
-					INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.UplineId = c.custid
-				WHERE s.CustId = cs.custid
-			) AS u
-		WHERE (c.currency <> 20 OR @IsExcludedTest = 0)
-		GROUP BY
-			u.CustId
-			,u.Username
-			,c.CustId
-			,c.Username
+			HeadlineId
+			,HeadlineUsername
+			,CustId
+			,Username
+			,Wagers
+			,Stake
+			,ValidStake
+			,MemberIncome
+			,Agent
+			,AgentResult
+			,MasterResult
+			,Super
+			,SuperStock
+			,HeadlineIncome
+			,HeadlineResult
+			,HeadlineStock
+			,-HeadlineResult*@RebateRate AS Rebate
+			,SIGN(-HeadlineResult) * FLOOR(ABS(HeadlineResult*@RebateRate/100.0))*100.0 AS RebateRoundDown -- Round down abs 100
+		FROM (
+			SELECT
+				u.CustId AS HeadlineId
+				,u.Username AS HeadlineUsername
+				,c.CustId
+				,c.Username
+				,SUM(s.Wagers)			AS Wagers
+				,SUM(s.Stake)			AS Stake
+				,SUM(s.ValidStake)		AS ValidStake
+				,SUM(s.MemberIncome)	AS MemberIncome
+				,SUM(s.Agent)			AS Agent
+				,SUM(s.AgentResult)		AS AgentResult
+				,SUM(s.MasterResult)	AS MasterResult
+				,SUM(s.Super)			AS Super
+				,SUM(s.SuperResult)		AS SuperResult
+				,SUM(s.SuperStock)		AS SuperStock
+				,SUM(s.HeadlineIncome)	AS HeadlineIncome
+				,SUM(s.HeadlineResult)	AS HeadlineResult
+				,SUM(s.HeadlineStock)	AS HeadlineStock
+			FROM #SuperWinLoss s
+				INNER JOIN dbo.Customer c WITH (NOLOCK) ON s.custid = c.custid
+				CROSS APPLY (
+					SELECT TOP (1) c.custid, c.username
+					FROM dbo.CustSuper cs WITH (NOLOCK)
+						INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.UplineId = c.custid
+					WHERE s.CustId = cs.custid
+				) AS u
+			WHERE (c.currency <> 20 OR @IsExcludedTest = 0)
+			GROUP BY
+				u.CustId
+				,u.Username
+				,c.CustId
+				,c.Username
+		) AS r
 	END
 	/* ===== End Return Data ===== */
 

@@ -229,6 +229,7 @@ BEGIN
 		,0 AS HouseIncome
 		,0 AS HeadlineResult
 		,0 AS HeadlineStock
+		,0 AS RebateRoundDown
 	FROM #SuperOutstanding o
 		INNER JOIN dbo.CustSuper cs WITH (NOLOCK) ON o.CustId = cs.custid
 		INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.UplineId = c.custid
