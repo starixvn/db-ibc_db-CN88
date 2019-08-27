@@ -1,7 +1,4 @@
 /*<info serverAlias="DBAGE-bodb02" executers="bodbAdminNet,bodbDownlineNet,bodbDownlineNetView" isFunction="0" isNested="0"></info>*/
-USE [bodb02]
-GO
-
 ALTER PROCEDURE [dbo].[CS_Rpt_MemberStatement_Sel]
 	@CustId			INT,
 	@SportTypeGroup	INT = 0,

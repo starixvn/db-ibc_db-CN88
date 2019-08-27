@@ -1,7 +1,4 @@
 /*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" isFunction="0"></info>*/	
-USE bodb02
-GO 
-
 ALTER PROCEDURE [dbo].[CS_TotalBets_Started_Agent]
 	@CustID			INT,
 	@SubAccId		INT = 0,

@@ -1,7 +1,4 @@
 /*<info serverAlias="DBAGE-bodb02,DB042-bodb02" selecters="bodbAdminNet,bodbDownlineNet,bodbDownlineNetView" isFunction="1" isNested="1"></info>*/
-USE bodb02
-GO
-
 ALTER FUNCTION [dbo].[CS_f_GetDownlineBySubAcc]
 (
 	@SubAccId INT

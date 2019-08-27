@@ -1,7 +1,4 @@
 /*<info serverAlias="DB042-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="0"></info>*/	
-USE bodb02
-GO 
-
 ALTER PROCEDURE [dbo].[CS_TotalBets_League_Sel]
 	@SporttypeGroup INT = 0, 
 	@Type TINYINT = 1

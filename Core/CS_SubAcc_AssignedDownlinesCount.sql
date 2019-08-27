@@ -1,7 +1,4 @@
 /*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet" isFunction="0" isNested="0"></info>*/
-USE [bodb02]
-GO
-
 ALTER PROCEDURE [dbo].[CS_SubAcc_AssignedDownlinesCount]
 	@SubAccId INT = 0
 AS

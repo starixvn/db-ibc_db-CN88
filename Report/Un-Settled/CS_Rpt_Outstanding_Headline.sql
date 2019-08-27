@@ -1,7 +1,4 @@
 /*<info serverAlias="DB042-bodb02" executers="bodbAdminNet" isFunction="0" isNested="0"></info>*/
-USE [bodb02]
-GO
-
 ALTER PROCEDURE [dbo].[CS_Rpt_Outstanding_Headline]
 	@FromDate			SMALLDATETIME,
 	@ToDate				SMALLDATETIME,

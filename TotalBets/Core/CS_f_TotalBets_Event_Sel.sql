@@ -1,7 +1,4 @@
 /*<info serverAlias="DB042-bodb02, DBAGE-bodb02" select="bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="1"></info>*/	
-USE bodb02
-GO 
-
 ALTER FUNCTION [dbo].[CS_f_TotalBets_Event_Sel]
 	(	
 		@Type TINYINT = 0,

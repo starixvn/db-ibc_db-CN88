@@ -1,7 +1,4 @@
 /*<info serverAlias="DBAGE-bodb02,DBEXT-bodb02,DBACC-bodb02,DBTXN-bodb02,DB042-bodb02" selecters="bodbAdminNet,bodbDownlineNet,bodbDownlineNetView" viewers="" isFunction="1" isNested="0"></info>*/
-USE [bodb02]
-GO
-
 ALTER FUNCTION [dbo].[CS_f_SporttypeGroupMatrix_Sel]
 (
 	 @ProductID		SMALLINT = 0

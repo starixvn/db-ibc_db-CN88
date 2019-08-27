@@ -1,7 +1,4 @@
 /*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" isFunction="0" isNested="0"></info>*/
-USE [bodb02]
-GO
-
 ALTER PROCEDURE [dbo].[CS_Rpt_Winloss_Member]
 	@CustId				INT = 0,	 
 	@IsOwner			BIT = 1,

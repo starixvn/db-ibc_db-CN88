@@ -1,7 +1,4 @@
 /*<info serverAlias="DBMSG-bodb_Message" executers="bodbDownlineNet,bodbDownlineNetView" isFunction="0" isNested="0"></info>*/
-USE bodb_Message
-GO
-
 ALTER PROCEDURE [dbo].[CS_CustomerSelMessages]
 	@CustId			INT
 	,@SubAccId		INT = 0

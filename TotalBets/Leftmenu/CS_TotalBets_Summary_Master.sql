@@ -1,7 +1,4 @@
 /*<info serverAlias="DB042-bodb02" executers="bodbAdminNet,bodbDownlineNet,bodbDownlineNetView" isFunction="0" isNested="0"></info>*/
-USE [bodb02]
-GO
-
 ALTER PROCEDURE [dbo].[CS_TotalBets_Summary_Master]
 	@CustId			INT,
 	@SubAccId		INT = 0,

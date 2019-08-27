@@ -1,6 +1,4 @@
 /*<info serverAlias="DBCUST-CustDB" executers="bodbDownlineNet, bodbDownlineNetView" viewers="" isFunction="0"></info>*/
-
-
 ALTER PROCEDURE [dbo].[CS_Customer_CheckBelonging_Sel]
 	@SessionCustID INT, --uplineID	
 	@custid INT = NULL,	
