@@ -15,7 +15,8 @@ AS
 
 	Revisions:
 		- 20190520@Percy: Initiliaze SP [RedmineID: #113849]
-		- 20180719@Percy: Add Non-Sports [RedmineID: #11701]
+		- 20190719@Percy: Add Non-Sports [RedmineID: #11701]
+		- 20190828@Percy: Using index hint on bettrans14 [RedmineID: #119331]
 */
 
 BEGIN
@@ -243,7 +244,7 @@ BEGIN
 					,b.swinlost
 					,b.scomm
 					,b.tpositiontaking
-				FROM dbo.bettrans14 b WITH (NOLOCK)
+				FROM dbo.bettrans14 b WITH (NOLOCK, INDEX = IX_srecommend)
 					OUTER APPLY (
 						SELECT TOP 1 bm.matchid
 						FROM dbo.bettransm14 bm WITH (NOLOCK)
