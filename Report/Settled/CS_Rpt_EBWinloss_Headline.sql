@@ -381,6 +381,8 @@ BEGIN
 				,-SUM(HouseWinloss + HouseComm)		AS HeadlineResult
 				,SUM(HeadlineStock)	AS HeadlineStock
 			FROM #SuperWinLoss
+			GROUP BY
+				CustId
 		)
 		SELECT
 			c.CustId
