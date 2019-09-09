@@ -6,7 +6,7 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Outstanding_Agent]
 	@IsAllDownline		BIT = 1,
 	@FromDate			SMALLDATETIME,
 	@ToDate				SMALLDATETIME,	 
-	@SporttypeGroup		SMALLINT = 0, -- all
+	@SporttypeGroups	VARCHAR(MAX) = '0', -- all
 	@BettypeGroup		SMALLINT = 0, -- all
 	@IsLive				TINYINT = 2 -- all
 AS
@@ -21,6 +21,7 @@ AS
 		- 20190329@Sophia: Implement Non Sports [Redmine: #109521]
 		- 20190528@Sophia: Fix bug VS [Redmine: #113482]
 		- 20190713@Percy: Add sub account - permission on downlines [RedmineID: #116825]
+		- 20190821@Percy: Change single SportTypeGroup to multiple [RedmineID: #118833]
 		
 	Param's Explanation:
 		- @CustId: MasterID or AgentID
@@ -47,7 +48,7 @@ BEGIN
 
 		CREATE TABLE #tblSportType (SportType INT)
 		INSERT INTO #tblSportType (SportType)
-		SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
+		SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest)
 	END
 	/* ===== End Get SportBettypeMatrix ===== */
 
@@ -60,7 +61,7 @@ BEGIN
 		BEGIN
 			INSERT INTO @Customers (CustId, BetType, EventType, RefTable)
 			SELECT @CustId, BetType, EventType, RefTable
-			FROM dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
+			FROM dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest)
 
 			/* ===== Get downline list by Sub Account ==== */
 			IF ISNULL(@SubAccId, 0) <> 0 AND ISNULL(@IsAllDownline, 0) = 0
@@ -78,7 +79,7 @@ BEGIN
 				INSERT INTO @Customers (CustId, BetType, EventType, RefTable)
 				SELECT cs.DownlineId, bt.BetType, bt.EventType, bt.RefTable
 				FROM dbo.CS_f_GetDownlineBySubAcc(@SubAccId) cs
-					CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest) bt
+					CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest) bt
 			END
 			/* ===== End Get downline list by Sub Account ==== */
 			ELSE
@@ -86,7 +87,7 @@ BEGIN
 				INSERT INTO @Customers (CustId, BetType, EventType, RefTable)
 				SELECT c.CustId, bt.BetType, bt.EventType, bt.RefTable
 				FROM dbo.Customer c WITH (NOLOCK)
-					CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest) bt
+					CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest) bt
 				WHERE c.mrecommend = @CustId AND c.roleid = 2
 			END
 

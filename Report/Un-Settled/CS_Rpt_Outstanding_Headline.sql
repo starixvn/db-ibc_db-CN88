@@ -2,7 +2,7 @@
 ALTER PROCEDURE [dbo].[CS_Rpt_Outstanding_Headline]
 	@FromDate			SMALLDATETIME,
 	@ToDate				SMALLDATETIME,
-	@SporttypeGroup		SMALLINT = 0, -- all
+	@SporttypeGroups	VARCHAR(MAX) = '0', -- all
 	@BettypeGroup		SMALLINT = 0, -- all
 	@IsLive				TINYINT = 2,  -- all
 	@IsExcludedTest		BIT = 1
@@ -15,7 +15,7 @@ AS
 	
 	Revisions:
 		- 20190521@Percy: Initialize SP [Redmine: #113828]
-	 
+		- 20190821@Percy: Change single SportTypeGroup to multiple [RedmineID: #118833]
 		
 	Param's Explanation:
 		- @SporttypeGroup: default = 0: All
@@ -33,13 +33,13 @@ BEGIN
 
 	CREATE TABLE #tblSportType (SportType INT)
 	INSERT INTO #tblSportType (SportType)
-	SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
+	SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest)
 
 	DECLARE @HeadlineInfo TABLE (SuperID INT, UplineID INT, BetType INT, EventType TINYINT, RefTable TINYINT)
 	INSERT INTO @HeadlineInfo (SuperID, UplineID, BetType, EventType, RefTable)
 	SELECT c.CustID, c.UplineId, b.BetType, b.EventType, b.RefTable
 	FROM dbo.CustSuper c WITH (NOLOCK)
-		CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest) b
+		CROSS APPLY dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest) b
 	WHERE EXISTS (SELECT 1 FROM dbo.CS_CustSuper cs WITH (NOLOCK) WHERE cs.CustId = c.custid)
 	
 	CREATE TABLE #Outstanding
