@@ -6,7 +6,7 @@ ALTER PROCEDURE [dbo].[CS_Rpt_EBOutstanding_Agent]
 	@CustId				INT = 0,
 	@FromDate			SMALLDATETIME,
 	@ToDate				SMALLDATETIME,	 
-	@SporttypeGroup		SMALLINT = 0, -- all
+	@SporttypeGroups	VARCHAR(MAX) = '0', -- all
 	@BettypeGroup		SMALLINT = 0, -- all
 	@IsLive				TINYINT = 2, -- all
 	@IsExcludedTest		BIT = 1
@@ -39,11 +39,11 @@ BEGIN
 
 		CREATE TABLE #tblSportType (SportType INT)
 		INSERT INTO #tblSportType (SportType)
-		SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
+		SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroups, @BetTypeGroup, @IsTest)
 
 		CREATE TABLE #tblBetType (ProductID INT, BetType INT, EventType TINYINT, RefTable TINYINT)
 		INSERT INTO #tblBetType (ProductID, BetType, EventType, RefTable)
-		SELECT DISTINCT ProductID, BetType, EventType, RefTable FROM dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroup, @BetTypeGroup, @IsTest)
+		SELECT DISTINCT ProductID, BetType, EventType, RefTable FROM dbo.CS_f_BettypeMatrix_Sel (0, @SporttypeGroups, @BetTypeGroup, @IsTest)
 	END
 	/* ===== End Get Sport/Bettype ===== */
 
