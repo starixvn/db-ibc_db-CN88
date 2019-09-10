@@ -1,7 +1,4 @@
 /*<info serverAlias="DBAGE-bodb02" executers="bodbAdminNet" isFunction="0" isNested="0"></info>*/
-USE [bodb02]
-GO
-
 ALTER PROCEDURE [dbo].[CS_Rpt_EBWinloss_Headline]
 	@ReportMode			TINYINT = 1,
 	@FromDate			SMALLDATETIME,
@@ -161,7 +158,7 @@ BEGIN
 						AND (@IsExcludedTest = 0 OR b.currency <> 20)
 				) AS b
 				OUTER APPLY (
-					SELECT SUM(ag.ExtraPT) AS ExtraPT
+					SELECT ag.ExtraPT
 					FROM dbo.Acc_GroupExtraPTSetting ag WITH (NOLOCK)
 					WHERE cs.CustId = ag.SuperId
 						AND b.winlostdate BETWEEN ag.FromDate AND ag.ToDate

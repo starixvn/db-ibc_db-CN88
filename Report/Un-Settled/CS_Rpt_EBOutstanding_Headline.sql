@@ -1,7 +1,4 @@
 /*<info serverAlias="DB042-bodb02" executers="bodbAdminNet" isFunction="0" isNested="0"></info>*/
-USE [bodb02]
-GO
-
 ALTER PROCEDURE [dbo].[CS_Rpt_EBOutstanding_Headline]
 	@FromDate			SMALLDATETIME,
 	@ToDate				SMALLDATETIME,
@@ -101,7 +98,7 @@ BEGIN
 						)
 			) AS b
 			OUTER APPLY (
-				SELECT SUM(ag.ExtraPT) AS ExtraPT
+				SELECT ag.ExtraPT
 				FROM dbo.Acc_GroupExtraPTSetting ag WITH (NOLOCK)
 				WHERE cs.CustId = ag.SuperId
 					AND b.winlostdate BETWEEN ag.FromDate AND ag.ToDate
