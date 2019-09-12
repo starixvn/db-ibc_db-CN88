@@ -135,14 +135,14 @@ BEGIN
 				,SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost + b.scomm) AS SuperResult
 				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking)) AS SuperStock
 				,SUM( -- HeadlineIncome = HeadlineWinloss + HeadlineComm
-					- (b.winlost - b.actual_stake) * e.ExtraPT -- HeadlineWinloss
-					- CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * e.ExtraPT END -- HeadlineComm
+					- (b.winlost - b.actual_stake) * ISNULL(e.ExtraPT, 0) -- HeadlineWinloss
+					- CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * ISNULL(e.ExtraPT, 0) END -- HeadlineComm
 					) AS HeadlineIncome
 				,SUM( -- HeadlineResult = -HouseIncome = -(HouseWinloss + HouseComm)
-					b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * e.ExtraPT) -- HouseWinloss
-					+ b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * e.ExtraPT END -- HouseComm
+					b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * ISNULL(e.ExtraPT, 0)) -- HouseWinloss
+					+ b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * ISNULL(e.ExtraPT, 0) END -- HouseComm
 					) AS HeadlineResult 
-				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - e.ExtraPT)) AS HeadlineStock
+				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - ISNULL(e.ExtraPT, 0))) AS HeadlineStock
 			FROM dbo.CS_CustSuper cs WITH (NOLOCK)
 				CROSS APPLY (
 					SELECT
@@ -446,6 +446,7 @@ BEGIN
 			,AgentResult
 			,MasterResult
 			,Super
+			,SuperResult
 			,SuperStock
 			,HeadlineIncome
 			,HeadlineResult
