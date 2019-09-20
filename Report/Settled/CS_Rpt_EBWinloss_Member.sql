@@ -1,15 +1,14 @@
 /*<info serverAlias="DBAGE-bodb02" executers="bodbAdminNet" isFunction="0" isNested="0"></info>*/
 ALTER PROCEDURE [dbo].[CS_Rpt_EBWinloss_Member]
-	@ReportMode			TINYINT = 1,
-	@CustId				INT,
-	@FromDate			SMALLDATETIME,
-	@ToDate				SMALLDATETIME,
-	@ArchiveDate		SMALLDATETIME,
-	@MoveBetsDay		SMALLDATETIME,
-	@SporttypeGroups	VARCHAR(MAX) = '0', -- all
-	@BettypeGroup		SMALLINT = 0, -- all
-	@IsLive				TINYINT = 2,  -- all
-	@IsExcludedTest		BIT = 1
+	@ReportMode			TINYINT = 1
+	,@CustId			INT
+	,@FromDate			SMALLDATETIME
+	,@ToDate			SMALLDATETIME
+	,@MoveBetsDay		SMALLDATETIME
+	,@SporttypeGroups	VARCHAR(MAX) = '0' -- all
+	,@BettypeGroup		SMALLINT = 0 -- all
+	,@IsLive			TINYINT = 2  -- all
+	,@IsExcludedTest	BIT = 1
 AS
 
 /*
@@ -170,9 +169,9 @@ BEGIN
 		END
 
 		-- CS_SumWinloss
-		IF @ToDate > @ArchiveDate -- (@ReportMode = 1 AND @FromDate <= @MoveBetsDay) OR (@ReportMode = 2 AND @ToDate > @ArchiveDate)
+		IF (@ReportMode = 1 AND @FromDate <= @MoveBetsDay) OR @ReportMode = 2
 		BEGIN
-			SELECT	@FDate = CASE WHEN @FromDate < @ArchiveDate THEN @ArchiveDate ELSE @FromDate END
+			SELECT	@FDate = @FromDate
 					,@TDate = CASE WHEN @ReportMode = 1 AND @ToDate > @MoveBetsDay THEN @MoveBetsDay ELSE @ToDate END
 
 			IF @FDate <= @TDate
@@ -215,50 +214,6 @@ BEGIN
 			END
 		END
 		-- End CS_SumWinloss
-
-		-- CS_SumWinloss_Old
-		IF @FromDate < @ArchiveDate
-		BEGIN
-			SELECT	@FDate = @FromDate
-					,@TDate = CASE WHEN @ToDate >= @ArchiveDate THEN DATEADD(DAY, -1, @ArchiveDate) ELSE @ToDate END
-
-			INSERT INTO #MemberWinLoss
-			(
-				CustId
-				,Wagers
-				,Stake
-				,ValidStake
-				,MemberIncome
-				,AgentResultA
-			)
-			SELECT
-				c.CustId
-				,SUM(Wagers)		AS Wagers
-				,SUM(Stake)			AS Stake
-				,SUM(ValidStake)	AS ValidStake
-				,SUM(MemberWinloss + MemberComm)		AS MemberIncome
-				,SUM(AgentResultA)	AS AgentResultA
-			FROM dbo.Customer c WITH (NOLOCK)
-				CROSS APPLY (
-					SELECT
-						Wagers
-						,Stake
-						,ValidStake
-						,MemberWinloss
-						,MemberComm
-						,AgentResultA
-					FROM bodb_Summary.dbo.CS_SumWinloss_Old s WITH (NOLOCK)
-					WHERE c.custid = s.custid
-						AND s.WinlostDate BETWEEN @FDate AND @TDate
-						AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
-						AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
-						AND (@IsLive = 2 OR IsLive = @IsLive)
-				) AS s
-			WHERE c.recommend = @CustId AND c.roleid = 1
-			GROUP BY
-				c.CustId
-		END
-		-- End CS_SumWinloss_Old
 	END
 	/* ===== End Get Data ===== */
 

@@ -1,11 +1,11 @@
 /*<info serverAlias="DB042-bodb02" executers="bodbAdminNet" isFunction="0" isNested="0"></info>*/
 ALTER PROCEDURE [dbo].[CS_Rpt_EBOutstanding_Headline]
-	@FromDate			SMALLDATETIME,
-	@ToDate				SMALLDATETIME,
-	@SporttypeGroups	VARCHAR(MAX) = '0', -- all
-	@BettypeGroup		SMALLINT = 0, -- all
-	@IsLive				TINYINT = 2,  -- all
-	@IsExcludedTest		BIT = 1
+	@FromDate			SMALLDATETIME
+	,@ToDate			SMALLDATETIME
+	,@SporttypeGroups	VARCHAR(MAX) = '0' -- all
+	,@BettypeGroup		SMALLINT = 0 -- all
+	,@IsLive			TINYINT = 2 -- all
+	,@IsExcludedTest	BIT = 1
 AS
 
 /*

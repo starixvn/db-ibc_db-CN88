@@ -1,15 +1,14 @@
 /*<info serverAlias="DBAGE-bodb02" executers="bodbAdminNet" isFunction="0" isNested="0"></info>*/
 ALTER PROCEDURE [dbo].[CS_Rpt_EBWinloss_Super]
-	@ReportMode			TINYINT = 1,
-	@CustId				INT = 0,
-	@FromDate			SMALLDATETIME,
-	@ToDate				SMALLDATETIME,
-	@ArchiveDate		SMALLDATETIME,
-	@MoveBetsDay		SMALLDATETIME,
-	@SporttypeGroups	VARCHAR(MAX) = '0', -- all
-	@BettypeGroup		SMALLINT = 0, -- all
-	@IsLive				TINYINT = 2,  -- all
-	@IsExcludedTest		BIT = 1
+	@ReportMode			TINYINT = 1
+	,@CustId			INT = 0
+	,@FromDate			SMALLDATETIME
+	,@ToDate			SMALLDATETIME
+	,@MoveBetsDay		SMALLDATETIME
+	,@SporttypeGroups	VARCHAR(MAX) = '0' -- all
+	,@BettypeGroup		SMALLINT = 0 -- all
+	,@IsLive			TINYINT = 2  -- all
+	,@IsExcludedTest	BIT = 1
 AS
 
 /*
@@ -263,9 +262,9 @@ BEGIN
 		-- End bettrans
 
 		-- CS_SumWinloss
-		IF @ToDate > @ArchiveDate -- (@ReportMode = 1 AND @FromDate <= @MoveBetsDay) OR (@ReportMode = 2 AND @ToDate > @ArchiveDate)
+		IF (@ReportMode = 1 AND @FromDate <= @MoveBetsDay) OR @ReportMode = 2
 		BEGIN
-			SELECT	@FDate = CASE WHEN @FromDate < @ArchiveDate THEN @ArchiveDate ELSE @FromDate END
+			SELECT	@FDate = @FromDate
 					,@TDate = CASE WHEN @ReportMode = 1 AND @ToDate > @MoveBetsDay THEN @MoveBetsDay ELSE @ToDate END
 
 			IF @FDate <= @TDate
@@ -345,87 +344,6 @@ BEGIN
 			END
 		END
 		-- End CS_SumWinloss
-
-		-- CS_SumWinloss_Old
-		IF @FromDate < @ArchiveDate
-		BEGIN
-			SELECT	@FDate = @FromDate
-					,@TDate = CASE WHEN @ToDate >= @ArchiveDate THEN DATEADD(DAY, -1, @ArchiveDate) ELSE @ToDate END
-
-			INSERT INTO #SuperWinLoss
-			(
-				CustId
-				,Wagers
-				,Stake
-				,ValidStake
-				,MemberIncome
-				,Agent
-				,AgentResult
-				,MasterResult
-				,Super
-				,SuperResult
-				,SuperStock
-				,HeadlineIncome
-				,HeadlineResult
-				,HeadlineStock
-			)
-			SELECT
-				cs.CustId
-				,SUM(Wagers)		AS Wagers
-				,SUM(Stake)			AS Stake
-				,SUM(ValidStake)	AS ValidStake
-				,SUM(MemberWinloss + MemberComm)		AS MemberIncome
-				,SUM(Agent)			AS Agent
-				,SUM(MemberWinloss + MemberComm
-					+ AgentWinloss + AgentComm)			AS AgentResult
-				,SUM(MemberWinloss + MemberComm
-					+ AgentWinloss + AgentComm
-					+ MasterWinloss + MasterComm)		AS MasterResult
-				,SUM(Super)			AS Super
-				,SUM(MemberWinloss + MemberComm
-					+ AgentWinloss + AgentComm
-					+ MasterWinloss + MasterComm
-					+ SuperWinloss + SuperComm)			AS SuperResult
-				,SUM(SuperStock)	AS SuperStock
-				,SUM(HeadlineWinloss + HeadlineComm)	AS HeadlineIncome
-				,SUM(MemberWinloss + MemberComm
-					+ AgentWinloss + AgentComm
-					+ MasterWinloss + MasterComm
-					+ SuperWinloss + SuperComm
-					+ HeadlineWinloss + HeadlineComm)	AS HeadlineResult
-				,SUM(HeadlineStock) AS HeadlineStock
-			FROM dbo.CS_CustSuper cs WITH (NOLOCK)
-				CROSS APPLY (
-					SELECT
-						Wagers
-						,Stake
-						,ValidStake
-						,MemberWinloss
-						,AgentWinloss
-						,MasterWinloss
-						,SuperWinloss
-						,HeadlineWinloss
-						,MemberComm
-						,AgentComm
-						,MasterComm
-						,SuperComm
-						,HeadlineComm
-						,Agent
-						,Super
-						,SuperStock
-						,HeadlineStock
-					FROM bodb_Summary.dbo.CS_SumWinloss_Old s WITH (NOLOCK)
-					WHERE s.custid = cs.custid
-						AND s.WinlostDate BETWEEN @FDate AND @TDate
-						AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
-						AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
-						AND (@IsLive = 2 OR IsLive = @IsLive)
-				) AS s
-			WHERE (@CustId = 0 OR EXISTS (SELECT 1 FROM dbo.CustSuper c WITH (NOLOCK) WHERE cs.CustId = c.custid AND c.UplineId = @CustId))
-			GROUP BY
-				cs.CustId
-		END
-		-- End CS_SumWinloss_Old
 	END
 	/* ===== End Get Data ===== */
 
