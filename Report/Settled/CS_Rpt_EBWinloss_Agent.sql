@@ -73,6 +73,9 @@ BEGIN
 			IF OBJECT_ID('tempdb..#tmpBettrans') IS NOT NULL
 				DROP TABLE #tmpBettrans
 
+			IF OBJECT_ID('tempdb..#__refno') IS NOT NULL
+				DROP TABLE #__refno
+
 			CREATE TABLE #tmpBettrans
 			(
 				recommend		INT
@@ -87,6 +90,13 @@ BEGIN
 				,MasterResult	MONEY
 				,AgentStock		MONEY
 			)
+
+			-- For VS Parlay (bettype = 2799)
+			SELECT b.refno, bm.matchid
+			INTO #__refno
+			FROM dbo.bettrans b WITH (NOLOCK)
+				CROSS APPLY (SELECT TOP 1 bm.matchid FROM dbo.bettransm bm WITH (NOLOCK) WHERE b.refno = bm.refno) AS bm
+			WHERE b.mrecommend = @CustId AND b.matchid = 2799 AND b.winlostdate BETWEEN @FDate AND @TDate
 
 			INSERT INTO #tmpBettrans
 			(
@@ -117,9 +127,7 @@ BEGIN
 			FROM dbo.bettrans b WITH (NOLOCK)
 				INNER JOIN #tblBetType bt ON b.bettype = bt.bettype
 				OUTER APPLY (
-					SELECT TOP 1 bm.matchid
-					FROM dbo.bettransm bm WITH (NOLOCK)
-					WHERE b.refno = bm.refno AND b.bettype = 2799
+					SELECT r.matchid FROM #__refno r WHERE b.refno = r.refno AND b.bettype = 2799
 				) AS s
 			WHERE b.mrecommend = @CustId AND b.winlostdate BETWEEN @FDate AND @TDate
 				AND b.statusID IN (111, 112, 113)
@@ -134,6 +142,8 @@ BEGIN
 				b.recommend
 				,CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END
 				,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END
+
+			DROP TABLE #__refno
 
 			INSERT INTO #AgentWinLoss
 			(

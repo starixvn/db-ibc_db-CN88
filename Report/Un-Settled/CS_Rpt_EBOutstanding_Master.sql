@@ -55,6 +55,12 @@ BEGIN
 			,Stake		MONEY
 		)
 
+		-- For VS Parlay (bettype = 2799)
+		SELECT b.refno, bm.matchid
+		FROM bodb02.dbo.bettrans b WITH (NOLOCK)
+			CROSS APPLY (SELECT TOP 1 bm.matchid FROM bodb02.dbo.bettransm bm WITH (NOLOCK) WHERE b.refno = bm.refno) AS bm
+		WHERE b.srecommend = @CustId AND b.matchid = 2799 AND b.statusID IN (0, 1) AND b.winlostdate BETWEEN @FromDate AND @ToDate
+
 		-- bettrans
 		INSERT INTO #tmpBettrans
 		(
@@ -73,9 +79,7 @@ BEGIN
 		FROM dbo.bettrans b WITH (NOLOCK)
 			INNER JOIN #tblBetType bt ON b.bettype = bt.bettype AND bt.RefTable = 0
 			OUTER APPLY (
-				SELECT TOP 1 bm.matchid
-				FROM dbo.bettransm bm WITH (NOLOCK)
-				WHERE b.refno = bm.refno AND b.bettype = 2799
+				SELECT r.matchid FROM #__refno r WHERE b.refno = r.refno AND b.bettype = 2799
 			) AS s
 		WHERE b.srecommend = @CustId AND b.winlostdate BETWEEN @FromDate AND @ToDate
 			AND b.statusID IN (0, 1)
@@ -89,6 +93,8 @@ BEGIN
 			b.mrecommend
 			,CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END
 			,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END
+
+		DROP TABLE #__refno
 
 		-- translog
 		INSERT INTO #tmpBettrans

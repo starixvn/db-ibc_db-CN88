@@ -54,6 +54,17 @@ BEGIN
 			,HouseTurnover	MONEY
 		)
 
+		-- For VS Parlay (bettype = 2799)
+		SELECT b.refno, b.matchid
+		INTO #__refno
+		FROM dbo.CS_CustSuper c WITH (NOLOCK)
+			CROSS APPLY (
+				SELECT b.refno, bm.matchid
+				FROM dbo.bettrans b WITH (NOLOCK)
+					CROSS APPLY (SELECT TOP 1 bm.matchid FROM dbo.bettransm bm WITH (NOLOCK) WHERE b.refno = bm.refno) AS bm
+				WHERE c.custid = b.srecommend AND b.matchid = 2799 AND b.statusID IN (0, 1) AND b.winlostdate BETWEEN @FromDate AND @ToDate
+		) AS b
+
 		-- bettrans
 		INSERT INTO #tmpBettrans
 		(
@@ -84,9 +95,7 @@ BEGIN
 				FROM dbo.bettrans b WITH (NOLOCK)
 					INNER JOIN #tblBetType bt ON b.bettype = bt.bettype AND bt.RefTable = 0
 					OUTER APPLY (
-						SELECT TOP 1 bm.matchid
-						FROM dbo.bettransm bm WITH (NOLOCK)
-						WHERE b.refno = bm.refno AND b.bettype = 2799
+						SELECT r.matchid FROM #__refno r WHERE b.refno = r.refno AND b.bettype = 2799
 					) AS s
 				WHERE cs.CustId = b.srecommend
 					AND b.statusID IN (0, 1)
@@ -111,6 +120,8 @@ BEGIN
 			b.srecommend
 			,b.matchid
 			,b.eventtype
+
+		DROP TABLE #__refno
 
 		-- translog
 		INSERT INTO #tmpBettrans
