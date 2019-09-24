@@ -111,6 +111,8 @@ BEGIN
 			,b.matchid
 			,b.eventtype
 
+		DROP TABLE #__refno
+
 		-- translog
 		INSERT INTO #tmpBettrans
 		(
@@ -148,8 +150,6 @@ BEGIN
 			b.srecommend
 			,b.matchid
 			,b.eventtype
-
-		DROP TABLE #__refno
 		
 		-- sum data
 		CREATE TABLE #SuperOutstanding

@@ -57,6 +57,7 @@ BEGIN
 
 		-- For VS Parlay (bettype = 2799)
 		SELECT b.refno, bm.matchid
+		INTO #__refno
 		FROM bodb02.dbo.bettrans b WITH (NOLOCK)
 			CROSS APPLY (SELECT TOP 1 bm.matchid FROM bodb02.dbo.bettransm bm WITH (NOLOCK) WHERE b.refno = bm.refno) AS bm
 		WHERE b.srecommend = @CustId AND b.matchid = 2799 AND b.statusID IN (0, 1) AND b.winlostdate BETWEEN @FromDate AND @ToDate
