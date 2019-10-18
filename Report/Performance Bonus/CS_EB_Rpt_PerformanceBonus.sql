@@ -27,9 +27,11 @@ AS
 BEGIN
 	SET NOCOUNT ON
 
+	SELECT @SuperUsernames = ISNULL(@SuperUsernames, '')
+
 	CREATE TABLE #Super (CustId INT, Username VARCHAR(50))
 
-	IF ISNULL(@SuperUsernames, '') <> ''
+	IF @SuperUsernames <> ''
 	BEGIN
 		INSERT INTO #Super (CustId, Username)
 		SELECT c.CustId, c.Username
@@ -38,7 +40,7 @@ BEGIN
 		WHERE c.roleid = 4 AND c.site = 'CN88' AND c.currency = @Currency
 	END
 
-	IF @Conjunction = 0 AND ISNULL(@SuperUsernames, '') <> ''
+	IF @Conjunction = 0 AND @SuperUsernames <> ''
 	BEGIN
 		SELECT
 			s.CustId
@@ -79,10 +81,11 @@ BEGIN
 			,cs.HeadlineStock
 		FROM dbo.CS_CustSuper s WITH (NOLOCK)
 			CROSS APPLY (
-				SELECT SUM(cs.HeadlineStock) AS HeadlineStock
+				SELECT cs.CustID, SUM(cs.HeadlineStock) AS HeadlineStock
 				FROM bodb_Summary.dbo.CS_SumWinloss cs WITH (NOLOCK)
 				WHERE cs.CustID = s.CustId
 					AND cs.WinlostDate BETWEEN @FromDate AND @ToDate
+				GROUP BY cs.CustID
 			) AS cs
 
 		SELECT
@@ -101,11 +104,18 @@ BEGIN
 			) AS u
 		WHERE
 			(
-				@Conjunction = 0 AND d.HeadlineStock >= @HeadlineStock
+				@Conjunction = 0
+				AND d.HeadlineStock >= @HeadlineStock
 			)
 			OR
 			(
-				@Conjunction = 1 AND (d.HeadlineStock >= @HeadlineStock OR EXISTS (SELECT 1 FROM #Super s WHERE c.CustId = s.CustId))
+				@Conjunction = 1
+				AND
+				(
+					d.HeadlineStock >= @HeadlineStock
+					OR @SuperUsernames = ''
+					OR EXISTS (SELECT 1 FROM #Super s WHERE c.CustId = s.CustId)
+				)
 			)
 		
 		DROP TABLE #Data
