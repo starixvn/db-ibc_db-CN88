@@ -25,10 +25,14 @@ BEGIN
 	SET NOCOUNT ON
 
 	DECLARE @tblCustomer TABLE (Username VARCHAR(MAX), RoleId TINYINT)
-	INSERT INTO @tblCustomer (Username, RoleId)
-	SELECT u.val, c.RoleId
-	FROM dbo.strSplit (@Usernames, ',') u
-		OUTER APPLY (SELECT c.RoleId FROM dbo.Customer c WITH (NOLOCK) WHERE c.username = u.val AND c.site = 'CN88') c
+	INSERT INTO @tblCustomer (Username)
+	SELECT val
+	FROM dbo.strSplit (@Usernames, ',')
+
+	UPDATE t
+	SET t.RoleId = c.roleid
+	FROM @tblCustomer t
+		INNER JOIN dbo.Customer c WITH (NOLOCK) ON t.Username = c.username AND c.site = 'CN88'
 
 	SELECT @InvalidUsernames = NULL
 	
