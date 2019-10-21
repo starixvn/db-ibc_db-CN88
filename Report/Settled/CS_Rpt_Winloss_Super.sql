@@ -27,6 +27,7 @@ AS
 		- 20190719@Percy: Add back column HeadlineStock [RedmineID: #117297]
 		- 20190801@Percy: Change way get ExtraPT amount [RedmineID: #117909]
 		- 20190821@Percy: Change single SportTypeGroup to multiple [RedmineID: #118833]
+		- 20191021@Percy: Include Void/Reject/Refund tickets [RedmineID: #120802]
 		
 	Param's Explanation:
 		- @CustId: SuperID or HeadlineID 
@@ -276,7 +277,7 @@ BEGIN
 						) AS s
 					WHERE c.CustId = b.srecommend AND b.winlostdate BETWEEN c.FromDate AND c.ToDate AND b.winlostdate BETWEEN @FDate AND @TDate
 						AND (@IsAllDownline = 1 OR EXISTS (SELECT 1 FROM @Downlines d WHERE b.mrecommend = d.DownlineId))
-						AND b.statusID IN (111, 112, 113)
+						AND b.statusID NOT IN (0, 1)
 						AND (
 							@IsLive = 2
 							OR (b.bettype = 29 AND ((@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1)))

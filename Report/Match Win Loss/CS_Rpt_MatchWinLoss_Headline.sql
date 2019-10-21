@@ -18,6 +18,7 @@ AS
 		- 20190719@Percy: Add Non-Sports [RedmineID: #11701]
 		- 20190828@Percy: Using index hint on bettrans14 [RedmineID: #119331]
 		- 20190821@Percy: Change single SportTypeGroup to multiple [RedmineID: #118833]
+		- 20191021@Percy: Include Void/Reject/Refund tickets [RedmineID: #120802]
 */
 
 BEGIN
@@ -140,7 +141,7 @@ BEGIN
 						WHERE b.refno = bm.refno AND b.bettype = 2799
 					) AS s
 				WHERE e.SuperID = b.srecommend AND e.WinlostDate = b.winlostdate
-					AND b.statusID IN (111, 112, 113)
+					AND b.statusID NOT IN (0, 1)
 					AND (
 							@IsLive = 2
 							OR (b.bettype = 29 AND ((@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1)))
@@ -252,7 +253,7 @@ BEGIN
 						WHERE b.refno = bm.refno AND b.bettype = 2799
 					) AS s
 				WHERE e.SuperID = b.srecommend AND e.WinlostDate = b.winlostdate
-					AND b.statusID IN (111, 112, 113)
+					AND b.statusID NOT IN (0, 1)
 					AND (
 							@IsLive = 2
 							OR (b.bettype = 29 AND ((@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1)))

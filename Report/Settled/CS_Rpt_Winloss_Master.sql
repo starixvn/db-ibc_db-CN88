@@ -24,6 +24,7 @@ AS
 		- 20190528@Sophia: Fix bug VS [Redmine: #113482]
 		- 20190713@Percy: Add sub account - permission on downlines [RedmineID: #116825]
 		- 20190821@Percy: Change single SportTypeGroup to multiple [RedmineID: #118833]
+		- 20191021@Percy: Include Void/Reject/Refund tickets [RedmineID: #120802]
 		
 	Param's Explanation:
 		- @CustId: SuperID or MasterID 
@@ -214,7 +215,7 @@ BEGIN
 						) AS s
 					WHERE c.CustId = b.mrecommend AND b.winlostdate BETWEEN @FDate AND @TDate
 						AND (@IsAllDownline = 1 OR EXISTS (SELECT 1 FROM @Downlines d WHERE b.recommend = d.DownlineId))
-						AND b.statusID IN (111, 112, 113)
+						AND b.statusID NOT IN (0, 1)
 						AND (
 							@IsLive = 2
 							OR (b.bettype = 29 AND ((@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1)))

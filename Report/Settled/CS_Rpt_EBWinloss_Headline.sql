@@ -17,6 +17,7 @@ AS
 	
 	Revisions:
 		- 20190812@Percy: Initialize SP [Redmine: #116925]
+		- 20191021@Percy: Include Void/Reject/Refund tickets [RedmineID: #120802]
 		
 	Param's Explanation:
 		- @ReportMode: 1: current, 2: history
@@ -159,7 +160,7 @@ BEGIN
 							SELECT r.matchid FROM #__refno r WHERE b.refno = r.refno AND b.bettype = 2799
 						) AS s
 					WHERE cs.CustId = b.srecommend AND b.winlostdate BETWEEN @FDate AND @TDate
-						AND b.statusID IN (111, 112, 113)
+						AND b.statusID NOT IN (0, 1)
 						AND (
 								@IsLive = 2
 								OR (b.bettype = 29 AND ((@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1)))
