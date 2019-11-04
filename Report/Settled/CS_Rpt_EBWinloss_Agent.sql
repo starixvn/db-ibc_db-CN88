@@ -159,7 +159,7 @@ BEGIN
 				,AgentStock
 			)
 			SELECT
-				b.recommend			AS CustId
+				b.recommend				AS CustId
 				,SUM(Wagers)			AS Wagers
 				,SUM(Stake)				AS Stake
 				,SUM(ValidStake)		AS ValidStake
@@ -246,6 +246,44 @@ BEGIN
 							,Agent
 							,AgentStock
 						FROM bodb_Summary.dbo.CS_SumWinloss s WITH (NOLOCK)
+						WHERE c.custid = s.custid
+							AND s.WinlostDate BETWEEN @FDate AND @TDate
+							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
+							AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
+							AND (@IsLive = 2 OR IsLive = @IsLive)
+					) AS s
+				WHERE c.mrecommend = @CustId AND c.roleid = 2
+				GROUP BY
+					c.CustId
+
+				INSERT INTO #AgentWinLoss
+				(
+					CustId
+					,Wagers
+					,Stake
+					,ValidStake
+					,MemberIncome
+					,Agent
+					,AgentResult
+					,MasterResult
+					,AgentStock
+				)
+				SELECT
+					c.CustId
+					,SUM(Wagers)	AS Wagers
+					,SUM(Stake)		AS Stake
+					,0 AS ValidStake
+					,0 AS MemberIncome
+					,0 AS Agent
+					,0 AS AgentResult
+					,0 AS MasterResult
+					,0 AS AgentStock
+				FROM dbo.Customer c WITH (NOLOCK)
+					CROSS APPLY (
+						SELECT
+							Wagers
+							,Stake
+						FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
 						WHERE c.custid = s.custid
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
 							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)

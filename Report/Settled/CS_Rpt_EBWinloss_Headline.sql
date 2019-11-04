@@ -302,6 +302,47 @@ BEGIN
 					) AS s
 				GROUP BY
 					cs.CustId
+
+				INSERT INTO #SuperWinLoss
+				(
+					CustId
+					,Wagers
+					,Stake
+					,ValidStake
+					,MemberWinloss
+					,MemberComm
+					,SuperComm
+					,HouseWinloss
+					,HouseComm
+					,HouseTurnover
+					,HeadlineStock
+				)
+				SELECT
+					cs.CustId
+					,SUM(Wagers)	AS Wagers
+					,SUM(Stake)		AS Stake
+					,0 AS ValidStake
+					,0 AS MemberWinloss
+					,0 AS MemberComm
+					,0 AS SuperComm
+					,0 AS HouseWinloss
+					,0 AS HouseComm
+					,0 AS HouseTurnover
+					,0 AS HeadlineStock
+				FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+					CROSS APPLY (
+						SELECT
+							Wagers
+							,Stake
+						FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
+						WHERE s.custid = cs.custid
+							AND s.WinlostDate BETWEEN @FDate AND @TDate
+							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
+							AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
+							AND (@IsLive = 2 OR IsLive = @IsLive)
+					) AS s
+				GROUP BY
+					cs.CustId
 			END
 		END
 		-- End CS_SumWinloss

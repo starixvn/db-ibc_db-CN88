@@ -99,7 +99,7 @@ BEGIN
 			FROM dbo.bettrans b WITH (NOLOCK)
 				CROSS APPLY (SELECT TOP 1 bm.matchid FROM dbo.bettransm bm WITH (NOLOCK) WHERE b.refno = bm.refno) AS bm
 			WHERE b.mrecommend = @CustId AND b.matchid = 2799 AND b.winlostdate BETWEEN @FDate AND @TDate
-				AND b.statusID IN (111, 112, 113)
+				AND b.statusID NOT IN (0, 1)
 
 			INSERT INTO #tmpBettrans
 			(
@@ -119,7 +119,7 @@ BEGIN
 					SELECT r.matchid FROM #__refno r WHERE b.refno = r.refno AND b.bettype = 2799
 				) AS s
 			WHERE b.mrecommend = @CustId AND b.winlostdate BETWEEN @FDate AND @TDate
-				AND b.statusID IN (111, 112, 113)
+				AND b.statusID NOT IN (0, 1)
 				AND (
 						@IsLive = 2
 						OR (b.bettype = 29 AND ((@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1)))
@@ -196,6 +196,32 @@ BEGIN
 						SELECT
 							s.custid
 						FROM bodb_Summary.dbo.CS_SumWinloss s WITH (NOLOCK)
+						WHERE c.custid = s.custid
+							AND s.WinlostDate BETWEEN @FDate AND @TDate
+							AND EXISTS (SELECT 1 FROM @tblWinlostDate wld WHERE s.winlostdate BETWEEN wld.FromDate AND wld.ToDate)
+							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
+							AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
+							AND (@IsLive = 2 OR IsLive = @IsLive)
+					) AS s
+				WHERE c.mrecommend = @CustId AND c.roleid = 1
+					AND (c.currency <> 20 OR @IsExcludedTest = 0)
+				GROUP BY
+					c.recommend
+					,c.custid
+
+				INSERT INTO #CustomerCounter
+				(
+					recommend
+					,custid
+				)
+				SELECT
+					c.recommend
+					,c.custid
+				FROM dbo.Customer c WITH (NOLOCK)
+					CROSS APPLY (
+						SELECT
+							s.custid
+						FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
 						WHERE c.custid = s.custid
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
 							AND EXISTS (SELECT 1 FROM @tblWinlostDate wld WHERE s.winlostdate BETWEEN wld.FromDate AND wld.ToDate)

@@ -222,6 +222,38 @@ BEGIN
 				WHERE c.recommend = @CustId AND c.roleid = 1
 				GROUP BY
 					c.CustId
+
+				INSERT INTO #MemberWinLoss
+				(
+					CustId
+					,Wagers
+					,Stake
+					,ValidStake
+					,MemberIncome
+					,AgentResultA
+				)
+				SELECT
+					c.CustId
+					,SUM(Wagers)	AS Wagers
+					,SUM(Stake)		AS Stake
+					,0 AS ValidStake
+					,0 AS MemberIncome
+					,0 AS AgentResultA
+				FROM dbo.Customer c WITH (NOLOCK)
+					CROSS APPLY (
+						SELECT
+							Wagers
+							,Stake
+						FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
+						WHERE c.custid = s.custid
+							AND s.WinlostDate BETWEEN @FDate AND @TDate
+							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
+							AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
+							AND (@IsLive = 2 OR IsLive = @IsLive)
+					) AS s
+				WHERE c.recommend = @CustId AND c.roleid = 1
+				GROUP BY
+					c.CustId
 			END
 		END
 		-- End CS_SumWinloss
@@ -237,7 +269,7 @@ BEGIN
 			,SUM(s.Stake)			AS Stake
 			,SUM(s.ValidStake)		AS ValidStake
 			,SUM(s.MemberIncome)	AS MemberIncome
-			,SUM(s.AgentResultA)		AS AgentResult
+			,SUM(s.AgentResultA)	AS AgentResult
 		FROM #MemberWinLoss s
 			INNER JOIN dbo.Customer c WITH (NOLOCK) ON s.custid = c.custid
 		WHERE (c.currency <> 20 OR @IsExcludedTest = 0)
