@@ -160,15 +160,6 @@ BEGIN
 							)
 						AND (b.currency <> 20 OR @IsExcludedTest = 0)
 				) AS b
-				OUTER APPLY (
-					SELECT ag.ExtraPT
-					FROM dbo.Acc_GroupExtraPTSetting ag WITH (NOLOCK)
-					WHERE b.srecommend = ag.SuperId
-						AND b.winlostdate BETWEEN ag.FromDate AND ag.ToDate
-						AND b.ProductID = ag.ProductId
-						AND ag.Sporttype = 0
-						AND ag.SubProduct = ''
-				) AS e
 			GROUP BY
 				b.srecommend
 				,b.mrecommend
@@ -251,6 +242,7 @@ BEGIN
 							s.custid
 						FROM bodb_Summary.dbo.CS_SumWinloss s WITH (NOLOCK)
 						WHERE s.custid = c.custid
+							AND s.HeadlineId = ts.UplineId
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
 							AND s.WinlostDate BETWEEN ts.FromDate AND ts.ToDate
 							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
@@ -283,6 +275,7 @@ BEGIN
 							s.custid
 						FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
 						WHERE s.custid = c.custid
+							AND s.HeadlineId = ts.UplineId
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
 							AND s.WinlostDate BETWEEN ts.FromDate AND ts.ToDate
 							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)

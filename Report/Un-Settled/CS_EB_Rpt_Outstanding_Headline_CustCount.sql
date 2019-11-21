@@ -106,9 +106,9 @@ BEGIN
 							OR (b.bettype = 2799 AND @IsLive = 0)
 							OR (b.bettype NOT IN (29, 2799) AND b.liveindicator = @IsLive)
 						)
-					AND (b.currency <> 20 AND @IsExcludedTest = 0)
+					AND (b.currency <> 20 OR @IsExcludedTest = 0)
 			) AS b
-			OUTER APPLY (
+			CROSS APPLY (
 				SELECT ag.ExtraPT
 				FROM dbo.Acc_GroupExtraPTSetting ag WITH (NOLOCK)
 				WHERE cs.CustId = ag.SuperId
@@ -162,9 +162,9 @@ BEGIN
 					AND t.statusID IN (0, 1)
 					AND t.winlostdate BETWEEN @FromDate AND @ToDate
 					AND (@IsLive = 2 OR t.liveindicator = @IsLive)
-					AND (t.currency <> 20 AND @IsExcludedTest = 0)
+					AND (t.currency <> 20 OR @IsExcludedTest = 0)
 			) AS b
-			OUTER APPLY (
+			CROSS APPLY (
 				SELECT SUM(ag.ExtraPT) AS ExtraPT
 				FROM dbo.Acc_GroupExtraPTSetting ag WITH (NOLOCK)
 				WHERE cs.CustId = ag.SuperId

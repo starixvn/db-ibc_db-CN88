@@ -134,7 +134,7 @@ BEGIN
 							)
 						AND (b.currency <> 20 OR @IsExcludedTest = 0)
 				) AS b
-				OUTER APPLY (
+				CROSS APPLY (
 					SELECT ag.ExtraPT
 					FROM dbo.Acc_GroupExtraPTSetting ag WITH (NOLOCK)
 					WHERE cs.CustId = ag.SuperId
@@ -218,7 +218,7 @@ BEGIN
 					,c.mrecommend
 					,c.recommend
 					,c.custid
-				FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+				FROM dbo.CustSuper cs WITH (NOLOCK)
 					INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.custid = c.srecommend AND c.roleid = 1
 					CROSS APPLY (
 						SELECT
@@ -226,6 +226,7 @@ BEGIN
 						FROM bodb_Summary.dbo.CS_SumWinloss s WITH (NOLOCK)
 						WHERE s.custid = c.custid
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
+							AND s.HeadlineId = cs.UplineId
 							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 							AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
 							AND (@IsLive = 2 OR IsLive = @IsLive)
@@ -249,13 +250,14 @@ BEGIN
 					,c.mrecommend
 					,c.recommend
 					,c.custid
-				FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+				FROM dbo.CustSuper cs WITH (NOLOCK)
 					INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.custid = c.srecommend AND c.roleid = 1
 					CROSS APPLY (
 						SELECT
 							s.custid
 						FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
 						WHERE s.custid = c.custid
+							AND s.HeadlineId = cs.UplineId
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
 							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 							AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
