@@ -6,7 +6,6 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Cancelled_Agent]
 	@IsAllDownline		BIT = 1,
 	@FromDate			SMALLDATETIME,
 	@ToDate				SMALLDATETIME,
-	@ArchiveDate		SMALLDATETIME,
 	@MoveBetsDay		SMALLDATETIME,
 	@SporttypeGroups	VARCHAR(MAX) = '0', -- all
 	@BettypeGroup		SMALLINT = 0, -- all
@@ -25,6 +24,7 @@ AS
 		- 20190528@Sophia: Fix bug VS [Redmine: #113482]
 		- 20190713@Percy: Add sub account - permission on downlines [RedmineID: #116825]
 		- 20190821@Percy: Change single SportTypeGroup to multiple [RedmineID: #118833]
+		- 20191021@Percy: Remove table CS_SumCancelled_Old [RedmineID: #120802]
 		
 	Param's Explanation:
 		- @CustId: MasterID or AgentID
@@ -215,7 +215,7 @@ BEGIN
 		-- CS_SumCancelled
 		IF @FromDate <= @MoveBetsDay
 		BEGIN
-			SELECT	@FDate = CASE WHEN @FromDate < @ArchiveDate THEN @ArchiveDate ELSE @FromDate END
+			SELECT	@FDate = @FromDate
 					,@TDate = CASE WHEN @ToDate > @MoveBetsDay THEN @MoveBetsDay ELSE @ToDate END
 
 			IF @IsAllDownline = 1
@@ -253,57 +253,6 @@ BEGIN
 					,SUM(s.Wagers) AS Wagers
 					,SUM(s.Stake) AS Stake
 				FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
-				WHERE s.WinlostDate BETWEEN @FDate AND @TDate
-					AND s.CancelType = @ReportType
-					AND EXISTS (SELECT 1 FROM @Downlines c WHERE s.CustID = c.DownlineId)
-					AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
-					AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
-					AND (@IsLive = 2 OR IsLive = @IsLive)
-				HAVING COUNT(1) > 0
-			END
-		END
-
-		-- CS_SumCancelled_Old
-		IF @FromDate < @ArchiveDate
-		BEGIN
-			SELECT	@FDate = @FromDate
-					,@TDate = CASE WHEN @ToDate >= @ArchiveDate THEN DATEADD(DAY, -1, @ArchiveDate) ELSE @ToDate END
-
-			IF @IsAllDownline = 1
-			BEGIN
-				INSERT INTO #tmpSumCancelled
-				(
-					CustId
-					,Wagers
-					,Stake
-				)
-				SELECT
-					s.CustId
-					,SUM(s.Wagers) AS Wagers
-					,SUM(s.Stake) AS Stake
-				FROM bodb_Summary.dbo.CS_SumCancelled_Old s WITH (NOLOCK)
-				WHERE s.WinlostDate BETWEEN @FDate AND @TDate
-					AND s.CancelType = @ReportType
-					AND EXISTS (SELECT 1 FROM @Customers c WHERE s.CustID = c.CustId)
-					AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
-					AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
-					AND (@IsLive = 2 OR IsLive = @IsLive)
-				GROUP BY
-					s.CustId
-			END
-			ELSE
-			BEGIN
-				INSERT INTO #tmpSumCancelled
-				(
-					CustId
-					,Wagers
-					,Stake
-				)
-				SELECT
-					@CustId AS CustId
-					,SUM(s.Wagers) AS Wagers
-					,SUM(s.Stake) AS Stake
-				FROM bodb_Summary.dbo.CS_SumCancelled_Old s WITH (NOLOCK)
 				WHERE s.WinlostDate BETWEEN @FDate AND @TDate
 					AND s.CancelType = @ReportType
 					AND EXISTS (SELECT 1 FROM @Downlines c WHERE s.CustID = c.DownlineId)

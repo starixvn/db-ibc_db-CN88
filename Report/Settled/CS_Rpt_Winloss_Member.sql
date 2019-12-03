@@ -6,7 +6,6 @@ ALTER PROCEDURE [dbo].[CS_Rpt_Winloss_Member]
 	@IsAllDownline		BIT = 1,
 	@FromDate			SMALLDATETIME,
 	@ToDate				SMALLDATETIME,	
-	@ArchiveDate		SMALLDATETIME,
 	@MoveBetsDay		SMALLDATETIME, 
 	@SporttypeGroups	VARCHAR(MAX) = '0', -- all
 	@BettypeGroup		SMALLINT = 0, -- all
@@ -24,6 +23,7 @@ AS
 		- 20190528@Sophia: Fix bug VS [Redmine: #113482]
 		- 20190713@Percy: Add sub account - permission on downlines [RedmineID: #116825]
 		- 20190821@Percy: Change single SportTypeGroup to multiple [RedmineID: #118833]
+		- 20191021@Percy: Include Void/Reject/Refund tickets [RedmineID: #120802]
 		
 	Param's Explanation:
 		- @CustId: AgentID 
@@ -155,7 +155,7 @@ BEGIN
 							WHERE b.refno = bm.refno AND b.bettype = 2799
 						) AS s
 					WHERE c.CustId = b.custid AND b.winlostdate BETWEEN @FDate AND @TDate
-						AND b.statusID IN (111, 112, 113)
+						AND b.statusID NOT IN (0, 1)
 						AND (
 							@IsLive = 2
 							OR (b.bettype = 29 AND ((@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1)))
@@ -220,7 +220,7 @@ BEGIN
 		-- CS_SumWinloss
 		IF @FromDate <= @MoveBetsDay
 		BEGIN
-			SELECT	@FDate = CASE WHEN @FromDate < @ArchiveDate THEN @ArchiveDate ELSE @FromDate END
+			SELECT	@FDate = @FromDate
 					,@TDate = CASE WHEN @ToDate > @MoveBetsDay THEN @MoveBetsDay ELSE @ToDate END
 
 			INSERT INTO #tmpSumWinloss
@@ -249,13 +249,6 @@ BEGIN
 				AND (@IsLive = 2 OR IsLive = @IsLive)
 			GROUP BY
 				s.CustId
-		END
-		
-		-- CS_SumCancelled_Old
-		IF @FromDate < @ArchiveDate
-		BEGIN
-			SELECT	@FDate = @FromDate
-					,@TDate = CASE WHEN @ToDate >= @ArchiveDate THEN DATEADD(DAY, -1, @ArchiveDate) ELSE @ToDate END
 
 			INSERT INTO #tmpSumWinloss
 			(
@@ -269,13 +262,13 @@ BEGIN
 			)
 			SELECT
 				s.CustId
-				,SUM(Wagers)			AS Wagers
-				,SUM(Stake)				AS Stake
-				,SUM(ValidStake)		AS ValidStake
-				,SUM(MemberWinloss + MemberComm)		AS MemberIncome
-				,SUM(AgentWinloss + AgentComm)			AS AgentIncome
-				,SUM(AgentResultA)		AS AgentResultA
-			FROM bodb_Summary.dbo.CS_SumWinloss_Old s WITH (NOLOCK)
+				,SUM(Wagers)	AS Wagers
+				,SUM(Stake)		AS Stake
+				,0 AS ValidStake
+				,0 AS MemberIncome
+				,0 AS AgentIncome
+				,0 AS AgentResultA
+			FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
 			WHERE s.WinlostDate BETWEEN @FDate AND @TDate
 				AND EXISTS (SELECT 1 FROM @Customers c WHERE s.CustID = c.CustId)
 				AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)

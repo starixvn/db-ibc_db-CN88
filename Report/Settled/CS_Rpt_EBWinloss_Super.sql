@@ -18,6 +18,7 @@ AS
 	
 	Revisions:
 		- 20190812@Percy: Initialize SP [Redmine: #116925]
+		- 20191021@Percy: Include Void/Reject/Refund tickets [RedmineID: #120802]
 		
 	Param's Explanation:
 		- @ReportMode: 1: current, 2: history
@@ -188,7 +189,7 @@ BEGIN
 							SELECT r.matchid FROM #__refno r WHERE b.refno = r.refno AND b.bettype = 2799
 						) AS s
 					WHERE cs.CustId = b.srecommend AND b.winlostdate BETWEEN @FDate AND @TDate
-						AND b.statusID IN (111, 112, 113)
+						AND b.statusID NOT IN (0, 1)
 						AND (
 								@IsLive = 2
 								OR (b.bettype = 29 AND ((@IsLive = 1 AND b.livehomescore = 1) OR (@IsLive = 0 AND b.livehomescore <> 1)))
@@ -347,6 +348,54 @@ BEGIN
 							,SuperStock
 							,HeadlineStock
 						FROM bodb_Summary.dbo.CS_SumWinloss s WITH (NOLOCK)
+						WHERE s.custid = cs.custid
+							AND s.WinlostDate BETWEEN @FDate AND @TDate
+							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
+							AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
+							AND (@IsLive = 2 OR IsLive = @IsLive)
+					) AS s
+				WHERE (@CustId = 0 OR EXISTS (SELECT 1 FROM dbo.CustSuper c WITH (NOLOCK) WHERE cs.CustId = c.custid AND c.UplineId = @CustId))
+				GROUP BY
+					cs.CustId
+
+				INSERT INTO #SuperWinLoss
+				(
+					CustId
+					,Wagers
+					,Stake
+					,ValidStake
+					,MemberIncome
+					,Agent
+					,AgentResult
+					,MasterResult
+					,Super
+					,SuperResult
+					,SuperStock
+					,HeadlineIncome
+					,HeadlineResult
+					,HeadlineStock
+				)
+				SELECT
+					cs.CustId
+					,SUM(Wagers)	AS Wagers
+					,SUM(Stake)		AS Stake
+					,0 AS ValidStake
+					,0 AS MemberIncome
+					,0 AS Agent
+					,0 AS AgentResult
+					,0 AS MasterResult
+					,0 AS Super
+					,0 AS SuperResult
+					,0 AS SuperStock
+					,0 AS HeadlineIncome
+					,0 AS HeadlineResult
+					,0 AS HeadlineStock
+				FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+					CROSS APPLY (
+						SELECT
+							Wagers
+							,Stake
+						FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
 						WHERE s.custid = cs.custid
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
 							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
