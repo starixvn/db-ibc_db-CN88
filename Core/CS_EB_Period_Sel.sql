@@ -1,5 +1,5 @@
 /*<info serverAlias="DBPRO-bodb02" executers="bodbAdminNet,bodbDownlineNet,bodbDownlineNetView" isFunction="0" isNested="0"></info>*/
-ALTER PROCEDURE [dbo].[CS_AccountingPeriod_Sel]
+ALTER PROCEDURE [dbo].[CS_EB_Period_Sel]
 AS
 
 /*
