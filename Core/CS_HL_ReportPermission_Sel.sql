@@ -3,7 +3,7 @@
 USE [CustDB]
 GO
 
-CREATE PROCEDURE [dbo].[CS_ReportPermission_Upd]
+CREATE PROCEDURE [dbo].[CS_HL_ReportPermission_Sel]
       @CustID INT
 	, @IsViewAllPeriod BIT OUTPUT
 AS
