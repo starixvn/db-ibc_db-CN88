@@ -4,9 +4,9 @@ USE [CustDB]
 GO
 
 CREATE PROCEDURE [dbo].[CS_HL_ReportPermission_Sel]
-      @CustID INT
-	, @IsViewAllPeriod BIT OUTPUT
+       @CustID INT
 AS
+
 /*
 	Created: Malcolm
 	Date: 2020-01-21
@@ -19,9 +19,13 @@ AS
 */
 BEGIN
 	SET NOCOUNT ON
+	DECLARE @IsViewAllPeriod BIT = 0
+
 	SELECT @IsViewAllPeriod = IsViewAllPeriod
 	FROM CS_ReportPermission WITH(NOLOCK)
 	WHERE CustID = @CustID
+
+	SELECT @IsViewAllPeriod
 END
 GO
 
