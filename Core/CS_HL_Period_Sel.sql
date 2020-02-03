@@ -34,7 +34,7 @@ BEGIN
 		INSERT INTO @Period (Year, PeriodId, FromDate, ToDate)
 		SELECT Year, PeriodId, FromDate, ToDate
 		FROM #tmp WITH(NOLOCK)
-		WHERE ID NOT IN (@CurrentID , @CurrentID + 1) 
+		WHERE ID >= @CurrentID + 2 
 		END
      ELSE
 	BEGIN
