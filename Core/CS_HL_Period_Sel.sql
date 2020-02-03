@@ -1,6 +1,6 @@
 /*<info serverAlias="DBPRO-bodb02" executers="bodbAdminNet,bodbDownlineNet,bodbDownlineNetView" isFunction="0" isNested="0"></info>*/
 CREATE PROCEDURE [dbo].[CS_HL_Period_Sel]
- 		@IsViewAllPeriod BIT
+ 	 	@IsViewAllPeriod BIT
 AS
 
 /*
@@ -16,6 +16,7 @@ AS
 
 BEGIN
     SET NOCOUNT ON
+	SELECT @IsViewAllPeriod = 1
     DECLARE @CurrentDate DATE = GETDATE(), @CurrentID SMALLINT;
 	DECLARE @Period AS TABLE (ID SMALLINT IDENTITY (1,1), Year SMALLINT, PeriodId SMALLINT, FromDate SMALLDATETIME , ToDate SMALLDATETIME)
 	CREATE TABLE #tmp  (ID SMALLINT IDENTITY (1,1), Year SMALLINT, PeriodId SMALLINT, FromDate SMALLDATETIME , ToDate SMALLDATETIME)	
@@ -35,6 +36,7 @@ BEGIN
 		SELECT Year, PeriodId, FromDate, ToDate
 		FROM #tmp WITH(NOLOCK)
 		WHERE ID >= @CurrentID + 2 
+		ORDER BY Year, PeriodId
 		END
      ELSE
 	BEGIN
@@ -42,9 +44,10 @@ BEGIN
 	     SELECT Year, PeriodId, FromDate, ToDate
 		 FROM #tmp WITH(NOLOCK)
 		 WHERE ID  IN (@CurrentID + 2, @CurrentID + 3)
+		 ORDER BY Year, PeriodId
 	END 
 
-	SELECT Year, PeriodId, FromDate, ToDate
+	SELECT Year, ID AS PeriodId, FromDate, ToDate
 	FROM @Period 
 	ORDER BY Year, PeriodId
 
