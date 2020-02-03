@@ -1,4 +1,4 @@
-/*<info serverAlias="DBCUST-CustDB" executers="bodbAdminNet"  isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBCUST-CustDB" executers="bodbDownlineNet, bodbDownlineNetView"  isFunction="0" isNested="0"></info>*/
 
 USE [CustDB]
 GO
