@@ -20,6 +20,8 @@ BEGIN
 	DECLARE @Period AS TABLE (ID SMALLINT IDENTITY (1,1), Year SMALLINT, PeriodId SMALLINT, FromDate SMALLDATETIME , ToDate SMALLDATETIME)
 	CREATE TABLE #tmp  (ID SMALLINT IDENTITY (1,1), Year SMALLINT, PeriodId SMALLINT, FromDate SMALLDATETIME , ToDate SMALLDATETIME)	
 
+	CREATE  CLUSTERED INDEX ix_tmp ON #tmp([ID])
+
 	INSERT INTO #tmp (Year, PeriodId, FromDate, ToDate)
 	SELECT Year, PeriodId, FromDate, ToDate
 	FROM dbo.CS_AccountingPeriod cs WITH(NOLOCK)
@@ -35,7 +37,7 @@ BEGIN
 		SELECT Year, PeriodId, FromDate, ToDate
 		FROM #tmp WITH(NOLOCK)
 		WHERE ID >= @CurrentID + 2 
-		ORDER BY Year, PeriodId
+		ORDER BY ID DESC
 		END
      ELSE
 	BEGIN
@@ -43,7 +45,7 @@ BEGIN
 	     SELECT Year, PeriodId, FromDate, ToDate
 		 FROM #tmp WITH(NOLOCK)
 		 WHERE ID  IN (@CurrentID + 2, @CurrentID + 3)
-		 ORDER BY Year, PeriodId
+		 ORDER BY ID DESC
 	END 
 
 	SELECT Year, ID AS PeriodId, FromDate, ToDate
