@@ -22,10 +22,10 @@ BEGIN
 	DECLARE @IsViewAllPeriod BIT = 0
 
 	SELECT @IsViewAllPeriod = IsViewAllPeriod
-	FROM CS_ReportPermission WITH(NOLOCK)
+	FROM dbo.CS_ReportPermission WITH(NOLOCK)
 	WHERE CustID = @CustID
 
-	SELECT @IsViewAllPeriod
+	SELECT @IsViewAllPeriod AS IsViewAllPeriod
 END
 GO
 
