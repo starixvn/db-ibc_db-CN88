@@ -30,14 +30,14 @@ BEGIN
 
 	IF @IsViewAllPeriod = 1
 	BEGIN
-		SELECT Year, ID AS PeriodId, FromDate, ToDate, PeriodId AS [Period]
+		SELECT Year, PeriodId, FromDate, ToDate
 		FROM #tmp WITH(NOLOCK)
 		WHERE ID <= @CurrentID - 2 
 		ORDER BY ID 
 		END
     ELSE
 	BEGIN
-	     SELECT Year, (ID - @CurrentID + 4) AS PeriodId, FromDate, ToDate, PeriodId AS [Period]
+	     SELECT Year, PeriodId, FromDate, ToDate
 		 FROM #tmp WITH(NOLOCK)
 		 WHERE ID  IN (@CurrentID - 2, @CurrentID - 3)
 		 ORDER BY ID 
