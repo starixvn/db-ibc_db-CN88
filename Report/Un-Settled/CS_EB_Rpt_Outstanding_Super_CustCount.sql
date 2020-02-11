@@ -50,7 +50,7 @@ BEGIN
 	BEGIN
 		CREATE TABLE #tmpSuper (srecommend INT, FromDate SMALLDATETIME, ToDate SMALLDATETIME)
 		INSERT INTO #tmpSuper (srecommend, FromDate, ToDate)
-		SELECT cs.custid, CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
+		SELECT DISTINCT cs.custid, CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
 		FROM dbo.CustSuper cs WITH (NOLOCK)
 			INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.custid = c.custid
 			CROSS APPLY (
@@ -58,9 +58,9 @@ BEGIN
 				FROM dbo.Acc_GroupExtraPTSetting s WITH (NOLOCK)
 				WHERE cs.custid = s.SuperId
 					AND @FromDate <= ToDate AND @ToDate >= FromDate
+					AND (@HeadlineId = 0 OR UplineId = @HeadlineId)
 			) AS e
-		WHERE (@HeadlineId = 0 AND UplineId IS NOT NULL) OR UplineId = @HeadlineId
-			AND (c.currency <> 20 OR @IsExcludedTest = 0)
+		WHERE (c.currency <> 20 OR @IsExcludedTest = 0)
 	END
 	/* ===== End Get Super Info ===== */
 

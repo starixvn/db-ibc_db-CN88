@@ -1,5 +1,5 @@
 /*<info serverAlias="DBAGE-bodb02" executers="bodbAdminNet" isFunction="0" isNested="0"></info>*/
-ALTER PROCEDURE [dbo].[CS_Rpt_MatchWinLoss_Headline]
+ALTER PROCEDURE [dbo].[CS_EB_Rpt_MatchWinLoss_Headline]
 	@WinlostDate		SMALLDATETIME,
 	@SporttypeGroups	VARCHAR(MAX) = '0', -- all
 	@BetTypeGroup		SMALLINT = 0,
@@ -9,16 +9,12 @@ ALTER PROCEDURE [dbo].[CS_Rpt_MatchWinLoss_Headline]
 AS
 
 /*
-	Created: 20190520@Percy
+	Created: 20190926@Percy
 	DB: DBAGE.bodb02
-	Task: Match Win Loss - View all healines
+	Task: CN88 - EB - Match Win Loss - View all healines
 
 	Revisions:
-		- 20190520@Percy: Initiliaze SP [RedmineID: #113849]
-		- 20190719@Percy: Add Non-Sports [RedmineID: #11701]
-		- 20190828@Percy: Using index hint on bettrans14 [RedmineID: #119331]
-		- 20190821@Percy: Change single SportTypeGroup to multiple [RedmineID: #118833]
-		- 20191021@Percy: Include Void/Reject/Refund tickets [RedmineID: #120802]
+		- 20190926@Percy: Initiliaze SP [RedmineID: #120802]
 */
 
 BEGIN

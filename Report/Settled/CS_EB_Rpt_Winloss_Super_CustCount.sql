@@ -53,17 +53,17 @@ BEGIN
 	BEGIN
 		CREATE TABLE #tmpSuper (UplineId INT, srecommend INT, FromDate SMALLDATETIME, ToDate SMALLDATETIME)
 		INSERT INTO #tmpSuper (UplineId, srecommend, FromDate, ToDate)
-		SELECT cs.UplineId, cs.custid, CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
-		FROM dbo.CustSuper cs WITH (NOLOCK)
+		SELECT DISTINCT e.UplineId, cs.custid, CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
+		FROM dbo.CS_CustSuper cs WITH (NOLOCK)
 			INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.custid = c.custid
 			CROSS APPLY (
-				SELECT DISTINCT FromDate, ToDate
+				SELECT DISTINCT UplineId, FromDate, ToDate
 				FROM dbo.Acc_GroupExtraPTSetting s WITH (NOLOCK)
 				WHERE cs.custid = s.SuperId
 					AND @FromDate <= ToDate AND @ToDate >= FromDate
+					AND (@HeadlineId = 0 OR s.UplineId = @HeadlineId)
 			) AS e
-		WHERE (@HeadlineId = 0 AND UplineId IS NOT NULL) OR UplineId = @HeadlineId
-			AND (c.currency <> 20 OR @IsExcludedTest = 0)
+		WHERE (c.currency <> 20 OR @IsExcludedTest = 0)
 	END
 	/* ===== End Get Super Info ===== */
 
@@ -139,10 +139,7 @@ BEGIN
 						,b.recommend
 						,b.custid
 						,CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
-						,b.bettype
 						,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END AS eventtype
-						,bt.ProductID
-						,b.winlostdate
 					FROM dbo.bettrans b WITH (NOLOCK)
 						INNER JOIN #tblBetType bt ON b.bettype = bt.bettype
 						OUTER APPLY (

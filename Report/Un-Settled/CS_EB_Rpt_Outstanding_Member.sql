@@ -1,6 +1,7 @@
 /*<info serverAlias="DB042-bodb02" executers="bodbAdminNet" isFunction="0" isNested="0"></info>*/
-ALTER PROCEDURE [dbo].[CS_Rpt_EBOutstanding_Member]
-	@CustId				INT = 0
+ALTER PROCEDURE [dbo].[CS_EB_Rpt_Outstanding_Member]
+	@HeadlineId			INT
+	,@CustId			INT
 	,@FromDate			SMALLDATETIME
 	,@ToDate			SMALLDATETIME
 	,@SporttypeGroups	VARCHAR(MAX) = '0' -- all
@@ -10,16 +11,17 @@ ALTER PROCEDURE [dbo].[CS_Rpt_EBOutstanding_Member]
 AS
 
 /*
-	Created: 20190812@Percy
-	Task: CN88 - EB Un-Settled Report - View Members
+	Created: 20190926@Percy
+	Task: CN88 - EB - Un-Settled Report - View Members
 	DB: DB042.bodb02
 	
 	Revisions:
-		- 20190812@Percy: Initialize SP [Redmine: #116925]
+		- 20190926@Percy: Initialize SP [Redmine: #116925]
 		
 	Param's Explanation:
+		- @HeadlineId: HeadlineId
 		- @CustId: AgentId
-		- @SporttypeGroup: default = 0: All
+		- @SporttypeGroups: list of SporttypeGroup
 		- @BettypeGroup: default = 0: All
 		- @IsLive: (market) default = 2: All
 									= 1: Live
@@ -44,6 +46,20 @@ BEGIN
 	END
 	/* ===== End Get Sport/Bettype ===== */
 
+	/* ===== Get date range when Super is belong to Headline ===== */
+	BEGIN
+		DECLARE @SuperId INT
+		SELECT  @SuperId = srecommend FROM dbo.Customer WITH (NOLOCK) WHERE custid = @CustId
+
+		DECLARE @tblWinlostDate TABLE (FromDate SMALLDATETIME, ToDate SMALLDATETIME)
+		INSERT INTO @tblWinlostDate (FromDate, ToDate)
+		SELECT DISTINCT CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
+		FROM dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
+		WHERE UplineId = @HeadlineId AND @FromDate <= ToDate AND @ToDate >= FromDate
+			AND SuperId = @SuperId
+	END
+	/* ===== End Get date range when Super is belong to Headline ===== */
+
 	/* ===== Get Data ===== */
 	BEGIN
 		CREATE TABLE #tmpBettrans
@@ -60,7 +76,8 @@ BEGIN
 		INTO #__refno
 		FROM bodb02.dbo.bettrans b WITH (NOLOCK)
 			CROSS APPLY (SELECT TOP 1 bm.matchid FROM bodb02.dbo.bettransm bm WITH (NOLOCK) WHERE b.refno = bm.refno) AS bm
-		WHERE b.recommend = @CustId AND b.matchid = 2799 AND b.statusID IN (0, 1) AND b.winlostdate BETWEEN @FromDate AND @ToDate
+		WHERE b.recommend = @CustId AND b.matchid = 2799 AND b.winlostdate BETWEEN @FromDate AND @ToDate
+			AND b.statusID IN (0, 1)
 
 		-- bettrans
 		INSERT INTO #tmpBettrans
@@ -90,6 +107,7 @@ BEGIN
 					OR (b.bettype = 2799 AND @IsLive = 0)
 					OR (b.bettype NOT IN (29, 2799) AND b.liveindicator = @IsLive)
 				)
+			AND EXISTS (SELECT 1 FROM @tblWinlostDate wld WHERE b.winlostdate BETWEEN wld.FromDate AND wld.ToDate)
 		GROUP BY
 			b.custid
 			,CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END
@@ -117,6 +135,7 @@ BEGIN
 		WHERE t.recommend = @CustId
 			AND t.statusID IN (0, 1)
 			AND t.winlostdate BETWEEN @FromDate AND @ToDate
+			AND EXISTS (SELECT 1 FROM @tblWinlostDate wld WHERE t.winlostdate BETWEEN wld.FromDate AND wld.ToDate)
 			AND (@IsLive = 2 OR t.liveindicator = @IsLive)
 		GROUP BY
 			t.custid

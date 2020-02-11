@@ -1,25 +1,26 @@
-/*<info serverAlias="DB042-bodb02" executers="bodbAdminNet" isFunction="0" isNested="0"></info>*/
-ALTER PROCEDURE [dbo].[CS_Rpt_EBOutstanding_Super]
-	@CustId				INT = 0
+/*<info serverAlias="DB042-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" isFunction="0" isNested="0"></info>*/
+ALTER PROCEDURE [dbo].[CS_HL_Rpt_Outstanding_Super]
+	@HeadlineId			INT
+	,@CustId			INT
 	,@FromDate			SMALLDATETIME
 	,@ToDate			SMALLDATETIME
 	,@SporttypeGroups	VARCHAR(MAX) = '0' -- all
 	,@BettypeGroup		SMALLINT = 0 -- all
 	,@IsLive			TINYINT = 2 -- all
-	,@IsExcludedTest	BIT = 1
 AS
 
 /*
-	Created: 20190812@Percy
-	Task: CN88 - EB Un-Settled Report - View Supers
+	Created: 20190926@Percy
+	Task: CN88 - HL - Un-Settled Report - View Supers
 	DB: DB042.bodb02
 	
 	Revisions:
-		- 20190812@Percy: Initialize SP [Redmine: #116925]
+		- 20190926@Percy: Initialize SP [Redmine: #118962]
 		
 	Param's Explanation:
-		- @CustId: 0: All Headlines, <> 0: HeadlineId
-		- @SporttypeGroup: default = 0: All
+		- @HeadlineId: HeadlineId
+		- @CustId: HeadlineId
+		- @SporttypeGroups: list of SporttypeGroup
 		- @BettypeGroup: default = 0: All
 		- @IsLive: (market) default = 2: All
 									= 1: Live
@@ -44,6 +45,22 @@ BEGIN
 	END
 	/* ===== End Get Sport/Bettype ===== */
 
+	/* ===== Get Super Info ===== */
+	BEGIN
+		CREATE TABLE #tmpSuper (srecommend INT, FromDate SMALLDATETIME, ToDate SMALLDATETIME)
+		INSERT INTO #tmpSuper (srecommend, FromDate, ToDate)
+		SELECT DISTINCT custid, CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
+		FROM dbo.CustSuper cs WITH (NOLOCK)
+			CROSS APPLY (
+				SELECT DISTINCT FromDate, ToDate
+				FROM dbo.Acc_GroupExtraPTSetting s WITH (NOLOCK)
+				WHERE cs.custid = s.SuperId
+					AND @FromDate <= ToDate AND @ToDate >= FromDate
+					AND s.UplineId = @HeadlineId
+			) AS e
+	END
+	/* ===== End Get Super Info ===== */
+
 	/* ===== Get Data ===== */
 	BEGIN
 		CREATE TABLE #tmpBettrans
@@ -58,14 +75,15 @@ BEGIN
 		-- For VS Parlay (bettype = 2799)
 		SELECT b.refno, b.matchid
 		INTO #__refno
-		FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+		FROM #tmpSuper ts
 			CROSS APPLY (
 				SELECT b.refno, bm.matchid
 				FROM bodb02.dbo.bettrans b WITH (NOLOCK)
 					CROSS APPLY (SELECT TOP 1 bm.matchid FROM bodb02.dbo.bettransm bm WITH (NOLOCK) WHERE b.refno = bm.refno) AS bm
-				WHERE cs.custid = b.srecommend AND b.matchid = 2799 AND b.statusID IN (0, 1) AND b.winlostdate BETWEEN @FromDate AND @ToDate
+				WHERE ts.srecommend = b.srecommend AND b.matchid = 2799 AND b.winlostdate BETWEEN ts.FromDate AND ts.ToDate
+					 AND b.winlostdate BETWEEN @FromDate AND @ToDate
+					 AND b.statusID IN (0, 1)
 		) AS b
-		WHERE (@CustId = 0 OR EXISTS (SELECT 1 FROM dbo.CustSuper c WITH (NOLOCK) WHERE cs.CustId = c.custid AND c.UplineId = @CustId))
 
 		-- bettrans
 		INSERT INTO #tmpBettrans
@@ -82,7 +100,7 @@ BEGIN
 			,b.eventtype
 			,COUNT(1) AS Wagers
 			,SUM(b.stake) AS Stake
-		FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+		FROM #tmpSuper ts
 			CROSS APPLY (
 				SELECT
 					b.srecommend
@@ -95,7 +113,7 @@ BEGIN
 					OUTER APPLY (
 						SELECT r.matchid FROM #__refno r WHERE b.refno = r.refno AND b.bettype = 2799
 					) AS s
-				WHERE cs.CustId = b.srecommend
+				WHERE ts.srecommend = b.srecommend
 					AND b.statusID IN (0, 1)
 					AND (
 							@IsLive = 2
@@ -105,7 +123,7 @@ BEGIN
 						)
 			) AS b
 		WHERE b.winlostdate BETWEEN @FromDate AND @ToDate -- prevent using index on winlostdate
-			AND (@CustId = 0 OR EXISTS (SELECT 1 FROM dbo.CustSuper c WITH (NOLOCK) WHERE cs.CustId = c.custid AND c.UplineId = @CustId))
+			AND b.winlostdate BETWEEN ts.FromDate AND ts.ToDate
 		GROUP BY
 			b.srecommend
 			,b.matchid
@@ -128,7 +146,7 @@ BEGIN
 			,b.eventtype
 			,COUNT(1) AS Wagers
 			,SUM(b.stake) AS Stake
-		FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+		FROM #tmpSuper ts
 			CROSS APPLY (
 				SELECT
 					t.srecommend
@@ -140,12 +158,12 @@ BEGIN
 					,t.winlostdate
 				FROM dbo.translog t WITH (NOLOCK)
 					INNER JOIN #tblBetType bt ON t.gameId = bt.bettype AND bt.RefTable = 3
-				WHERE cs.CustId = t.srecommend
+				WHERE ts.srecommend = t.srecommend
 					AND t.statusID IN (0, 1)
 					AND t.winlostdate BETWEEN @FromDate AND @ToDate
+					AND t.winlostdate BETWEEN ts.FromDate AND ts.ToDate
 					AND (@IsLive = 2 OR t.liveindicator = @IsLive)
 			) AS b
-		WHERE (@CustId = 0 OR EXISTS (SELECT 1 FROM dbo.CustSuper c WITH (NOLOCK) WHERE cs.CustId = c.custid AND c.UplineId = @CustId))
 		GROUP BY
 			b.srecommend
 			,b.matchid
@@ -200,19 +218,16 @@ BEGIN
 	/* ===== Return data ===== */
 	BEGIN
 		SELECT
-			u.CustId AS HeadlineId
-			,u.Username AS HeadlineUsername
-			,c.CustId
+			c.CustId
 			,c.Username
-			,c.FirstName AS Name
-			,SUM(Wagers) AS Wagers
-			,SUM(Stake) AS Stake
+			,c.FirstName	AS Name
+			,SUM(Wagers)	AS Wagers
+			,SUM(Stake)		AS Stake
 			,0 AS ValidStake
 			,0 AS MemberIncome
 			,0 AS Agent
 			,0 AS AgentResult
 			,0 AS Master
-			,0 AS MasterResult
 			,0 AS Super
 			,0 AS SuperIncome
 			,0 AS SuperResult
@@ -220,21 +235,10 @@ BEGIN
 			,0 AS HeadlineIncome
 			,0 AS HeadlineResult
 			,0 AS HeadlineStock
-			,0 AS Rebate
-			,0 AS RebateRoundDown -- Round down abs 100
 		FROM #SuperOutstanding o
-			INNER JOIN Customer c WITH (NOLOCK) ON o.CustID = c.CustID
-			CROSS APPLY (
-				SELECT TOP (1) c.custid, c.username
-				FROM dbo.CustSuper cs WITH (NOLOCK)
-					INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.UplineId = c.custid
-				WHERE o.CustId = cs.custid
-			) AS u
-		WHERE (c.currency <> 20 OR @IsExcludedTest = 0)
+			INNER JOIN dbo.Customer c WITH (NOLOCK) ON o.CustID = c.CustID
 		GROUP BY
-			u.CustId
-			,u.Username
-			,c.CustId
+			c.CustId
 			,c.Username
 			,c.FirstName
 	END

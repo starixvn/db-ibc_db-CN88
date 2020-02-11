@@ -1,6 +1,6 @@
-/*<info serverAlias="DBAGE-bodb02" executers="bodbAdminNet" isFunction="0" isNested="0"></info>*/
-ALTER PROCEDURE [dbo].[CS_Rpt_EBWinloss_Member]
-	@ReportMode			TINYINT = 1
+/*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" isFunction="0" isNested="0"></info>*/
+ALTER PROCEDURE [dbo].[CS_HL_Rpt_Winloss_Agent]
+	@HeadlineId			INT
 	,@CustId			INT
 	,@FromDate			SMALLDATETIME
 	,@ToDate			SMALLDATETIME
@@ -8,22 +8,20 @@ ALTER PROCEDURE [dbo].[CS_Rpt_EBWinloss_Member]
 	,@SporttypeGroups	VARCHAR(MAX) = '0' -- all
 	,@BettypeGroup		SMALLINT = 0 -- all
 	,@IsLive			TINYINT = 2  -- all
-	,@IsExcludedTest	BIT = 1
 AS
 
 /*
-	Created: 20190812@Percy
-	Task: CN88 - EB - Settled Report - View Members
+	Created: 20190926@Percy
+	Task: CN88 - HL - Settled Report - View Agents
 	DB: DBAGE.bodb02
 	
 	Revisions:
-		- 20190812@Percy: Initialize SP [Redmine: #116925]
-		- 20191021@Percy: Include Void/Reject/Refund tickets [RedmineID: #120802]
+		- 20190926@Percy: Initialize SP [Redmine: #118962]
 		
 	Param's Explanation:
-		- @ReportMode: 1: current, 2: history
-		- @CustId: AgentId
-		- @SporttypeGroup: default = 0: All
+		- @HeadlineId: HeadlineId
+		- @CustId: MasterId
+		- @SporttypeGroups: list of SporttypeGroup
 		- @BettypeGroup: default = 0: All
 		- @IsLive: (market) default = 2: All
 									= 1: Live
@@ -48,22 +46,41 @@ BEGIN
 	END
 	/* ===== End Get Sport/Bettype ===== */
 
+	/* ===== Get date range when Super is belong to Headline ===== */
+	BEGIN
+		DECLARE @SuperId INT
+		SELECT  @SuperId = srecommend FROM dbo.Customer WITH (NOLOCK) WHERE custid = @CustId
+
+		DECLARE @tblWinlostDate TABLE (FromDate SMALLDATETIME, ToDate SMALLDATETIME)
+		INSERT INTO @tblWinlostDate (FromDate, ToDate)
+		SELECT DISTINCT CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
+		FROM dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
+		WHERE UplineId = @HeadlineId AND @FromDate <= ToDate AND @ToDate >= FromDate
+			AND SuperId = @SuperId
+	END
+	/* ===== End Get date range when Super is belong to Headline ===== */
+
 	/* ===== Get Data ===== */
 	BEGIN
-		CREATE TABLE #MemberWinLoss
+		CREATE TABLE #AgentWinLoss
 		(
 			CustId			INT
 			,Wagers			INT
 			,Stake			MONEY
 			,ValidStake		MONEY
 			,MemberIncome	MONEY
-			,AgentResultA	MONEY
+			,Agent			MONEY
+			,AgentIncome	MONEY
+			,AgentResult	MONEY
+			,AgentStock		MONEY
+			,MasterIncome	MONEY
+			,MasterResult	MONEY
 		)
 
 		DECLARE @FDate SMALLDATETIME, @TDate SMALLDATETIME
 
 		-- bettrans
-		IF @ReportMode = 1 AND @ToDate > @MoveBetsDay
+		IF @ToDate > @MoveBetsDay
 		BEGIN
 			SELECT	@FDate = CASE WHEN @FromDate <= @MoveBetsDay THEN DATEADD(DAY, 1, @MoveBetsDay) ELSE @FromDate END
 					,@TDate = @ToDate
@@ -76,14 +93,19 @@ BEGIN
 
 			CREATE TABLE #tmpBettrans
 			(
-				custid			INT
+				recommend		INT
 				,matchid		INT
 				,eventtype		TINYINT
 				,Wagers			INT
 				,Stake			MONEY
 				,ValidStake		MONEY
 				,MemberIncome	MONEY
-				,AgentResultA	MONEY
+				,Agent			MONEY
+				,AgentIncome	MONEY
+				,AgentResult	MONEY
+				,AgentStock		MONEY
+				,MasterIncome	MONEY
+				,MasterResult	MONEY
 			)
 
 			-- For VS Parlay (bettype = 2799)
@@ -91,34 +113,45 @@ BEGIN
 			INTO #__refno
 			FROM dbo.bettrans b WITH (NOLOCK)
 				CROSS APPLY (SELECT TOP 1 bm.matchid FROM dbo.bettransm bm WITH (NOLOCK) WHERE b.refno = bm.refno) AS bm
-			WHERE b.recommend = @CustId AND b.matchid = 2799 AND b.winlostdate BETWEEN @FDate AND @TDate
+			WHERE b.mrecommend = @CustId AND b.matchid = 2799 AND b.winlostdate BETWEEN @FDate AND @TDate
+				AND b.statusID NOT IN (0, 1)
 
 			INSERT INTO #tmpBettrans
 			(
-				custid
+				recommend
 				,matchid
 				,eventtype
 				,Wagers
 				,Stake
 				,ValidStake
 				,MemberIncome
-				,AgentResultA
+				,Agent
+				,AgentIncome
+				,AgentResult
+				,AgentStock
+				,MasterIncome
+				,MasterResult
 			)
 			SELECT
-				b.custid
+				b.recommend
 				,CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
 				,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END AS eventtype
 				,COUNT(1) AS Wagers
 				,SUM(b.stake) AS Stake
 				,SUM(ABS(b.winlost - b.actual_stake)) AS ValidStake
 				,SUM(b.winlost - b.actual_stake + b.playercomm) AS MemberIncome
-				,SUM((b.winlost - b.actual_stake + b.playercomm) * (1 - b.apositiontaking)) AS AgentResultA
+				,SUM((b.winlost - b.actual_stake)  + (ABS(b.winlost - b.actual_stake) * b.discount)) AS Agent
+				,SUM(b.awinlost + b.comm - b.playercomm) AS AgentIncome
+				,SUM(b.winlost - b.actual_stake + b.awinlost + b.comm) AS AgentResult
+				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.apositiontaking)) AS AgentStock
+				,SUM(b.mwinlost + b.acomm - b.comm) AS MasterIncome
+				,SUM(b.winlost - b.actual_stake + b.mwinlost + b.awinlost + b.acomm) AS MasterResult
 			FROM dbo.bettrans b WITH (NOLOCK)
 				INNER JOIN #tblBetType bt ON b.bettype = bt.bettype
 				OUTER APPLY (
 					SELECT r.matchid FROM #__refno r WHERE b.refno = r.refno AND b.bettype = 2799
 				) AS s
-			WHERE b.recommend = @CustId AND b.winlostdate BETWEEN @FDate AND @TDate
+			WHERE b.mrecommend = @CustId AND b.winlostdate BETWEEN @FDate AND @TDate
 				AND b.statusID NOT IN (0, 1)
 				AND (
 						@IsLive = 2
@@ -126,30 +159,40 @@ BEGIN
 						OR (b.bettype = 2799 AND @IsLive = 0)
 						OR (b.bettype NOT IN (29, 2799) AND b.liveindicator = @IsLive)
 					)
-				AND (@IsExcludedTest = 0 OR b.currency <> 20)
+				AND EXISTS (SELECT 1 FROM @tblWinlostDate wld WHERE b.winlostdate BETWEEN wld.FromDate AND wld.ToDate)
 			GROUP BY
-				b.custid
+				b.recommend
 				,CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END
 				,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END
 
 			DROP TABLE #__refno
 
-			INSERT INTO #MemberWinLoss
+			INSERT INTO #AgentWinLoss
 			(
 				CustId
 				,Wagers
 				,Stake
 				,ValidStake
 				,MemberIncome
-				,AgentResultA
+				,Agent
+				,AgentIncome
+				,AgentResult
+				,AgentStock
+				,MasterIncome
+				,MasterResult
 			)
 			SELECT
-				b.custid
+				b.recommend			AS CustId
 				,SUM(Wagers)		AS Wagers
 				,SUM(Stake)			AS Stake
 				,SUM(ValidStake)	AS ValidStake
 				,SUM(MemberIncome)	AS MemberIncome
-				,SUM(AgentResultA)	AS AgentResultA
+				,SUM(Agent)			AS Agent
+				,SUM(AgentIncome)	AS AgentIncome
+				,SUM(AgentResult)	AS AgentResult
+				,SUM(AgentStock)	AS AgentStock
+				,SUM(MasterIncome)	AS MasterIncome
+				,SUM(MasterResult)	AS MasterResult
 			FROM #tmpBettrans b
 				CROSS APPLY (
 					SELECT m.sporttype
@@ -173,36 +216,50 @@ BEGIN
 				) AS m
 				INNER JOIN #tblSportType s ON m.sporttype = s.SportType
 			GROUP BY
-				b.custid
+				b.recommend
 			OPTION (HASH GROUP)
 
 			DROP TABLE #tmpBettrans
 		END
-
+		-- End bettrans
+		
 		-- CS_SumWinloss
-		IF (@ReportMode = 1 AND @FromDate <= @MoveBetsDay) OR @ReportMode = 2
+		IF @FromDate <= @MoveBetsDay
 		BEGIN
 			SELECT	@FDate = @FromDate
-					,@TDate = CASE WHEN @ReportMode = 1 AND @ToDate > @MoveBetsDay THEN @MoveBetsDay ELSE @ToDate END
+					,@TDate = CASE WHEN @ToDate > @MoveBetsDay THEN @MoveBetsDay ELSE @ToDate END
 
 			IF @FDate <= @TDate
 			BEGIN
-				INSERT INTO #MemberWinLoss
+				INSERT INTO #AgentWinLoss
 				(
 					CustId
 					,Wagers
 					,Stake
 					,ValidStake
 					,MemberIncome
-					,AgentResultA
+					,Agent
+					,AgentIncome
+					,AgentResult
+					,AgentStock
+					,MasterIncome
+					,MasterResult
 				)
 				SELECT
 					c.CustId
-					,SUM(Wagers)		AS Wagers
-					,SUM(Stake)			AS Stake
-					,SUM(ValidStake)	AS ValidStake
-					,SUM(MemberWinloss + MemberComm) AS MemberIncome
-					,SUM(AgentResultA)	AS AgentResultA
+					,SUM(Wagers)			AS Wagers
+					,SUM(Stake)				AS Stake
+					,SUM(ValidStake)		AS ValidStake
+					,SUM(MemberWinloss + MemberComm)		AS MemberIncome
+					,SUM(Agent)				AS Agent
+					,SUM(AgentWinloss + AgentComm)			AS AgentIncome
+					,SUM(MemberWinloss + MemberComm
+						+ AgentWinloss + AgentComm)			AS AgentResult
+					,SUM(AgentStock)		AS AgentStock
+					,SUM(MasterWinloss + MasterComm)		AS MasterIncome
+					,SUM(MemberWinloss + MemberComm
+						+ AgentWinloss + AgentComm
+						+ MasterWinloss + MasterComm)		AS MasterResult
 				FROM dbo.Customer c WITH (NOLOCK)
 					CROSS APPLY (
 						SELECT
@@ -210,35 +267,51 @@ BEGIN
 							,Stake
 							,ValidStake
 							,MemberWinloss
+							,AgentWinloss
+							,MasterWinloss
 							,MemberComm
-							,AgentResultA
+							,AgentComm
+							,MasterComm
+							,Agent
+							,AgentStock
 						FROM bodb_Summary.dbo.CS_SumWinloss s WITH (NOLOCK)
 						WHERE c.custid = s.custid
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
+							AND EXISTS (SELECT 1 FROM @tblWinlostDate wld WHERE s.winlostdate BETWEEN wld.FromDate AND wld.ToDate)
 							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 							AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
 							AND (@IsLive = 2 OR IsLive = @IsLive)
 					) AS s
-				WHERE c.recommend = @CustId AND c.roleid = 1
+				WHERE c.mrecommend = @CustId AND c.roleid = 2
 				GROUP BY
 					c.CustId
 
-				INSERT INTO #MemberWinLoss
+				INSERT INTO #AgentWinLoss
 				(
 					CustId
 					,Wagers
 					,Stake
 					,ValidStake
 					,MemberIncome
-					,AgentResultA
+					,Agent
+					,AgentIncome
+					,AgentResult
+					,AgentStock
+					,MasterIncome
+					,MasterResult
 				)
 				SELECT
 					c.CustId
-					,SUM(Wagers)	AS Wagers
-					,SUM(Stake)		AS Stake
+					,SUM(Wagers)			AS Wagers
+					,SUM(Stake)				AS Stake
 					,0 AS ValidStake
 					,0 AS MemberIncome
-					,0 AS AgentResultA
+					,0 AS Agent
+					,0 AS AgentIncome
+					,0 AS AgentResult
+					,0 AS AgentStock
+					,0 AS MasterIncome
+					,0 AS MasterResult
 				FROM dbo.Customer c WITH (NOLOCK)
 					CROSS APPLY (
 						SELECT
@@ -247,11 +320,12 @@ BEGIN
 						FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
 						WHERE c.custid = s.custid
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
+							AND EXISTS (SELECT 1 FROM @tblWinlostDate wld WHERE s.winlostdate BETWEEN wld.FromDate AND wld.ToDate)
 							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 							AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
 							AND (@IsLive = 2 OR IsLive = @IsLive)
 					) AS s
-				WHERE c.recommend = @CustId AND c.roleid = 1
+				WHERE c.mrecommend = @CustId AND c.roleid = 2
 				GROUP BY
 					c.CustId
 			END
@@ -265,21 +339,27 @@ BEGIN
 		SELECT
 			c.CustId
 			,c.Username
+			,c.FirstName			AS Name
 			,SUM(s.Wagers)			AS Wagers
 			,SUM(s.Stake)			AS Stake
 			,SUM(s.ValidStake)		AS ValidStake
 			,SUM(s.MemberIncome)	AS MemberIncome
-			,SUM(s.AgentResultA)	AS AgentResult
-		FROM #MemberWinLoss s
+			,SUM(s.Agent)			AS Agent
+			,SUM(s.AgentIncome)		AS AgentIncome
+			,SUM(s.AgentResult)		AS AgentResult
+			,SUM(s.AgentStock)		AS AgentStock
+			,SUM(s.MasterIncome)	AS MasterIncome
+			,SUM(s.MasterResult)	AS MasterResult
+		FROM #AgentWinLoss s
 			INNER JOIN dbo.Customer c WITH (NOLOCK) ON s.custid = c.custid
-		WHERE (c.currency <> 20 OR @IsExcludedTest = 0)
 		GROUP BY
 			c.CustId
 			,c.Username
+			,c.FirstName
 	END
 	/* ===== End Return Data ===== */
 
-	DROP TABLE #MemberWinLoss
+	DROP TABLE #AgentWinLoss
 	DROP TABLE #tblBetType
 	DROP TABLE #tblSportType
 END

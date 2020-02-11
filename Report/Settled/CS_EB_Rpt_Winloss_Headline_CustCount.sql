@@ -49,7 +49,8 @@ BEGIN
 	BEGIN
 		CREATE TABLE #CustomerCounter
 		(
-			srecommend	INT
+			UplineId	INT
+			,srecommend	INT
 			,mrecommend	INT
 			,recommend	INT
 			,custid		INT
@@ -71,7 +72,8 @@ BEGIN
 
 			CREATE TABLE #tmpBettrans
 			(
-				srecommend	INT
+				UplineId	INT
+				,srecommend	INT
 				,mrecommend	INT
 				,recommend	INT
 				,custid		INT
@@ -93,7 +95,8 @@ BEGIN
 
 			INSERT INTO #tmpBettrans
 			(
-				srecommend
+				UplineId
+				,srecommend
 				,mrecommend
 				,recommend
 				,custid
@@ -101,7 +104,8 @@ BEGIN
 				,eventtype
 			)
 			SELECT
-				b.srecommend
+				e.UplineId
+				,b.srecommend
 				,b.mrecommend
 				,b.recommend
 				,b.custid
@@ -135,7 +139,7 @@ BEGIN
 						AND (b.currency <> 20 OR @IsExcludedTest = 0)
 				) AS b
 				CROSS APPLY (
-					SELECT ag.ExtraPT
+					SELECT ag.UplineId, ag.ExtraPT
 					FROM dbo.Acc_GroupExtraPTSetting ag WITH (NOLOCK)
 					WHERE cs.CustId = ag.SuperId
 						AND b.winlostdate BETWEEN ag.FromDate AND ag.ToDate
@@ -144,7 +148,8 @@ BEGIN
 						AND ag.SubProduct = ''
 				) AS e
 			GROUP BY
-				b.srecommend
+				e.UplineId
+				,b.srecommend
 				,b.mrecommend
 				,b.recommend
 				,b.custid
@@ -155,13 +160,15 @@ BEGIN
 	
 			INSERT INTO #CustomerCounter
 			(
-				srecommend
+				UplineId
+				,srecommend
 				,mrecommend
 				,recommend
 				,custid
 			)
 			SELECT
-				b.srecommend
+				b.UplineId
+				,b.srecommend
 				,b.mrecommend
 				,b.recommend
 				,b.custid
@@ -188,7 +195,8 @@ BEGIN
 				) AS m
 				INNER JOIN #tblSportType s ON m.sporttype = s.SportType
 			GROUP BY
-				b.srecommend
+				b.UplineId
+				,b.srecommend
 				,b.mrecommend
 				,b.recommend
 				,b.custid
@@ -208,56 +216,59 @@ BEGIN
 			BEGIN
 				INSERT INTO #CustomerCounter
 				(
-					srecommend
+					UplineId
+					,srecommend
 					,mrecommend
 					,recommend
 					,custid
 				)
 				SELECT
-					c.srecommend
+					s.UplineId
+					,c.srecommend
 					,c.mrecommend
 					,c.recommend
 					,c.custid
-				FROM dbo.CustSuper cs WITH (NOLOCK)
+				FROM dbo.CS_CustSuper cs WITH (NOLOCK)
 					INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.custid = c.srecommend AND c.roleid = 1
 					CROSS APPLY (
 						SELECT
-							s.custid
+							s.HeadlineId AS UplineId
 						FROM bodb_Summary.dbo.CS_SumWinloss s WITH (NOLOCK)
 						WHERE s.custid = c.custid
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
-							AND s.HeadlineId = cs.UplineId
 							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 							AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
 							AND (@IsLive = 2 OR IsLive = @IsLive)
 					) AS s
 				WHERE (c.currency <> 20 OR @IsExcludedTest = 0)
 				GROUP BY
-					c.srecommend
+					s.UplineId
+					,c.srecommend
 					,c.mrecommend
 					,c.recommend
 					,c.custid
 
 				INSERT INTO #CustomerCounter
 				(
-					srecommend
+					UplineId
+					,srecommend
 					,mrecommend
 					,recommend
 					,custid
 				)
 				SELECT
-					c.srecommend
+					s.UplineId
+					,c.srecommend
 					,c.mrecommend
 					,c.recommend
 					,c.custid
-				FROM dbo.CustSuper cs WITH (NOLOCK)
+				FROM dbo.CS_CustSuper cs WITH (NOLOCK)
 					INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.custid = c.srecommend AND c.roleid = 1
 					CROSS APPLY (
 						SELECT
-							s.custid
+							s.HeadlineId AS UplineId
 						FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
 						WHERE s.custid = c.custid
-							AND s.HeadlineId = cs.UplineId
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
 							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 							AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
@@ -265,7 +276,8 @@ BEGIN
 					) AS s
 				WHERE (c.currency <> 20 OR @IsExcludedTest = 0)
 				GROUP BY
-					c.srecommend
+					s.UplineId
+					,c.srecommend
 					,c.mrecommend
 					,c.recommend
 					,c.custid
@@ -278,13 +290,12 @@ BEGIN
 	/* ===== Return Data ===== */
 	BEGIN
 		SELECT
-			COUNT(DISTINCT cs.UplineId)		AS HeadlineCount
-			,COUNT(DISTINCT c.srecommend)	AS SuperCount
-			,COUNT(DISTINCT c.mrecommend)	AS MasterCount
-			,COUNT(DISTINCT c.recommend)	AS AgentCount
-			,COUNT(DISTINCT c.custid)		AS MemberCount
-		FROM #CustomerCounter c
-			INNER JOIN dbo.CustSuper cs WITH (NOLOCK) ON c.srecommend = cs.custid
+			COUNT(DISTINCT UplineId)	AS HeadlineCount
+			,COUNT(DISTINCT srecommend)	AS SuperCount
+			,COUNT(DISTINCT mrecommend)	AS MasterCount
+			,COUNT(DISTINCT recommend)	AS AgentCount
+			,COUNT(DISTINCT custid)		AS MemberCount
+		FROM #CustomerCounter
 	END
 	/* ===== End Return Data ===== */
 

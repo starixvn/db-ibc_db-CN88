@@ -1,27 +1,27 @@
-/*<info serverAlias="DBAGE-bodb02" executers="bodbAdminNet" isFunction="0" isNested="0"></info>*/
-ALTER PROCEDURE [dbo].[CS_Rpt_EBWinloss_Headline]
-	@ReportMode			TINYINT = 1
+/*<info serverAlias="DBAGE-bodb02" executers="bodbDownlineNet,bodbDownlineNetView" isFunction="0" isNested="0"></info>*/
+ALTER PROCEDURE [dbo].[CS_HL_Rpt_Winloss_Super]
+	@HeadlineId			INT
+	,@CustId			INT
 	,@FromDate			SMALLDATETIME
 	,@ToDate			SMALLDATETIME
 	,@MoveBetsDay		SMALLDATETIME
 	,@SporttypeGroups	VARCHAR(MAX) = '0' -- all
 	,@BettypeGroup		SMALLINT = 0 -- all
 	,@IsLive			TINYINT = 2  -- all
-	,@IsExcludedTest	BIT = 1
 AS
 
 /*
-	Created: 20190812@Percy
-	Task: CN88 - EB Settled Report - View Headlines
+	Created: 20190926@Percy
+	Task: CN88 - HL - Settled Report - View Supers
 	DB: DBAGE.bodb02
 	
 	Revisions:
-		- 20190812@Percy: Initialize SP [Redmine: #116925]
-		- 20191021@Percy: Include Void/Reject/Refund tickets [RedmineID: #120802]
+		- 20190926@Percy: Initialize SP [Redmine: #118962]
 		
 	Param's Explanation:
-		- @ReportMode: 1: current, 2: history
-		- @SporttypeGroup: default = 0: All
+		- @HeadlineId: HeadlineId
+		- @CustId: HeadlineId
+		- @SporttypeGroups: list of SporttypeGroup
 		- @BettypeGroup: default = 0: All
 		- @IsLive: (market) default = 2: All
 									= 1: Live
@@ -46,6 +46,22 @@ BEGIN
 	END
 	/* ===== End Get Sport/Bettype ===== */
 
+	/* ===== Get Super Info ===== */
+	BEGIN
+		CREATE TABLE #tmpSuper (srecommend INT, FromDate SMALLDATETIME, ToDate SMALLDATETIME)
+		INSERT INTO #tmpSuper (srecommend, FromDate, ToDate)
+		SELECT DISTINCT custid, CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
+		FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+			CROSS APPLY (
+				SELECT DISTINCT FromDate, ToDate
+				FROM dbo.Acc_GroupExtraPTSetting s WITH (NOLOCK)
+				WHERE cs.custid = s.SuperId
+					AND @FromDate <= ToDate AND @ToDate >= FromDate
+					AND s.UplineId = @HeadlineId
+			) AS e
+	END
+	/* ===== End Get Super Info ===== */
+
 	/* ===== Get Data ===== */
 	BEGIN
 		CREATE TABLE #SuperWinLoss
@@ -54,19 +70,23 @@ BEGIN
 			,Wagers			INT
 			,Stake			MONEY
 			,ValidStake		MONEY
-			,MemberWinloss	MONEY
-			,MemberComm		MONEY
-			,SuperComm		MONEY
-			,HouseWinloss	MONEY
-			,HouseComm		MONEY
-			,HouseTurnover	MONEY
+			,MemberIncome	MONEY
+			,Agent			MONEY
+			,AgentResult	MONEY
+			,Master			MONEY
+			,Super			MONEY
+			,SuperIncome	MONEY
+			,SuperResult	MONEY
+			,SuperStock		MONEY
+			,HeadlineIncome	MONEY
+			,HeadlineResult	MONEY
 			,HeadlineStock	MONEY
 		)
 
 		DECLARE @FDate SMALLDATETIME, @TDate SMALLDATETIME
 
 		-- bettrans
-		IF @ReportMode = 1 AND @ToDate > @MoveBetsDay
+		IF @ToDate > @MoveBetsDay
 		BEGIN
 			SELECT	@FDate = CASE WHEN @FromDate <= @MoveBetsDay THEN DATEADD(DAY, 1, @MoveBetsDay) ELSE @FromDate END
 					,@TDate = @ToDate
@@ -85,24 +105,30 @@ BEGIN
 				,Wagers			INT
 				,Stake			MONEY
 				,ValidStake		MONEY
-				,MemberWinloss	MONEY
-				,MemberComm		MONEY
-				,SuperComm		MONEY
-				,HouseWinloss	MONEY
-				,HouseComm		MONEY
-				,HouseTurnover	MONEY
+				,MemberIncome	MONEY
+				,Agent			MONEY
+				,AgentResult	MONEY
+				,Master			MONEY
+				,Super			MONEY
+				,SuperIncome	MONEY
+				,SuperResult	MONEY
+				,SuperStock		MONEY
+				,HeadlineIncome	MONEY
+				,HeadlineResult	MONEY
 				,HeadlineStock	MONEY
 			)
 
 			-- For VS Parlay (bettype = 2799)
 			SELECT b.refno, b.matchid
 			INTO #__refno
-			FROM dbo.CS_CustSuper c WITH (NOLOCK)
+			FROM #tmpSuper ts
 				CROSS APPLY (
 					SELECT b.refno, bm.matchid
 					FROM dbo.bettrans b WITH (NOLOCK)
 						CROSS APPLY (SELECT TOP 1 bm.matchid FROM dbo.bettransm bm WITH (NOLOCK) WHERE b.refno = bm.refno) AS bm
-					WHERE c.custid = b.srecommend AND b.matchid = 2799 AND b.winlostdate BETWEEN @FDate AND @TDate
+					WHERE ts.srecommend = b.srecommend AND b.matchid = 2799 AND b.winlostdate BETWEEN ts.FromDate AND ts.ToDate
+						AND b.winlostdate BETWEEN @FDate AND @TDate
+						AND b.statusID NOT IN (0, 1)
 			) AS b
 
 			INSERT INTO #tmpBettrans
@@ -113,12 +139,16 @@ BEGIN
 				,Wagers
 				,Stake
 				,ValidStake
-				,MemberWinloss
-				,MemberComm
-				,SuperComm
-				,HouseWinloss
-				,HouseComm
-				,HouseTurnover
+				,MemberIncome
+				,Agent
+				,AgentResult
+				,Master
+				,Super
+				,SuperIncome
+				,SuperResult
+				,SuperStock
+				,HeadlineIncome
+				,HeadlineResult
 				,HeadlineStock
 			)
 			SELECT
@@ -128,14 +158,27 @@ BEGIN
 				,COUNT(1) AS Wagers
 				,SUM(b.stake) AS Stake
 				,SUM(ABS(b.winlost - b.actual_stake)) AS ValidStake
-				,SUM(b.winlost - b.actual_stake) AS MemberWinloss
-				,SUM(b.playercomm) AS MemberComm
-				,SUM(b.scomm - b.acomm) AS SuperComm
-				,-SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * ISNULL(e.ExtraPT, 0))) AS HouseWinloss
-				,-SUM(b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * ISNULL(e.ExtraPT, 0) END) AS HouseComm
-				,SUM(b.stake * (1 - b.tpositiontaking - ISNULL(e.ExtraPT, 0))) AS HouseTurnover
+				,SUM(b.winlost - b.actual_stake + b.playercomm) AS MemberIncome
+				,SUM((b.winlost - b.actual_stake)  + (ABS(b.winlost - b.actual_stake) * b.discount)) AS Agent
+				,SUM(b.winlost - b.actual_stake + b.awinlost + b.comm) AS AgentResult
+				,SUM((b.winlost - b.actual_stake) * (1 - b.apositiontaking)
+						+ ABS(b.winlost - b.actual_stake) * (1 - b.apositiontaking) * b.adiscount) AS Master
+				,SUM((b.winlost - b.actual_stake) * (1 - b.apositiontaking - b.mpositiontaking)
+					+ ABS(b.winlost - b.actual_stake) * (1 - b.apositiontaking - b.mpositiontaking) * b.sdiscount
+								) AS Super
+				,SUM(b.swinlost + b.scomm - b.acomm) AS SuperIncome
+				,SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost + b.scomm) AS SuperResult
+				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking)) AS SuperStock
+				,SUM( -- HeadlineIncome = HeadlineWinloss + HeadlineComm
+					- (b.winlost - b.actual_stake) * ISNULL(e.ExtraPT, 0) -- HeadlineWinloss
+					- CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * ISNULL(e.ExtraPT, 0) END -- HeadlineComm
+					) AS HeadlineIncome
+				,SUM( -- HeadlineResult = -HouseIncome = -(HouseWinloss + HouseComm)
+					b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * ISNULL(e.ExtraPT, 0)) -- HouseWinloss
+					+ b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * ISNULL(e.ExtraPT, 0) END -- HouseComm
+					) AS HeadlineResult 
 				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - ISNULL(e.ExtraPT, 0))) AS HeadlineStock
-			FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+			FROM #tmpSuper ts
 				CROSS APPLY (
 					SELECT
 						b.srecommend
@@ -146,12 +189,18 @@ BEGIN
 						,b.stake
 						,b.winlost
 						,b.actual_stake
-						,b.playercomm
 						,b.awinlost
 						,b.mwinlost
 						,b.swinlost
-						,b.scomm
+						,b.playercomm
+						,b.comm
 						,b.acomm
+						,b.scomm
+						,b.discount
+						,b.adiscount
+						,b.sdiscount
+						,b.apositiontaking
+						,b.mpositiontaking
 						,b.tpositiontaking
 						,b.winlostdate
 					FROM dbo.bettrans b WITH (NOLOCK)
@@ -159,7 +208,8 @@ BEGIN
 						OUTER APPLY (
 							SELECT r.matchid FROM #__refno r WHERE b.refno = r.refno AND b.bettype = 2799
 						) AS s
-					WHERE cs.CustId = b.srecommend AND b.winlostdate BETWEEN @FDate AND @TDate
+					WHERE ts.srecommend = b.srecommend AND b.winlostdate BETWEEN ts.FromDate AND ts.ToDate
+						AND b.winlostdate BETWEEN @FDate AND @TDate
 						AND b.statusID NOT IN (0, 1)
 						AND (
 								@IsLive = 2
@@ -167,12 +217,11 @@ BEGIN
 								OR (b.bettype = 2799 AND @IsLive = 0)
 								OR (b.bettype NOT IN (29, 2799) AND b.liveindicator = @IsLive)
 							)
-						AND (@IsExcludedTest = 0 OR b.currency <> 20)
 				) AS b
 				OUTER APPLY (
 					SELECT ag.ExtraPT
 					FROM dbo.Acc_GroupExtraPTSetting ag WITH (NOLOCK)
-					WHERE cs.CustId = ag.SuperId
+					WHERE ts.srecommend = ag.SuperId
 						AND b.winlostdate BETWEEN ag.FromDate AND ag.ToDate
 						AND b.ProductID = ag.ProductId
 						AND ag.Sporttype = 0
@@ -191,12 +240,16 @@ BEGIN
 				,Wagers
 				,Stake
 				,ValidStake
-				,MemberWinloss
-				,MemberComm
-				,SuperComm
-				,HouseWinloss
-				,HouseComm
-				,HouseTurnover
+				,MemberIncome
+				,Agent
+				,AgentResult
+				,Master
+				,Super
+				,SuperIncome
+				,SuperResult
+				,SuperStock
+				,HeadlineIncome
+				,HeadlineResult
 				,HeadlineStock
 			)
 			SELECT
@@ -204,12 +257,16 @@ BEGIN
 				,SUM(Wagers)			AS Wagers
 				,SUM(Stake)				AS Stake
 				,SUM(ValidStake)		AS ValidStake
-				,SUM(MemberWinloss)		AS MemberWinloss
-				,SUM(MemberComm)		AS MemberComm
-				,SUM(SuperComm)			AS SuperComm
-				,SUM(HouseWinloss)		AS HouseWinloss
-				,SUM(HouseComm)			AS HouseComm
-				,SUM(HouseTurnover)		AS HouseTurnover
+				,SUM(MemberIncome)		AS MemberIncome
+				,SUM(Agent)				AS Agent
+				,SUM(AgentResult)		AS AgentResult
+				,SUM(Master)			AS Master
+				,SUM(Super)				AS Super
+				,SUM(SuperIncome)		AS SuperIncome
+				,SUM(SuperResult)		AS SuperResult
+				,SUM(SuperStock)		AS SuperStock
+				,SUM(HeadlineIncome)	AS HeadlineIncome
+				,SUM(HeadlineResult)	AS HeadlineResult
 				,SUM(HeadlineStock)		AS HeadlineStock
 			FROM #tmpBettrans b
 				CROSS APPLY (
@@ -242,10 +299,10 @@ BEGIN
 		-- End bettrans
 
 		-- CS_SumWinloss
-		IF (@ReportMode = 1 AND @FromDate <= @MoveBetsDay) OR @ReportMode = 2
+		IF @FromDate <= @MoveBetsDay
 		BEGIN
 			SELECT	@FDate = @FromDate
-					,@TDate = CASE WHEN @ReportMode = 1 AND @ToDate > @MoveBetsDay THEN @MoveBetsDay ELSE @ToDate END
+					,@TDate = CASE WHEN @ToDate > @MoveBetsDay THEN @MoveBetsDay ELSE @ToDate END
 
 			IF @FDate <= @TDate
 			BEGIN
@@ -255,30 +312,47 @@ BEGIN
 					,Wagers
 					,Stake
 					,ValidStake
-					,MemberWinloss
-					,MemberComm
-					,SuperComm
-					,HouseWinloss
-					,HouseComm
-					,HouseTurnover
+					,MemberIncome
+					,Agent
+					,AgentResult
+					,Master
+					,Super
+					,SuperIncome
+					,SuperResult
+					,SuperStock
+					,HeadlineIncome
+					,HeadlineResult
 					,HeadlineStock
 				)
 				SELECT
-					cs.CustId
+					CustId
 					,SUM(Wagers)		AS Wagers
 					,SUM(Stake)			AS Stake
 					,SUM(ValidStake)	AS ValidStake
-					,SUM(MemberWinloss) AS MemberWinloss
-					,SUM(MemberComm)	AS MemberComm
-					,SUM(SuperComm)		AS SuperComm
-					,-SUM(HeadlineWinloss + MemberWinloss + AgentWinloss + MasterWinloss + SuperWinloss) AS HouseWinloss
-					,-SUM(HeadlineComm + MemberComm + AgentComm + MasterComm + SuperComm) AS HouseComm
-					,SUM(HouseTurnover) AS HouseTurnover
+					,SUM(MemberWinloss + MemberComm)		AS MemberIncome
+					,SUM(Agent)			AS Agent
+					,SUM(MemberWinloss + MemberComm
+						+ AgentWinloss + AgentComm)			AS AgentResult
+					,SUM(Master)		AS Master
+					,SUM(Super)			AS Super
+					,SUM(SuperWinloss + SuperComm)			AS SuperIncome
+					,SUM(MemberWinloss + MemberComm
+						+ AgentWinloss + AgentComm
+						+ MasterWinloss + MasterComm
+						+ SuperWinloss + SuperComm)			AS SuperResult
+					,SUM(SuperStock)	AS SuperStock
+					,SUM(HeadlineWinloss + HeadlineComm)	AS HeadlineIncome
+					,SUM(MemberWinloss + MemberComm
+						+ AgentWinloss + AgentComm
+						+ MasterWinloss + MasterComm
+						+ SuperWinloss + SuperComm
+						+ HeadlineWinloss + HeadlineComm)	AS HeadlineResult
 					,SUM(HeadlineStock) AS HeadlineStock
-				FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+				FROM #tmpSuper ts
 					CROSS APPLY (
 						SELECT
-							Wagers
+							CustId
+							,Wagers
 							,Stake
 							,ValidStake
 							,MemberWinloss
@@ -291,17 +365,21 @@ BEGIN
 							,MasterComm
 							,SuperComm
 							,HeadlineComm
-							,HouseTurnover
+							,Agent
+							,Master
+							,Super
+							,SuperStock
 							,HeadlineStock
 						FROM bodb_Summary.dbo.CS_SumWinloss s WITH (NOLOCK)
-						WHERE s.custid = cs.custid
+						WHERE s.custid = ts.srecommend
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
+							AND s.WinlostDate BETWEEN ts.FromDate AND ts.ToDate
 							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 							AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
 							AND (@IsLive = 2 OR IsLive = @IsLive)
 					) AS s
 				GROUP BY
-					cs.CustId
+					CustId
 
 				INSERT INTO #SuperWinLoss
 				(
@@ -309,40 +387,50 @@ BEGIN
 					,Wagers
 					,Stake
 					,ValidStake
-					,MemberWinloss
-					,MemberComm
-					,SuperComm
-					,HouseWinloss
-					,HouseComm
-					,HouseTurnover
+					,MemberIncome
+					,Agent
+					,AgentResult
+					,Master
+					,Super
+					,SuperIncome
+					,SuperResult
+					,SuperStock
+					,HeadlineIncome
+					,HeadlineResult
 					,HeadlineStock
 				)
 				SELECT
-					cs.CustId
-					,SUM(Wagers)	AS Wagers
-					,SUM(Stake)		AS Stake
+					CustId
+					,SUM(Wagers)		AS Wagers
+					,SUM(Stake)			AS Stake
 					,0 AS ValidStake
-					,0 AS MemberWinloss
-					,0 AS MemberComm
-					,0 AS SuperComm
-					,0 AS HouseWinloss
-					,0 AS HouseComm
-					,0 AS HouseTurnover
+					,0 AS MemberIncome
+					,0 AS Agent
+					,0 AS AgentResult
+					,0 AS Master
+					,0 AS Super
+					,0 AS SuperIncome
+					,0 AS SuperResult
+					,0 AS SuperStock
+					,0 AS HeadlineIncome
+					,0 AS HeadlineResult
 					,0 AS HeadlineStock
-				FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+				FROM #tmpSuper ts
 					CROSS APPLY (
 						SELECT
-							Wagers
+							CustId
+							,Wagers
 							,Stake
 						FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
-						WHERE s.custid = cs.custid
+						WHERE s.custid = ts.srecommend
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
+							AND s.WinlostDate BETWEEN ts.FromDate AND ts.ToDate
 							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
 							AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
 							AND (@IsLive = 2 OR IsLive = @IsLive)
 					) AS s
 				GROUP BY
-					cs.CustId
+					CustId
 			END
 		END
 		-- End CS_SumWinloss
@@ -351,59 +439,36 @@ BEGIN
 
 	/* ===== Return Data ===== */
 	BEGIN
-		DECLARE @RebateRate FLOAT = 0.1 -- 10% of HeadlineResult
-
-		;WITH CTE_SuperWinLoss AS
-		(
-			SELECT
-				CustId
-				,SUM(Wagers)		AS Wagers
-				,SUM(Stake)			AS Stake
-				,SUM(ValidStake)	AS ValidStake
-				,SUM(MemberWinloss)	AS MemberWinloss
-				,SUM(MemberComm)	AS MemberComm
-				,SUM(MemberWinloss + MemberComm)	AS MemberIncome
-				,SUM(SuperComm)		AS SuperComm
-				,SUM(HouseWinloss)	AS HouseWinloss
-				,SUM(HouseComm)		AS HouseComm
-				,SUM(HouseTurnover)	AS HouseTurnover
-				,SUM(HouseWinloss + HouseComm)		AS HouseIncome
-				,-SUM(HouseWinloss + HouseComm)		AS HeadlineResult
-				,SUM(HeadlineStock)	AS HeadlineStock
-			FROM #SuperWinLoss
-			GROUP BY
-				CustId
-		)
 		SELECT
 			c.CustId
 			,c.Username
+			,c.FirstName			AS Name
 			,SUM(s.Wagers)			AS Wagers
 			,SUM(s.Stake)			AS Stake
 			,SUM(s.ValidStake)		AS ValidStake
-			,SUM(s.MemberWinloss)	AS MemberWinloss
-			,SUM(s.MemberComm)		AS MemberComm
 			,SUM(s.MemberIncome)	AS MemberIncome
-			,SUM(s.SuperComm)		AS SuperComm
-			,SUM(s.HouseWinloss)	AS HouseWinloss
-			,SUM(s.HouseComm)		AS HouseComm
-			,SUM(s.HouseTurnover)	AS HouseTurnover
-			,SUM(s.HouseIncome)		AS HouseIncome
+			,SUM(s.Agent)			AS Agent
+			,SUM(s.AgentResult)		AS AgentResult
+			,SUM(s.Master)			AS Master
+			,SUM(s.Super)			AS Super
+			,SUM(s.SuperIncome)		AS SuperIncome
+			,SUM(s.SuperResult)		AS SuperResult
+			,SUM(s.SuperStock)		AS SuperStock
+			,SUM(s.HeadlineIncome)	AS HeadlineIncome
 			,SUM(s.HeadlineResult)	AS HeadlineResult
 			,SUM(s.HeadlineStock)	AS HeadlineStock
-			,SUM(SIGN(-HeadlineResult) * FLOOR(ABS(HeadlineResult*@RebateRate/100.0))*100.0) AS RebateRoundDown
-		FROM CTE_SuperWinLoss s
-			INNER JOIN dbo.CustSuper cs WITH (NOLOCK) ON s.CustId = cs.custid
-			INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.UplineId = c.custid
-		WHERE c.roleid = 0
-			AND (c.currency <> 20 OR @IsExcludedTest = 0)
+		FROM #SuperWinLoss s
+			INNER JOIN dbo.Customer c WITH (NOLOCK) ON s.custid = c.custid
 		GROUP BY
 			c.CustId
 			,c.Username
+			,c.FirstName
 	END
 	/* ===== End Return Data ===== */
-
+	
 	DROP TABLE #SuperWinLoss
 	DROP TABLE #tblBetType
 	DROP TABLE #tblSportType
+	DROP TABLE #tmpSuper
 END
 GO
