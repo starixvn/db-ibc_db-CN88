@@ -15,6 +15,7 @@ AS
 	
 	Revisions:
 		- 20190812@Percy: Initialize SP [Redmine: #116925]
+		- 20191210@Percy: Apply new column epositiontaking instead of extra PT [RedmineID: #125158]
 		
 	Param's Explanation:
 		- @SporttypeGroup: default = 0: All
@@ -81,16 +82,16 @@ BEGIN
 			,b.eventtype
 			,COUNT(1) AS Wagers
 			,SUM(b.stake) AS Stake
-			,SUM(b.stake * (1 - b.tpositiontaking - ISNULL(e.ExtraPT, 0))) AS HouseTurnover
+			,SUM(b.stake * (1 - b.tpositiontaking - ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0))) AS HouseTurnover
 		FROM dbo.CS_CustSuper cs WITH (NOLOCK)
 			CROSS APPLY (
 				SELECT
 					b.srecommend
 					,CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
 					,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END AS eventtype
-					,bt.ProductID
 					,b.stake
 					,b.tpositiontaking
+					,b.epositiontaking
 					,b.winlostdate
 				FROM dbo.bettrans b WITH (NOLOCK)
 					INNER JOIN #tblBetType bt ON b.bettype = bt.bettype AND bt.RefTable = 0
@@ -107,14 +108,11 @@ BEGIN
 						)
 			) AS b
 			CROSS APPLY (
-				SELECT ag.UplineId, ag.ExtraPT
-				FROM dbo.Acc_GroupExtraPTSetting ag WITH (NOLOCK)
-				WHERE cs.CustId = ag.SuperId
-					AND b.winlostdate BETWEEN ag.FromDate AND ag.ToDate
-					AND b.ProductID = ag.ProductId
-					AND ag.Sporttype = 0
-					AND ag.SubProduct = ''
-			) AS e
+				SELECT TOP 1 e.UplineId
+				FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
+				WHERE b.srecommend = e.SuperId
+					AND b.winlostdate BETWEEN e.FromDate AND e.ToDate
+			) e
 		WHERE b.winlostdate BETWEEN @FromDate AND @ToDate -- prevent using index on winlostdate
 		GROUP BY
 			e.UplineId
@@ -139,16 +137,16 @@ BEGIN
 			,b.eventtype
 			,COUNT(1) AS Wagers
 			,SUM(b.stake) AS Stake
-			,SUM(b.stake * (1 - b.tpositiontaking - ISNULL(e.ExtraPT, 0))) AS HouseTurnover
+			,SUM(b.stake * (1 - b.tpositiontaking - ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0))) AS HouseTurnover
 		FROM dbo.CS_CustSuper cs WITH (NOLOCK)
 			CROSS APPLY (
 				SELECT
 					t.srecommend
 					,CASE WHEN bt.eventtype = 0 THEN 0 ELSE t.eventid END AS matchid
 					,bt.eventtype
-					,bt.ProductID
 					,t.stake
 					,t.tpositiontaking
+					,t.epositiontaking
 					,t.winlostdate
 				FROM dbo.translog t WITH (NOLOCK)
 					INNER JOIN #tblBetType bt ON t.gameId = bt.bettype AND bt.RefTable = 3
@@ -158,14 +156,11 @@ BEGIN
 					AND (@IsLive = 2 OR t.liveindicator = @IsLive)
 			) AS b
 			CROSS APPLY (
-				SELECT ag.UplineId, ag.ExtraPT
-				FROM dbo.Acc_GroupExtraPTSetting ag WITH (NOLOCK)
-				WHERE cs.CustId = ag.SuperId
-					AND b.winlostdate BETWEEN ag.FromDate AND ag.ToDate
-					AND b.ProductID = ag.ProductId
-					AND ag.Sporttype = 0
-					AND ag.SubProduct = ''
-			) AS e
+				SELECT TOP 1 e.UplineId
+				FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
+				WHERE b.srecommend = e.SuperId
+					AND b.winlostdate BETWEEN e.FromDate AND e.ToDate
+			) e
 		GROUP BY
 			e.UplineId
 			,b.matchid
