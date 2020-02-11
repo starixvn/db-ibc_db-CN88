@@ -232,6 +232,7 @@ BEGIN
 							s.custid
 						FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
 						WHERE s.custid = c.custid
+							AND s.HeadlineId = @HeadlineId
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
 							AND EXISTS (SELECT 1 FROM @tblWinlostDate wld WHERE s.winlostdate BETWEEN wld.FromDate AND wld.ToDate)
 							AND EXISTS (SELECT 1 FROM #tblBetType bt WHERE s.Bettype = bt.BetType)
