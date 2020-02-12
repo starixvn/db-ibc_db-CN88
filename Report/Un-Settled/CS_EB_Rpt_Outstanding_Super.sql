@@ -17,6 +17,7 @@ AS
 	
 	Revisions:
 		- 20190926@Percy: Initialize SP [Redmine: #118962]
+		- 20200212@Percy: Fix wrong get setting from ExtraPT table [RedmineID: #128366]
 		
 	Param's Explanation:
 		- @HeadlineId: 0: All Headlines, <> 0: HeadlineId
@@ -50,16 +51,20 @@ BEGIN
 	BEGIN
 		CREATE TABLE #tmpSuper (UplineId INT, srecommend INT, FromDate SMALLDATETIME, ToDate SMALLDATETIME)
 		INSERT INTO #tmpSuper (UplineId, srecommend, FromDate, ToDate)
-		SELECT DISTINCT e.UplineId, custid, CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
+		SELECT e.UplineId, cs.custid, CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
 		FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+			INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.custid = c.custid
 			CROSS APPLY (
-				SELECT DISTINCT UplineId, FromDate, ToDate
+				SELECT UplineId, FromDate, ToDate
 				FROM dbo.Acc_GroupExtraPTSetting s WITH (NOLOCK)
 				WHERE cs.custid = s.SuperId
+					AND s.ProductId = 1
+					AND s.Sporttype = 0
+					AND s.SubProduct = ''
 					AND @FromDate <= ToDate AND @ToDate >= FromDate
-					AND (@HeadlineId = 0 OR UplineId = @HeadlineId)
+					AND (@HeadlineId = 0 OR s.UplineId = @HeadlineId)
 			) AS e
-		
+		WHERE (c.currency <> 20 OR @IsExcludedTest = 0)
 	END
 	/* ===== End Get Super Info ===== */
 
