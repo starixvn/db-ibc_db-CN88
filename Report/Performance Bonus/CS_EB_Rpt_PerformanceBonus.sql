@@ -18,6 +18,7 @@ AS
 		- 20190918@Percy: Initialize SP [RedmineID: #119020]
 		- 20190926@Percy: Get UplineId (HeadlineId) from sum tables instead of CustSuper [Redmine: #118962]
 		- 20191210@Percy: Add @SporttypeGroups for drop down Sports [RedmineID: #124603]
+		- 20200212@Percy: Fix filter by conjunction [RedmineID: #128372]
 
 	Param's Explanation:
 		@Conjunction:
@@ -125,7 +126,7 @@ BEGIN
 				(
 					d.HeadlineStock >= @HeadlineStock
 					OR @SuperUsernames = ''
-					OR EXISTS (SELECT 1 FROM #Super s WHERE c.CustId = d.CustId)
+					OR EXISTS (SELECT 1 FROM #Super s WHERE c.CustId = s.CustId)
 				)
 			)
 		
