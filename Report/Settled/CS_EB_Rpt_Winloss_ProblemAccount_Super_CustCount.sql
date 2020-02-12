@@ -52,7 +52,7 @@ BEGIN
 		CREATE TABLE #tmpSuper (UplineId INT, srecommend INT, FromDate SMALLDATETIME, ToDate SMALLDATETIME)
 		INSERT INTO #tmpSuper (UplineId, srecommend, FromDate, ToDate)
 		SELECT e.UplineId, cs.custid, CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
-		FROM dbo.CustSuper cs WITH (NOLOCK)
+		FROM dbo.CS_CustSuper cs WITH (NOLOCK)
 			INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.custid = c.custid
 			CROSS APPLY (
 				SELECT UplineId, FromDate, ToDate
@@ -73,9 +73,10 @@ BEGIN
 		CREATE TABLE #MemberProblemAccount (srecommend INT, mrecommend INT, recommend INT, custid INT)
 		INSERT INTO #MemberProblemAccount (srecommend, mrecommend, recommend, custid)
 		SELECT c.srecommend, c.mrecommend, c.recommend, pa.custid
-		FROM #tmpSuper ts
-			INNER JOIN dbo.Customer c WITH (NOLOCK) ON ts.srecommend = c.srecommend AND c.roleid = 1
+		FROM dbo.Customer c WITH (NOLOCK)
 			INNER JOIN dbo.CS_ProblemAccount pa WITH (NOLOCK) ON c.custid = pa.custid
+		WHERE EXISTS (SELECT 1 FROM #tmpSuper ts WHERE ts.srecommend = c.srecommend)
+			AND c.roleid = 1
 	END
 	/* ===== End Get Member Problem Account Info ===== */
 
