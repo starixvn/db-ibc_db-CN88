@@ -27,6 +27,7 @@ AS
 		- 20190801@Percy: Change way get ExtraPT amount [RedmineID: #117909]
 		- 20190821@Percy: Change single SportTypeGroup to multiple [RedmineID: #118833]
 		- 20191021@Percy: Include Void/Reject/Refund tickets [RedmineID: #120802]
+		- 20191210@Percy: Apply new column epositiontaking instead of extra PT [RedmineID: #125158]
 		
 	Param's Explanation:
 		- @CustId: SuperID or HeadlineID 
@@ -56,16 +57,16 @@ BEGIN
 		INSERT INTO #tblSportType (SportType)
 		SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest)
 
-		CREATE TABLE #tblBetType (ProductId INT, BetType INT, EventType TINYINT)
-		INSERT INTO #tblBetType (ProductId, BetType, EventType)
-		SELECT DISTINCT ProductId, BetType, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest)
+		CREATE TABLE #tblBetType (BetType INT, EventType TINYINT)
+		INSERT INTO #tblBetType (BetType, EventType)
+		SELECT DISTINCT BetType, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SportTypeGroups, @BetTypeGroup, @IsTest)
 	END
 	/* ===== End Get SportBettypeMatrix ===== */
 
 	/* ===== Get Customer List ===== */
 	BEGIN
 		DECLARE @CustList  TABLE (CustId INT)
-		DECLARE @Customers TABLE (CustId INT, ProductId INT, ExtraPT DECIMAL(9,8), FromDate DATETIME, ToDate DATETIME, RowNum INT)
+		DECLARE @Customers TABLE (CustId INT, FromDate DATETIME, ToDate DATETIME)
 		DECLARE @Downlines TABLE (DownlineId INT)
 		
 		IF @IsOwner = 1 -- View owner
@@ -93,63 +94,40 @@ BEGIN
 			ELSE
 			BEGIN
 				INSERT INTO @CustList (CustId)
-				SELECT CustId
-				FROM dbo.CustSuper WITH (NOLOCK)
-				WHERE UplineId = @CustId
+				SELECT cs.CustId
+				FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+				WHERE EXISTS (
+					SELECT TOP 1 e.SuperId
+					FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
+					WHERE e.SuperId = cs.CustId
+						AND e.ProductId = 1
+						AND e.Sporttype = 0
+						AND e.SubProduct = ''
+						AND @FromDate <= e.ToDate
+						AND @ToDate >= e.FromDate
+						AND e.UplineId = @CustId
+				)
 			END
 
 			SELECT @IsAllDownline = 1
 		END
 
-		INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate, RowNum)
-		SELECT SuperId, ProductId, ExtraPT, FromDate, ToDate, ROW_NUMBER() OVER(PARTITION BY SuperId, ProductId ORDER BY FromDate) AS RowNum
+		INSERT INTO @Customers (CustId, FromDate, ToDate)
+		SELECT SuperId, FromDate, ToDate
 		FROM @CustList c
 			CROSS APPLY (
-				SELECT DISTINCT e.SuperId, e.ProductId, e.ExtraPT
-						,CASE WHEN e.FromDate < @FromDate THEN @FromDate ELSE e.FromDate END AS FromDate
-						,CASE WHEN e.ToDate > @ToDate THEN @ToDate ELSE e.ToDate END AS ToDate
+				SELECT
+					e.SuperId
+					,CASE WHEN e.FromDate < @FromDate THEN @FromDate ELSE e.FromDate END AS FromDate
+					,CASE WHEN e.ToDate > @ToDate THEN @ToDate ELSE e.ToDate END AS ToDate
 				FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
 				WHERE e.SuperId = c.CustId
+					AND e.ProductId = 1
 					AND e.Sporttype = 0
 					AND e.SubProduct = ''
 					AND @FromDate <= e.ToDate
 					AND @ToDate >= e.FromDate
 			) AS e
-
-		DELETE c
-		FROM @Customers c
-		WHERE NOT EXISTS (SELECT 1 FROM #tblBetType bt WHERE c.ProductId = bt.ProductId)
-
-		INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate)
-		SELECT CustId, ProductId, 0 AS ExtraPT, FromDate, ToDate
-		FROM (
-			SELECT
-				ISNULL(c1.CustId, c2.CustId) AS CustId
-				,ISNULL(c1.ProductId, c2.ProductId) AS ProductId
-				,CASE	WHEN c1.FromDate IS NULL THEN @FromDate
-						WHEN c2.FromDate IS NULL THEN DATEADD(DAY, 1, c1.ToDate)
-						ELSE DATEADD(DAY, 1, c1.ToDate)
-						END AS FromDate
-				,CASE	WHEN c1.ToDate IS NULL THEN DATEADD(DAY, -1, c2.FromDate)
-						WHEN c2.ToDate IS NULL THEN @ToDate
-						ELSE DATEADD(DAY, -1, c2.FromDate)
-						END AS ToDate
-			FROM @Customers c1
-				FULL OUTER JOIN @Customers c2 ON c1.CustId = c2.CustId AND c1.ProductId = c2.ProductId AND c1.RowNum + 1 = c2.RowNum
-		) AS c
-		WHERE FromDate <= ToDate
-
-		-- Products not have setting ExtraPT on this date range
-		DECLARE @Products TABLE (ProductId INT)
-		INSERT INTO @Products (ProductId)
-		SELECT DISTINCT ProductId FROM #tblBetType
-
-		INSERT INTO @Customers (CustId, ProductId, ExtraPT, FromDate, ToDate)
-		SELECT l.CustId, p.ProductId, 0 AS ExtraPT, @FromDate, @ToDate
-		FROM @CustList l
-			CROSS APPLY (
-				SELECT p.ProductId FROM @Products p WHERE NOT EXISTS (SELECT 1 FROM @Customers c WHERE c.ProductID = p.ProductID AND c.CustId = l.CustId)
-			) AS p
 	END
 	/* ===== End Get Customer List ===== */
 
@@ -241,11 +219,11 @@ BEGIN
 				,SUM(b.swinlost + b.scomm - b.acomm) AS SuperIncome
 				,SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost + b.scomm) AS SuperResult
 				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking)) AS SuperStock
-				,-SUM(CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE (b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking)) * c.ExtraPT END) AS HeadlineIncome
+				,-SUM(CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE (b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking)) * ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0) END) AS HeadlineIncome
 				,SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost + b.scomm
-					- CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE (b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking)) * c.ExtraPT END
+					- CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE (b.winlost - b.actual_stake + b.scomm / (1 - b.tpositiontaking)) * ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0) END
 					) AS HeadlineResult
-				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - c.ExtraPT)) AS HeadlineStock
+				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0))) AS HeadlineStock
 			FROM @Customers c
 				CROSS APPLY (
 					SELECT TOP (@n)
@@ -268,6 +246,7 @@ BEGIN
 						,b.apositiontaking
 						,b.mpositiontaking
 						,b.tpositiontaking
+						,b.epositiontaking
 					FROM dbo.bettrans b WITH (NOLOCK)
 						OUTER APPLY (
 							SELECT TOP 1 bm.matchid
@@ -284,7 +263,7 @@ BEGIN
 							OR (b.bettype NOT IN (29, 2799) AND b.liveindicator = @IsLive)
 						)
 				) AS b
-				INNER JOIN #tblBetType bt ON b.bettype = bt.bettype AND bt.ProductId = c.ProductId
+				INNER JOIN #tblBetType bt ON b.bettype = bt.bettype
 			GROUP BY
 				b.srecommend
 				,b.matchid

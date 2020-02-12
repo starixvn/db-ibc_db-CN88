@@ -17,6 +17,7 @@ AS
 	
 	Revisions:
 		- 20190926@Percy: Initialize SP [Redmine: #118962]
+		- 20191210@Percy: Apply new column epositiontaking instead of extra PT [RedmineID: #125158]
 		
 	Param's Explanation:
 		- @ReportMode: 1: current, 2: history
@@ -39,9 +40,9 @@ BEGIN
 		INSERT INTO #tblSportType (SportType)
 		SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroups, @BetTypeGroup, @IsTest)
 
-		CREATE TABLE #tblBetType (ProductID INT, BetType INT, EventType TINYINT)
-		INSERT INTO #tblBetType (ProductID, BetType, EventType)
-		SELECT DISTINCT ProductID, BetType, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SporttypeGroups, @BetTypeGroup, @IsTest)
+		CREATE TABLE #tblBetType (BetType INT, EventType TINYINT)
+		INSERT INTO #tblBetType (BetType, EventType)
+		SELECT DISTINCT BetType, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SporttypeGroups, @BetTypeGroup, @IsTest)
 	END
 	/* ===== End Get Sport/Bettype ===== */
 
@@ -131,17 +132,17 @@ BEGIN
 				,SUM(b.winlost - b.actual_stake) AS MemberWinloss
 				,SUM(b.playercomm) AS MemberComm
 				,SUM(b.scomm - b.acomm) AS SuperComm
-				,-SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * ISNULL(e.ExtraPT, 0))) AS HouseWinloss
-				,-SUM(b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * ISNULL(e.ExtraPT, 0) END) AS HouseComm
-				,SUM(b.stake * (1 - b.tpositiontaking - ISNULL(e.ExtraPT, 0))) AS HouseTurnover
-				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - ISNULL(e.ExtraPT, 0))) AS HeadlineStock
+				,-SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0))) AS HouseWinloss
+				,-SUM(b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0) END) AS HouseComm
+				,SUM(b.stake * (1 - b.tpositiontaking - ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0))) AS HouseTurnover
+				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0))) AS HeadlineStock
 			FROM dbo.CS_CustSuper cs WITH (NOLOCK)
 				CROSS APPLY (
 					SELECT
-						CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
+						b.srecommend
+						,CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
 						,b.bettype
 						,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END AS eventtype
-						,bt.ProductID
 						,b.stake
 						,b.winlost
 						,b.actual_stake
@@ -152,6 +153,7 @@ BEGIN
 						,b.scomm
 						,b.acomm
 						,b.tpositiontaking
+						,b.epositiontaking
 						,b.winlostdate
 					FROM dbo.bettrans b WITH (NOLOCK)
 						INNER JOIN #tblBetType bt ON b.bettype = bt.bettype
@@ -168,15 +170,12 @@ BEGIN
 							)
 						AND (@IsExcludedTest = 0 OR b.currency <> 20)
 				) AS b
-				CROSS APPLY (
-					SELECT ag.UplineId, ag.ExtraPT
-					FROM dbo.Acc_GroupExtraPTSetting ag WITH (NOLOCK)
-					WHERE cs.CustId = ag.SuperId
-						AND b.winlostdate BETWEEN ag.FromDate AND ag.ToDate
-						AND b.ProductID = ag.ProductId
-						AND ag.Sporttype = 0
-						AND ag.SubProduct = ''
-				) AS e
+			CROSS APPLY (
+				SELECT TOP 1 e.UplineId
+				FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
+				WHERE b.srecommend = e.SuperId
+					AND b.winlostdate BETWEEN e.FromDate AND e.ToDate
+			) e
 			GROUP BY
 				e.UplineId
 				,b.matchid

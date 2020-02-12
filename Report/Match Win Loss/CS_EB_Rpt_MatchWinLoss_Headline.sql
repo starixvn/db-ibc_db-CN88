@@ -15,6 +15,7 @@ AS
 
 	Revisions:
 		- 20190926@Percy: Initiliaze SP [RedmineID: #120802]
+		- 20191210@Percy: Apply new column epositiontaking instead of extra PT [RedmineID: #125158]
 */
 
 BEGIN
@@ -41,32 +42,6 @@ BEGIN
 		INNER JOIN #tblSportType st ON bt.ProductID = st.ProductID
 	WHERE bt.ProductID IN (3,8,28,5,27)
 
-	DECLARE @ExtraPT TABLE (SuperID INT, ProductID INT, ExtraPT DECIMAL(9,8), winlostdate SMALLDATETIME)
-	INSERT INTO @ExtraPT (SuperID, ProductID, ExtraPT, winlostdate)
-	SELECT cs.CustID, e.ProductID, ISNULL(e.ExtraPT, 0), @WinlostDate
-	FROM dbo.CS_CustSuper cs WITH (NOLOCK)
-		CROSS APPLY (
-			SELECT ProductId, MAX(ExtraPT) AS ExtraPT
-			FROM (
-				SELECT DISTINCT e.ProductID, e.ExtraPT
-				FROM dbo.Acc_GroupExtraPTSetting e WITH (NOLOCK)
-				WHERE cs.CustId = e.SuperId
-					AND e.Sporttype = 0
-					AND e.SubProduct = ''
-					AND @WinlostDate BETWEEN e.FromDate AND e.ToDate
-
-				UNION ALL
-				SELECT DISTINCT ProductID AS ProductID, 0 AS ExtraPT
-				FROM #tblBetType
-			) AS r
-			GROUP BY ProductId
-		) AS e
-
-	DELETE e
-	FROM @ExtraPT e
-	WHERE ProductID <> 0
-		AND NOT EXISTS (SELECT 1 FROM #tblBetType bt WHERE e.ProductID = bt.ProductID)
-
 	CREATE TABLE #tmpBettrans
 	(
 		matchid			INT
@@ -85,6 +60,21 @@ BEGIN
 
 	IF @WinlostDate > @MoveBetsDay
 	BEGIN
+		-- For VS Parlay (bettype = 2799)
+		IF OBJECT_ID('tempdb..#__refno') IS NOT NULL
+			DROP TABLE #__refno
+
+		SELECT b.refno, b.matchid
+		INTO #__refno
+		FROM dbo.CS_CustSuper c WITH (NOLOCK)
+			CROSS APPLY (
+				SELECT b.refno, bm.matchid
+				FROM dbo.bettrans b WITH (NOLOCK)
+					CROSS APPLY (SELECT TOP 1 bm.matchid FROM dbo.bettransm bm WITH (NOLOCK) WHERE b.refno = bm.refno) AS bm
+				WHERE c.custid = b.srecommend AND b.matchid = 2799 AND b.winlostdate = @WinlostDate
+					AND b.statusID NOT IN (0, 1)
+		) AS b
+
 		INSERT INTO #tmpBettrans
 		(
 			matchid
@@ -112,11 +102,11 @@ BEGIN
 			,SUM(ABS(b.winlost - b.actual_stake)) AS ValidStake
 			,SUM(b.winlost - b.actual_stake + b.playercomm) AS MemberIncome
 			,-SUM( -- HouseIncome = HouseWinloss + HouseComm
-				b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * e.ExtraPT) -- HouseWinloss
-				+ b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * e.ExtraPT END -- HouseComm
+				b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0)) -- HouseWinloss
+				+ b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0) END -- HouseComm
 				) AS HouseIncome
-			,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - e.ExtraPT)) AS HeadlineStock
-		FROM @ExtraPT e
+			,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0))) AS HeadlineStock
+		FROM dbo.CS_CustSuper cs WITH (NOLOCK)
 			CROSS APPLY (
 				SELECT TOP (@n)
 					CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
@@ -130,13 +120,13 @@ BEGIN
 					,b.swinlost
 					,b.scomm
 					,b.tpositiontaking
+					,b.epositiontaking
 				FROM dbo.bettrans b WITH (NOLOCK)
 					OUTER APPLY (
-						SELECT TOP 1 bm.matchid
-						FROM dbo.bettransm bm WITH (NOLOCK)
-						WHERE b.refno = bm.refno AND b.bettype = 2799
+						SELECT r.matchid FROM #__refno r WHERE b.refno = r.refno AND b.bettype = 2799
 					) AS s
-				WHERE e.SuperID = b.srecommend AND e.WinlostDate = b.winlostdate
+				WHERE b.srecommend = cs.CustId
+					AND b.winlostdate = @WinlostDate
 					AND b.statusID NOT IN (0, 1)
 					AND (
 							@IsLive = 2
@@ -146,7 +136,7 @@ BEGIN
 						)
 					AND (@IsExcludedTest = 0 OR b.currency <> 20)
 			) AS b
-			INNER JOIN #tblBetType bt ON b.bettype = bt.bettype AND e.ProductID = bt.ProductID
+			INNER JOIN #tblBetType bt ON b.bettype = bt.bettype
 		GROUP BY
 			b.matchid
 			,b.bettype
@@ -155,6 +145,8 @@ BEGIN
 			,bt.IsNonSports
 			,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END
 		OPTION (HASH GROUP, OPTIMIZE FOR (@n = 1))
+
+		DROP TABLE #__refno
 
 		SELECT
 			m.leagueid, m.matchid, m.homeid, m.awayid, b.bettypegroup, b.IsNonSports
@@ -197,6 +189,21 @@ BEGIN
 	END
 	ELSE
 	BEGIN
+		-- For VS Parlay (bettype = 2799)
+		IF OBJECT_ID('tempdb..#__refno14') IS NOT NULL
+			DROP TABLE #__refno14
+
+		SELECT b.refno, b.matchid
+		INTO #__refno14
+		FROM dbo.CS_CustSuper c WITH (NOLOCK)
+			CROSS APPLY (
+				SELECT b.refno, bm.matchid
+				FROM dbo.bettrans14 b WITH (NOLOCK)
+					CROSS APPLY (SELECT TOP 1 bm.matchid FROM dbo.bettransm14 bm WITH (NOLOCK) WHERE b.refno = bm.refno) AS bm
+				WHERE c.custid = b.srecommend AND b.matchid = 2799 AND b.winlostdate = @WinlostDate
+					AND b.statusID NOT IN (0, 1)
+		) AS b
+
 		INSERT INTO #tmpBettrans
 		(
 			matchid
@@ -224,11 +231,11 @@ BEGIN
 			,SUM(ABS(b.winlost - b.actual_stake)) AS ValidStake
 			,SUM(b.winlost - b.actual_stake + b.playercomm) AS MemberIncome
 			,-SUM( -- HouseIncome = HouseWinloss + HouseComm
-				b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * e.ExtraPT) -- HouseWinloss
-				+ b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * e.ExtraPT END -- HouseComm
+				b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0)) -- HouseWinloss
+				+ b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0) END -- HouseComm
 				) AS HouseIncome
-			,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - e.ExtraPT)) AS HeadlineStock
-		FROM @ExtraPT e
+			,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0))) AS HeadlineStock
+		FROM dbo.CS_CustSuper cs WITH (NOLOCK)
 			CROSS APPLY (
 				SELECT TOP (@n)
 					CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
@@ -242,13 +249,13 @@ BEGIN
 					,b.swinlost
 					,b.scomm
 					,b.tpositiontaking
+					,b.epositiontaking
 				FROM dbo.bettrans14 b WITH (NOLOCK, INDEX = IX_srecommend)
 					OUTER APPLY (
-						SELECT TOP 1 bm.matchid
-						FROM dbo.bettransm14 bm WITH (NOLOCK)
-						WHERE b.refno = bm.refno AND b.bettype = 2799
+						SELECT r.matchid FROM #__refno14 r WHERE b.refno = r.refno AND b.bettype = 2799
 					) AS s
-				WHERE e.SuperID = b.srecommend AND e.WinlostDate = b.winlostdate
+				WHERE b.srecommend = cs.CustId
+					AND b.winlostdate = @WinlostDate
 					AND b.statusID NOT IN (0, 1)
 					AND (
 							@IsLive = 2
@@ -258,7 +265,7 @@ BEGIN
 						)
 					AND (@IsExcludedTest = 0 OR b.currency <> 20)
 			) AS b
-			INNER JOIN #tblBetType bt ON b.bettype = bt.bettype AND e.ProductID = bt.ProductID
+			INNER JOIN #tblBetType bt ON b.bettype = bt.bettype
 		GROUP BY
 			b.matchid
 			,b.bettype
@@ -267,6 +274,8 @@ BEGIN
 			,bt.IsNonSports
 			,CASE WHEN b.bettype = 2799 THEN 1 ELSE bt.eventtype END
 		OPTION (HASH GROUP, OPTIMIZE FOR (@n = 1))
+
+		DROP TABLE #__refno14
 
 		SELECT
 			m.leagueid, m.matchid, m.homeid, m.awayid, b.bettypegroup, b.IsNonSports
