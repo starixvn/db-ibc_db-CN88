@@ -3,6 +3,7 @@ ALTER PROCEDURE [dbo].[CS_EB_Rpt_PerformanceBonus]
 	@FromDate			SMALLDATETIME
 	,@ToDate			SMALLDATETIME
 	,@Currency			INT
+	,@SporttypeGroups	VARCHAR(MAX) = '0' -- all
 	,@HeadlineStock		MONEY = 0
 	,@SuperUsernames	VARCHAR(MAX) = ''
 	,@Conjunction		BIT = 0
@@ -16,6 +17,7 @@ AS
 	Revisions:
 		- 20190918@Percy: Initialize SP [RedmineID: #119020]
 		- 20190926@Percy: Get UplineId (HeadlineId) from sum tables instead of CustSuper [Redmine: #118962]
+		- 20191210@Percy: Add @SporttypeGroups for drop down Sports [RedmineID: #124603]
 
 	Param's Explanation:
 		@Conjunction:
@@ -23,10 +25,18 @@ AS
 			1: OR	(>= @HeadlineStock OR @SuperUsernames)
 		@HeadlineStock: >= @HeadlineStock
 		@SuperUsernames: list of super usernames
+		@SporttypeGroups: default = 0: All
 */
 
 BEGIN
 	SET NOCOUNT ON
+
+	DECLARE @IsTest BIT = 0
+	SELECT  @IsTest = dbo.f_CheckSPVersion(@@PROCID)
+
+	CREATE TABLE #tblSportType (SportType INT)
+	INSERT INTO #tblSportType (SportType)
+	SELECT DISTINCT SportType FROM dbo.CS_f_SporttypeMatrix_Sel (0, @SporttypeGroups, '0', @IsTest)
 
 	SELECT @SuperUsernames = ISNULL(@SuperUsernames, '')
 
@@ -55,6 +65,7 @@ BEGIN
 				FROM bodb_Summary.dbo.CS_SumWinloss cs WITH (NOLOCK)
 				WHERE cs.CustID = s.CustId
 					AND cs.WinlostDate BETWEEN @FromDate AND @ToDate
+					AND EXISTS (SELECT 1 FROM #tblSportType st WHERE cs.Sporttype = st.SportType)
 				GROUP BY cs.HeadlineId
 				HAVING SUM(cs.HeadlineStock) >= @HeadlineStock
 			) AS cs
@@ -89,6 +100,7 @@ BEGIN
 				FROM bodb_Summary.dbo.CS_SumWinloss cs WITH (NOLOCK)
 				WHERE cs.CustID = s.CustId
 					AND cs.WinlostDate BETWEEN @FromDate AND @ToDate
+					AND EXISTS (SELECT 1 FROM #tblSportType st WHERE cs.Sporttype = st.SportType)
 				GROUP BY cs.CustID, cs.HeadlineId
 			) AS cs
 
@@ -121,5 +133,6 @@ BEGIN
 	END
 
 	DROP TABLE #Super
+	DROP TABLE #tblSportType
 END
 GO
