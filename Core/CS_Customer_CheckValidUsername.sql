@@ -12,6 +12,7 @@ AS
 
 	Revisions:
 		- 20190918@Percy: Initialize SP [RedmineID: #119020]
+		- 20200210@Malcolm : New group of Headline XPG - Changes on EB [RedmineID : #127209]
 
 	Param's Explanation:
 		@Usernames: List of usernames
@@ -38,7 +39,7 @@ BEGIN
 	
 	SELECT @InvalidUsernames = COALESCE(@InvalidUsernames + ',', '') + Username
 	FROM @tblCustomer
-	WHERE RoleId IS NULL OR RoleId <> @RoleId
+	WHERE RoleId IS NULL OR RoleId <> @RoleId OR Username like 'XP%'
 
 	SELECT @InvalidUsernames = ISNULL(@InvalidUsernames, '')
 END
