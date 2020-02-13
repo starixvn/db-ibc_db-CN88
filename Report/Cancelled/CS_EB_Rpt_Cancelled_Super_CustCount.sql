@@ -10,6 +10,7 @@ ALTER PROCEDURE [dbo].[CS_EB_Rpt_Cancelled_Super_CustCount]
 	,@IsLive			TINYINT = 2  -- all
 	,@IsExcludedTest	BIT = 1
 	,@ReportType 		TINYINT = 1
+	,@IsHeadLineGroup   SMALLINT = 0 -- all
 AS
 
 /*
@@ -30,6 +31,9 @@ AS
 									= 0: Dead
 		- @ReportType:	= 1: Cancelled
 						= 2: Abnormal Bet
+		- @IsHeadLineGroup: default = 0: all headlines
+		                            = 1: XPG headlines
+									= 2: Other headlines
 */
 
 BEGIN
@@ -50,12 +54,26 @@ BEGIN
 	END
 	/* ===== End Get Sport/Bettype ===== */
 
+	/* ===== Get Cust Super ===== */
+	BEGIN
+	     CREATE TABLE #CS_CustSuper(CustID INT NOT NULL PRIMARY KEY, UplineId INT NULL)
+
+		 INSERT INTO #CS_CustSuper(CustID, UplineId)
+		 SELECT c.CustId, cs.UplineId
+	     FROM dbo.CS_CustSuper c 
+		      INNER JOIN CustSuper cs ON c.CustId = cs.custid
+		      LEFT JOIN dbo.f_GetHeadlineNoPT() f ON c.CustId = f.SuperId
+		 WHERE @IsHeadLineGroup = 0 OR (@IsHeadLineGroup = 1 AND f.SuperId IS NOT NULL) OR (@IsHeadLineGroup = 2 AND f.SuperId IS NULL)
+	END 
+
+	/* ===== Get Super Info ===== */
+
 	/* ===== Get Super Info ===== */
 	BEGIN
 		CREATE TABLE #tmpSuper (UplineId INT, srecommend INT, FromDate SMALLDATETIME, ToDate SMALLDATETIME)
 		INSERT INTO #tmpSuper (UplineId, srecommend, FromDate, ToDate)
 		SELECT e.UplineId, cs.custid, CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
-		FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+		FROM #CS_CustSuper cs WITH (NOLOCK)
 			INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.custid = c.custid
 			CROSS APPLY (
 				SELECT UplineId, FromDate, ToDate
@@ -281,5 +299,6 @@ BEGIN
 	DROP TABLE #tblBetType
 	DROP TABLE #tblSportType
 	DROP TABLE #tmpSuper
+	DROP TABLE #CS_CustSuper
 END
 GO
