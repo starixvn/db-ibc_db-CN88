@@ -17,6 +17,7 @@ AS
 	
 	Revisions:
 		- 20190926@Percy: Initialize SP [Redmine: #118962]
+		- 20200212@Percy: Fix wrong get setting from ExtraPT table [RedmineID: #128366]
 		
 	Param's Explanation:
 		- @HeadlineId: HeadlineId
@@ -53,9 +54,13 @@ BEGIN
 
 		DECLARE @tblWinlostDate TABLE (FromDate SMALLDATETIME, ToDate SMALLDATETIME)
 		INSERT INTO @tblWinlostDate (FromDate, ToDate)
-		SELECT DISTINCT CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
+		SELECT CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
 		FROM dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
-		WHERE UplineId = @HeadlineId AND @FromDate <= ToDate AND @ToDate >= FromDate
+		WHERE UplineId = @HeadlineId
+			AND ProductId = 1
+			AND Sporttype = 0
+			AND SubProduct = ''
+			AND @FromDate <= ToDate AND @ToDate >= FromDate
 			AND SuperId = @SuperId
 	END
 	/* ===== End Get date range when Super is belong to Headline ===== */
