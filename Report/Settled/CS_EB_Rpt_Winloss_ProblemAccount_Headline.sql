@@ -8,6 +8,7 @@ ALTER PROCEDURE [dbo].[CS_EB_Rpt_Winloss_ProblemAccount_Headline]
 	,@BettypeGroup		SMALLINT = 0 -- all
 	,@IsLive			TINYINT = 2  -- all
 	,@IsExcludedTest	BIT = 1
+	,@IsHeadLineGroup   SMALLINT = 0 -- all
 AS
 
 /*
@@ -26,6 +27,9 @@ AS
 		- @IsLive: (market) default = 2: All
 									= 1: Live
 									= 0: Dead
+		- @IsHeadLineGroup: default = 0: all headlines
+		                            = 1: XPG headlines
+									= 2: Other headlines
 */
 
 BEGIN
@@ -45,6 +49,18 @@ BEGIN
 		SELECT DISTINCT ProductID, BetType, EventType FROM dbo.CS_f_BettypeMatrix_Sel (0, @SporttypeGroups, @BetTypeGroup, @IsTest)
 	END
 	/* ===== End Get Sport/Bettype ===== */
+
+	/* ===== Get Cust Super ===== */
+	BEGIN
+	     CREATE TABLE #CS_CustSuper(CustID INT NOT NULL PRIMARY KEY)
+
+		 INSERT INTO #CS_CustSuper(CustID)
+		 SELECT c.CustId
+	     FROM dbo.CS_CustSuper c 
+		      LEFT JOIN dbo.f_GetHeadlineNoPT() f ON c.CustId = f.SuperId
+		 WHERE @IsHeadLineGroup = 0 OR (@IsHeadLineGroup = 1 AND f.SuperId IS NOT NULL) OR (@IsHeadLineGroup = 2 AND f.SuperId IS NULL)
+	END 
+	/* ===== Get End Cust Super ===== */
 
 	/* ===== Get Data ===== */
 	BEGIN
@@ -97,7 +113,7 @@ BEGIN
 			-- For VS Parlay (bettype = 2799)
 			SELECT b.refno, b.matchid
 			INTO #__refno
-			FROM dbo.CS_CustSuper c WITH (NOLOCK)
+			FROM #CS_CustSuper c WITH (NOLOCK)
 				CROSS APPLY (
 					SELECT b.refno, bm.matchid
 					FROM dbo.bettrans b WITH (NOLOCK)
@@ -136,7 +152,7 @@ BEGIN
 				,-SUM(b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0) END) AS HouseComm
 				,SUM(b.stake * (1 - b.tpositiontaking - ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0))) AS HouseTurnover
 				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0))) AS HeadlineStock
-			FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+			FROM #CS_CustSuper cs WITH (NOLOCK)
 				CROSS APPLY (
 					SELECT
 						CASE WHEN b.bettype = 2799 THEN s.matchid ELSE b.matchid END AS matchid
@@ -304,7 +320,8 @@ BEGIN
 							AND EXISTS (SELECT 1 FROM #tblSportType st WHERE s.Sporttype = st.SportType)
 							AND (@IsLive = 2 OR IsLive = @IsLive)
 					) AS s
-				WHERE (c.currency <> 20 OR @IsExcludedTest = 0)
+				WHERE (c.currency <> 20 OR @IsExcludedTest = 0) 
+				      AND EXISTS(SELECT 1 FROM #CS_CustSuper cs_ WHERE cs_.CustID = c.srecommend)
 				GROUP BY
 					s.UplineId
 
@@ -350,6 +367,7 @@ BEGIN
 							AND (@IsLive = 2 OR IsLive = @IsLive)
 					) AS s
 				WHERE (c.currency <> 20 OR @IsExcludedTest = 0)
+				       AND EXISTS(SELECT 1 FROM #CS_CustSuper cs_ WHERE cs_.CustID = c.srecommend)
 				GROUP BY
 					s.UplineId
 			END
