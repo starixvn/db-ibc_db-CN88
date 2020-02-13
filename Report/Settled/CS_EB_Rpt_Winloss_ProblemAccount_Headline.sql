@@ -18,6 +18,7 @@ AS
 	
 	Revisions:
 		- 20191021@Percy: Initialize SP [Redmine: #122191]
+		- 20200210@Malcolm : New group of Headline XPG - Changes on EB [RedmineID : #127209]
 		- 20200212@Percy: Missing HouseTurnover on CS_SumCancelled [RedmineID: #128441]
 		
 	Param's Explanation:

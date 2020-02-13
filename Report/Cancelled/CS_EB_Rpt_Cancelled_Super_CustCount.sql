@@ -20,6 +20,7 @@ AS
 	
 	Revisions:
 		- 20191210@Percy: Initiliaze SP [RedmineID: #125186]
+		- 20200210@Malcolm : New group of Headline XPG - Changes on EB [RedmineID : #127209]
 		
 	Param's Explanation:
 		- @ReportMode: 1: current, 2: history
