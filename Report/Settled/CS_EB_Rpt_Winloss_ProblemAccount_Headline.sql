@@ -17,6 +17,7 @@ AS
 	
 	Revisions:
 		- 20191021@Percy: Initialize SP [Redmine: #122191]
+		- 20200212@Percy: Missing HouseTurnover on CS_SumCancelled [RedmineID: #128441]
 		
 	Param's Explanation:
 		- @ReportMode: 1: current, 2: history
@@ -331,7 +332,7 @@ BEGIN
 					,0 AS SuperComm
 					,0 AS HouseWinloss
 					,0 AS HouseComm
-					,0 AS HouseTurnover
+					,SUM(HouseTurnover) AS HouseTurnover
 					,0 AS HeadlineStock
 				FROM dbo.Customer c WITH (NOLOCK)
 					INNER JOIN dbo.CS_ProblemAccount pa WITH (NOLOCK) ON c.custid = pa.custid AND c.roleid = 1
@@ -340,6 +341,7 @@ BEGIN
 							s.HeadlineId AS UplineId
 							,Wagers
 							,Stake
+							,HouseTurnover
 						FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
 						WHERE s.custid = c.custid
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
