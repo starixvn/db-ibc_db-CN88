@@ -7,6 +7,7 @@ ALTER PROCEDURE [dbo].[CS_EB_Rpt_PerformanceBonus]
 	,@HeadlineStock		MONEY = 0
 	,@SuperUsernames	VARCHAR(MAX) = ''
 	,@Conjunction		BIT = 0
+	,@IsHeadLineGroup   SMALLINT = 2 -- all
 AS
 
 /*
@@ -18,6 +19,7 @@ AS
 		- 20190918@Percy: Initialize SP [RedmineID: #119020]
 		- 20190926@Percy: Get UplineId (HeadlineId) from sum tables instead of CustSuper [Redmine: #118962]
 		- 20191210@Percy: Add @SporttypeGroups for drop down Sports [RedmineID: #124603]
+		- 20200210@Malcolm : New group of Headline XPG - Changes on EB [RedmineID : #127209]
 		- 20200212@Percy: Fix filter by conjunction [RedmineID: #128372]
 
 	Param's Explanation:
@@ -27,6 +29,9 @@ AS
 		@HeadlineStock: >= @HeadlineStock
 		@SuperUsernames: list of super usernames
 		@SporttypeGroups: default = 0: All
+		@IsHeadLineGroup: default = 0: all headlines
+		                            = 1: XPG headlines
+									= 2: Other headlines
 */
 
 BEGIN
@@ -52,6 +57,15 @@ BEGIN
 		WHERE c.roleid = 4 AND c.site = 'CN88' AND c.currency = @Currency
 	END
 
+	CREATE TABLE #CS_CustSuper(CustID INT NOT NULL PRIMARY KEY, UplineId INT NULL)
+
+	INSERT INTO #CS_CustSuper(CustID, UplineId)
+	SELECT c.CustId, cs.UplineId
+	FROM dbo.CS_CustSuper c 
+		   INNER JOIN CustSuper cs ON c.CustId = cs.custid
+		   LEFT JOIN dbo.f_GetHeadlineNoPT() f ON c.CustId = f.SuperId
+	WHERE @IsHeadLineGroup = 0 OR (@IsHeadLineGroup = 1 AND f.SuperId IS NOT NULL) OR (@IsHeadLineGroup = 2 AND f.SuperId IS NULL)
+
 	IF @Conjunction = 0 AND @SuperUsernames <> ''
 	BEGIN
 		SELECT
@@ -72,8 +86,9 @@ BEGIN
 			) AS cs
 			CROSS APPLY (
 				SELECT c.CustId AS HeadlineId, c.Username AS HeadlineUsername
-				FROM dbo.Customer c WITH (NOLOCK)
-				WHERE c.CustId = cs.HeadlineId
+				FROM #CS_CustSuper cs WITH (NOLOCK)
+					INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.UplineId = c.CustId
+				WHERE s.CustId = cs.CustId
 			) AS u
 	END
 	ELSE
@@ -95,7 +110,7 @@ BEGIN
 			s.CustId
 			,cs.HeadlineId
 			,cs.HeadlineStock
-		FROM dbo.CS_CustSuper s WITH (NOLOCK)
+		FROM #CS_CustSuper s WITH (NOLOCK)
 			CROSS APPLY (
 				SELECT cs.CustID, cs.HeadlineId, SUM(cs.HeadlineStock) AS HeadlineStock
 				FROM bodb_Summary.dbo.CS_SumWinloss cs WITH (NOLOCK)
@@ -135,5 +150,6 @@ BEGIN
 
 	DROP TABLE #Super
 	DROP TABLE #tblSportType
+	DROP TABLE #CS_CustSuper
 END
 GO

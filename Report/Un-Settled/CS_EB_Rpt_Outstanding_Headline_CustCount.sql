@@ -6,6 +6,7 @@ ALTER PROCEDURE [dbo].[CS_EB_Rpt_Outstanding_Headline_CustCount]
 	,@BettypeGroup		SMALLINT = 0 -- all
 	,@IsLive			TINYINT = 2 -- all
 	,@IsExcludedTest	BIT = 1
+	,@IsHeadLineGroup   SMALLINT = 0 -- all
 AS
 
 /*
@@ -15,6 +16,7 @@ AS
 	
 	Revisions:
 		- 20191021@Percy: Initialize SP [Redmine: #122191]
+		- 20200210@Malcolm : New group of Headline XPG - Changes on EB [RedmineID : #127209]
 		
 	Param's Explanation:
 		- @SporttypeGroup: default = 0: All
@@ -22,6 +24,10 @@ AS
 		- @IsLive: (market) default = 2: All
 									= 1: Live
 									= 0: Dead
+		- @IsHeadLineGroup: default = 0: all headlines
+		                            = 1: XPG headlines
+									= 2: Other headlines
+		
 */
 
 BEGIN
@@ -42,6 +48,18 @@ BEGIN
 	END
 	/* ===== End Get Sport/Bettype ===== */
 
+	/* ===== Get Cust Super ===== */
+	BEGIN
+	     CREATE TABLE #CS_CustSuper(CustID INT NOT NULL PRIMARY KEY)
+
+		 INSERT INTO #CS_CustSuper(CustID)
+		 SELECT c.CustId
+	     FROM dbo.CS_CustSuper c 
+		      LEFT JOIN dbo.f_GetHeadlineNoPT() f ON c.CustId = f.SuperId
+		 WHERE @IsHeadLineGroup = 0 OR (@IsHeadLineGroup = 1 AND f.SuperId IS NOT NULL) OR (@IsHeadLineGroup = 2 AND f.SuperId IS NULL)
+	END 
+	/* ===== Get End Cust Super ===== */
+
 	/* ===== Get Data ===== */
 	BEGIN
 		CREATE TABLE #tmpBettrans
@@ -58,7 +76,7 @@ BEGIN
 		-- For VS Parlay (bettype = 2799)
 		SELECT b.refno, b.matchid
 		INTO #__refno
-		FROM dbo.CS_CustSuper c WITH (NOLOCK)
+		FROM #CS_CustSuper c WITH (NOLOCK)
 			CROSS APPLY (
 				SELECT b.refno, bm.matchid
 				FROM dbo.bettrans b WITH (NOLOCK)
@@ -85,7 +103,7 @@ BEGIN
 			,b.custid
 			,b.matchid
 			,b.eventtype
-		FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+		FROM #CS_CustSuper cs WITH (NOLOCK)
 			CROSS APPLY (
 				SELECT
 					b.srecommend
@@ -151,7 +169,7 @@ BEGIN
 			,b.custid
 			,b.matchid
 			,b.eventtype
-		FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+		FROM #CS_CustSuper cs WITH (NOLOCK)
 			CROSS APPLY (
 				SELECT
 					t.srecommend
@@ -260,5 +278,6 @@ BEGIN
 	DROP TABLE #tblBetType
 	DROP TABLE #tblSportType
 	DROP TABLE #tmpBettrans
+	DROP TABLE #CS_CustSuper
 END
 GO

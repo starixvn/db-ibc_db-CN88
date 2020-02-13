@@ -8,6 +8,7 @@ ALTER PROCEDURE [dbo].[CS_EB_Rpt_Outstanding_Super]
 	,@BettypeGroup		SMALLINT = 0 -- all
 	,@IsLive			TINYINT = 2 -- all
 	,@IsExcludedTest	BIT = 1
+	,@IsHeadLineGroup   SMALLINT = 0 -- all
 AS
 
 /*
@@ -17,6 +18,7 @@ AS
 	
 	Revisions:
 		- 20190926@Percy: Initialize SP [Redmine: #118962]
+		- 20200210@Malcolm : New group of Headline XPG - Changes on EB [RedmineID : #127209]
 		- 20200212@Percy: Fix wrong get setting from ExtraPT table [RedmineID: #128366]
 		
 	Param's Explanation:
@@ -27,6 +29,9 @@ AS
 		- @IsLive: (market) default = 2: All
 									= 1: Live
 									= 0: Dead
+		- @IsHeadLineGroup: default = 0: all headlines
+		                            = 1: XPG headlines
+									= 2: Other headlines
 */
 
 BEGIN
@@ -47,12 +52,24 @@ BEGIN
 	END
 	/* ===== End Get Sport/Bettype ===== */
 
+	/* ===== Get Cust Super ===== */
+	BEGIN
+	     CREATE TABLE #CS_CustSuper(CustID INT NOT NULL PRIMARY KEY)
+
+		 INSERT INTO #CS_CustSuper(CustID)
+		 SELECT c.CustId
+	     FROM dbo.CS_CustSuper c 
+		      LEFT JOIN dbo.f_GetHeadlineNoPT() f ON c.CustId = f.SuperId
+		 WHERE @IsHeadLineGroup = 0 OR (@IsHeadLineGroup = 1 AND f.SuperId IS NOT NULL) OR (@IsHeadLineGroup = 2 AND f.SuperId IS NULL)
+	END 
+	/* ===== Get End Cust Super ===== */
+
 	/* ===== Get Super Info ===== */
 	BEGIN
 		CREATE TABLE #tmpSuper (UplineId INT, srecommend INT, FromDate SMALLDATETIME, ToDate SMALLDATETIME)
 		INSERT INTO #tmpSuper (UplineId, srecommend, FromDate, ToDate)
 		SELECT e.UplineId, cs.custid, CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
-		FROM dbo.CS_CustSuper cs WITH (NOLOCK)
+		FROM #CS_CustSuper cs WITH (NOLOCK)
 			INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.custid = c.custid
 			CROSS APPLY (
 				SELECT UplineId, FromDate, ToDate
@@ -275,5 +292,6 @@ BEGIN
 	DROP TABLE #tblBetType
 	DROP TABLE #tblSportType
 	DROP TABLE #tmpBettrans
+	DROP TABLE #CS_CustSuper
 END
 GO
