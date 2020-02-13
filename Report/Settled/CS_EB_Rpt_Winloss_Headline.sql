@@ -18,6 +18,7 @@ AS
 	Revisions:
 		- 20190926@Percy: Initialize SP [Redmine: #118962]
 		- 20191210@Percy: Apply new column epositiontaking instead of extra PT [RedmineID: #125158]
+		- 20200212@Percy: Missing HouseTurnover on CS_SumCancelled [RedmineID: #128441]
 		
 	Param's Explanation:
 		- @ReportMode: 1: current, 2: history
@@ -327,7 +328,7 @@ BEGIN
 					,0 AS SuperComm
 					,0 AS HouseWinloss
 					,0 AS HouseComm
-					,0 AS HouseTurnover
+					,SUM(HouseTurnover) AS HouseTurnover
 					,0 AS HeadlineStock
 				FROM dbo.CS_CustSuper cs WITH (NOLOCK)
 					CROSS APPLY (
@@ -335,6 +336,7 @@ BEGIN
 							HeadlineId
 							,Wagers
 							,Stake
+							,HouseTurnover
 						FROM bodb_Summary.dbo.CS_SumCancelled s WITH (NOLOCK)
 						WHERE s.custid = cs.custid
 							AND s.WinlostDate BETWEEN @FDate AND @TDate
