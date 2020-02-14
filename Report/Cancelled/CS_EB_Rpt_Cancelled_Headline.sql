@@ -9,7 +9,7 @@ ALTER PROCEDURE [dbo].[CS_EB_Rpt_Cancelled_Headline]
 	,@IsLive			TINYINT = 2  -- all
 	,@IsExcludedTest	BIT = 1
 	,@ReportType 		TINYINT = 1
-	,@IsHeadLineGroup   SMALLINT = 0 -- all
+	,@HeadlineGroupId   SMALLINT = 0 -- all
 AS
 
 /*
@@ -30,7 +30,7 @@ AS
 									= 0: Dead
 		- @ReportType:	= 1: Cancelled
 						= 2: Abnormal Bet
-		- @IsHeadLineGroup: default = 0: all headlines
+		- @HeadlineGroupId: default = 0: all headlines
 		                            = 1: XPG headlines
 									= 2: Other headlines
 */
@@ -62,7 +62,7 @@ BEGIN
 	     FROM dbo.CS_CustSuper c 
 		      INNER JOIN CustSuper cs ON c.CustId = cs.custid
 		      LEFT JOIN dbo.f_GetHeadlineNoPT() f ON c.CustId = f.SuperId
-		 WHERE @IsHeadLineGroup = 0 OR (@IsHeadLineGroup = 1 AND f.SuperId IS NOT NULL) OR (@IsHeadLineGroup = 2 AND f.SuperId IS NULL)
+		 WHERE @HeadlineGroupId = 0 OR (@HeadlineGroupId = 1 AND f.SuperId IS NOT NULL) OR (@HeadlineGroupId = 2 AND f.SuperId IS NULL)
 	END 
 	/* ===== Get End Cust Super ===== */
 

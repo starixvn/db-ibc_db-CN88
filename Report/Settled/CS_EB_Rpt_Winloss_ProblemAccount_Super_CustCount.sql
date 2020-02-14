@@ -9,7 +9,7 @@ ALTER PROCEDURE [dbo].[CS_EB_Rpt_Winloss_ProblemAccount_Super_CustCount]
 	,@BettypeGroup		SMALLINT = 0 -- all
 	,@IsLive			TINYINT = 2  -- all
 	,@IsExcludedTest	BIT = 1
-	,@IsHeadLineGroup   SMALLINT = 0 -- all
+	,@HeadlineGroupId   SMALLINT = 0 -- all
 AS
 
 /*
@@ -29,7 +29,7 @@ AS
 		- @IsLive: (market) default = 2: All
 									= 1: Live
 									= 0: Dead
-		- @IsHeadLineGroup: default = 0: all headlines
+		- @HeadlineGroupId: default = 0: all headlines
 		                            = 1: XPG headlines
 									= 2: Other headlines
 */
@@ -60,7 +60,7 @@ BEGIN
 		 SELECT c.CustId
 	     FROM dbo.CS_CustSuper c 
 		      LEFT JOIN dbo.f_GetHeadlineNoPT() f ON c.CustId = f.SuperId
-		 WHERE @IsHeadLineGroup = 0 OR (@IsHeadLineGroup = 1 AND f.SuperId IS NOT NULL) OR (@IsHeadLineGroup = 2 AND f.SuperId IS NULL)
+		 WHERE @HeadlineGroupId = 0 OR (@HeadlineGroupId = 1 AND f.SuperId IS NOT NULL) OR (@HeadlineGroupId = 2 AND f.SuperId IS NULL)
 	END 
 	/* ===== Get End Cust Super ===== */
 

@@ -7,7 +7,7 @@ ALTER PROCEDURE [dbo].[CS_EB_Rpt_PerformanceBonus]
 	,@HeadlineStock		MONEY = 0
 	,@SuperUsernames	VARCHAR(MAX) = ''
 	,@Conjunction		BIT = 0
-	,@IsHeadLineGroup   SMALLINT = 2 -- all
+	,@HeadlineGroupId   SMALLINT = 2 -- all
 AS
 
 /*
@@ -29,7 +29,7 @@ AS
 		@HeadlineStock: >= @HeadlineStock
 		@SuperUsernames: list of super usernames
 		@SporttypeGroups: default = 0: All
-		@IsHeadLineGroup: default = 0: all headlines
+		@HeadlineGroupId:           = 0: all headlines
 		                            = 1: XPG headlines
 									= 2: Other headlines
 */
@@ -64,7 +64,7 @@ BEGIN
 	FROM dbo.CS_CustSuper c 
 		   INNER JOIN CustSuper cs ON c.CustId = cs.custid
 		   LEFT JOIN dbo.f_GetHeadlineNoPT() f ON c.CustId = f.SuperId
-	WHERE @IsHeadLineGroup = 0 OR (@IsHeadLineGroup = 1 AND f.SuperId IS NOT NULL) OR (@IsHeadLineGroup = 2 AND f.SuperId IS NULL)
+	WHERE @HeadlineGroupId = 0 OR (@HeadlineGroupId = 1 AND f.SuperId IS NOT NULL) OR (@HeadlineGroupId = 2 AND f.SuperId IS NULL)
 
 	IF @Conjunction = 0 AND @SuperUsernames <> ''
 	BEGIN
