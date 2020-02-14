@@ -27,9 +27,9 @@ AS
 		- @IsLive: (market) default = 2: All
 									= 1: Live
 									= 0: Dead
-		- @IsHeadLineGroup: default = 0: all headlines
-		                            = 1: XPG headlines
-									= 2: Other headlines
+		- @HeadlineGroupId: default = 0: all headlines
+		                            = 1: TPG headlines
+									= 2: XPG headlines
 */
 
 BEGIN
@@ -59,7 +59,7 @@ BEGIN
 	     FROM dbo.CS_CustSuper c 
 		      INNER JOIN CustSuper cs ON c.CustId = cs.custid
 		      LEFT JOIN dbo.f_GetHeadlineNoPT() f ON c.CustId = f.SuperId
-		 WHERE @HeadlineGroupId = 0 OR (@HeadlineGroupId = 1 AND f.SuperId IS NOT NULL) OR (@HeadlineGroupId = 2 AND f.SuperId IS NULL)
+		 WHERE @HeadlineGroupId = 0 OR (@HeadlineGroupId = 2 AND f.SuperId IS NOT NULL) OR (@HeadlineGroupId = 1 AND f.SuperId IS NULL)
 	END 
 	/* ===== Get End Cust Super ===== */
 
