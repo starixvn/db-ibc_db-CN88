@@ -259,7 +259,7 @@ BEGIN
 							AND (@IsLive = 2 OR IsLive = @IsLive)
 					) AS s
 				WHERE (c.currency <> 20 OR @IsExcludedTest = 0)
-				      AND EXISTS(SELECT 1 FROM #CS_CustSuper cs_ WHERE cs_.CustID = c.srecommand)
+				      AND EXISTS(SELECT 1 FROM #CS_CustSuper cs_ WHERE cs_.CustID = c.srecommend)
 				GROUP BY
 					s.UplineId
 					,c.srecommend
@@ -294,7 +294,7 @@ BEGIN
 							AND (@IsLive = 2 OR IsLive = @IsLive)
 					) AS s
 				WHERE (c.currency <> 20 OR @IsExcludedTest = 0)
-				       AND EXISTS(SELECT 1 FROM #CS_CustSuper cs_ WHERE cs_.CustID = c.srecommand)
+				       AND EXISTS(SELECT 1 FROM #CS_CustSuper cs_ WHERE cs_.CustID = c.srecommend)
 				GROUP BY
 					s.UplineId
 					,c.srecommend
