@@ -25,20 +25,20 @@ BEGIN
 	ORDER BY Year , PeriodId 
 
 	SELECT @CurrentID = ID
-	FROM #tmp WITH(NOLOCK) 
+	FROM #tmp 
 	WHERE FromDate <= @CurrentDate AND ToDate >= @CurrentDate 
 
 	IF @IsViewAllPeriod = 1
 	BEGIN
 		SELECT Year, PeriodId, FromDate, ToDate
-		FROM #tmp WITH(NOLOCK)
+		FROM #tmp 
 		WHERE ID <= @CurrentID - 2 
 		ORDER BY ID 
 		END
     ELSE
 	BEGIN
 	     SELECT Year, PeriodId, FromDate, ToDate
-		 FROM #tmp WITH(NOLOCK)
+		 FROM #tmp 
 		 WHERE ID  IN (@CurrentID - 2, @CurrentID - 3)
 		 ORDER BY ID 
 	END 
