@@ -115,7 +115,7 @@ BEGIN
 			-- For VS Parlay (bettype = 2799)
 			SELECT b.refno, b.matchid
 			INTO #__refno
-			FROM #CS_CustSuper c WITH (NOLOCK)
+			FROM #CS_CustSuper c 
 				CROSS APPLY (
 					SELECT b.refno, bm.matchid
 					FROM dbo.bettrans b WITH (NOLOCK)
@@ -154,7 +154,7 @@ BEGIN
 				,-SUM(b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0) END) AS HouseComm
 				,SUM(b.stake * (1 - b.tpositiontaking - ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0))) AS HouseTurnover
 				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0))) AS HeadlineStock
-			FROM #CS_CustSuper cs WITH (NOLOCK)
+			FROM #CS_CustSuper cs 
 				CROSS APPLY (
 					SELECT
 						b.srecommend
@@ -292,7 +292,7 @@ BEGIN
 					,-SUM(HeadlineComm + MemberComm + AgentComm + MasterComm + SuperComm) AS HouseComm
 					,SUM(HouseTurnover) AS HouseTurnover
 					,SUM(HeadlineStock) AS HeadlineStock
-				FROM #CS_CustSuper cs WITH (NOLOCK)
+				FROM #CS_CustSuper cs
 					CROSS APPLY (
 						SELECT
 							HeadlineId
@@ -347,7 +347,7 @@ BEGIN
 					,0 AS HouseComm
 					,SUM(HouseTurnover) AS HouseTurnover
 					,0 AS HeadlineStock
-				FROM #CS_CustSuper cs WITH (NOLOCK)
+				FROM #CS_CustSuper cs 
 					CROSS APPLY (
 						SELECT
 							HeadlineId

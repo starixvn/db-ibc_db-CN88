@@ -86,7 +86,7 @@ BEGIN
 			) AS cs
 			CROSS APPLY (
 				SELECT c.CustId AS HeadlineId, c.Username AS HeadlineUsername
-				FROM #CS_CustSuper cs WITH (NOLOCK)
+				FROM #CS_CustSuper cs 
 					INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.UplineId = c.CustId
 				WHERE s.CustId = cs.CustId
 			) AS u
@@ -110,7 +110,7 @@ BEGIN
 			s.CustId
 			,cs.HeadlineId
 			,cs.HeadlineStock
-		FROM #CS_CustSuper s WITH (NOLOCK)
+		FROM #CS_CustSuper s
 			CROSS APPLY (
 				SELECT cs.CustID, cs.HeadlineId, SUM(cs.HeadlineStock) AS HeadlineStock
 				FROM bodb_Summary.dbo.CS_SumWinloss cs WITH (NOLOCK)

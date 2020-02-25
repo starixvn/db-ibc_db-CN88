@@ -75,7 +75,7 @@ BEGIN
 		-- For VS Parlay (bettype = 2799)
 		SELECT b.refno, b.matchid
 		INTO #__refno
-		FROM #CS_CustSuper c WITH (NOLOCK)
+		FROM #CS_CustSuper c 
 			CROSS APPLY (
 				SELECT b.refno, bm.matchid
 				FROM dbo.bettrans b WITH (NOLOCK)
@@ -100,7 +100,7 @@ BEGIN
 			,COUNT(1) AS Wagers
 			,SUM(b.stake) AS Stake
 			,SUM(b.stake * (1 - b.tpositiontaking - ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0))) AS HouseTurnover
-		FROM #CS_CustSuper cs WITH (NOLOCK)
+		FROM #CS_CustSuper cs 
 			CROSS APPLY (
 				SELECT
 					b.srecommend
@@ -155,7 +155,7 @@ BEGIN
 			,COUNT(1) AS Wagers
 			,SUM(b.stake) AS Stake
 			,SUM(b.stake * (1 - b.tpositiontaking - ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0))) AS HouseTurnover
-		FROM #CS_CustSuper cs WITH (NOLOCK)
+		FROM #CS_CustSuper cs 
 			CROSS APPLY (
 				SELECT
 					t.srecommend

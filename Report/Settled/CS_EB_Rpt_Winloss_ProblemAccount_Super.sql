@@ -70,7 +70,7 @@ BEGIN
 		CREATE TABLE #tmpSuper (UplineId INT, srecommend INT, FromDate SMALLDATETIME, ToDate SMALLDATETIME)
 		INSERT INTO #tmpSuper (UplineId, srecommend, FromDate, ToDate)
 		SELECT e.UplineId, cs.custid, CASE WHEN FromDate < @FromDate THEN @FromDate ELSE FromDate END, CASE WHEN ToDate > @ToDate THEN @ToDate ELSE ToDate END
-		FROM #CS_CustSuper cs WITH (NOLOCK)
+		FROM #CS_CustSuper cs 
 			INNER JOIN dbo.Customer c WITH (NOLOCK) ON cs.custid = c.custid
 			CROSS APPLY (
 				SELECT UplineId, FromDate, ToDate
