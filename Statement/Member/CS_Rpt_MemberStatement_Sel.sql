@@ -16,6 +16,7 @@ AS
 	Revisions:
 		- 20190227@Percy: Initialize SP [RedmineID: #105660]
 		- 20190328@Percy: Implement Non-Sports [RedmineID: #109521]
+		- 20200622@Sol: Archive VSRaceInfo - changed to use VSRaceInfo14 [RedmineID: #135963]
 */
 
 BEGIN
@@ -144,7 +145,7 @@ BEGIN
 			INSERT INTO #Statement (WinlostDate, Stake, ValidStake, WinLoss)
 			SELECT t.WinlostDate, t.Stake, t.ValidStake, t.WinLoss
 			FROM #tmpData t
-				INNER JOIN dbo.VSRaceInfo r WITH (NOLOCK) ON t.MatchId = r.EventID
+				INNER JOIN dbo.VSRaceInfo14 r WITH (NOLOCK) ON t.MatchId = r.EventID
 				INNER JOIN @SportTypeList s ON r.sporttype = s.SportType
 			WHERE t.EventType = 3
 				AND EXISTS (SELECT 1 FROM dbo.VSOutright14 o WITH (NOLOCK) WHERE o.EventID = r.EventID AND o.eventdate <= @MoveBetsDay)
