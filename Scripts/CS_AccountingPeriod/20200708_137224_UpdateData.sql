@@ -7,7 +7,7 @@ GO
 	Created: 20200708@Malcolm
 	DB: DBPRO.bodb02
 	Task: Support to update Accounting Period
-	Redmine: #135881
+	Redmine: #137224 
 */
 
 
