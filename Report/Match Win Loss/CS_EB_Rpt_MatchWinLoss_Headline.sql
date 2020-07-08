@@ -16,6 +16,7 @@ AS
 	Revisions:
 		- 20190926@Percy: Initiliaze SP [RedmineID: #120802]
 		- 20191210@Percy: Apply new column epositiontaking instead of extra PT [RedmineID: #125158]
+		- 20200622@Sol: Archive VSRaceInfo - changed to use VSRaceInfo14 [RedmineID: #135963]
 */
 
 BEGIN
@@ -303,7 +304,7 @@ BEGIN
 
 					UNION ALL
 					SELECT 0 AS leagueid, 0 AS matchid, 0 AS homeid, 0 AS awayid, l.sporttype
-					FROM dbo.VSRaceInfo r WITH (NOLOCK)
+					FROM dbo.VSRaceInfo14 r WITH (NOLOCK)
 						INNER JOIN dbo.League l WITH (NOLOCK) ON r.leagueid = l.leagueid
 					WHERE b.matchid = r.EventID AND b.EventType = 3
 
