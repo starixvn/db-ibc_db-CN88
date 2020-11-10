@@ -17,6 +17,7 @@ AS
 	
 	Revisions:
 		- 20190926@Percy: Initialize SP [Redmine: #118962]
+		- 20201110@Malcolm: Get extraPT from the epositiontaking column of bettrans [RedmineID: #145074]
 		
 	Param's Explanation:
 		- @HeadlineId: HeadlineId
@@ -168,14 +169,14 @@ BEGIN
 				,SUM(b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost + b.scomm) AS SuperResult
 				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking)) AS SuperStock
 				,SUM( -- HeadlineIncome = HeadlineWinloss + HeadlineComm
-					- (b.winlost - b.actual_stake) * ISNULL(e.ExtraPT, 0) -- HeadlineWinloss
-					- CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * ISNULL(e.ExtraPT, 0) END -- HeadlineComm
+					- (b.winlost - b.actual_stake) * ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0) -- HeadlineWinloss
+					- CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0) END -- HeadlineComm
 					) AS HeadlineIncome
 				,SUM( -- HeadlineResult = -HouseIncome = -(HouseWinloss + HouseComm)
-					b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * ISNULL(e.ExtraPT, 0)) -- HouseWinloss
-					+ b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * ISNULL(e.ExtraPT, 0) END -- HouseComm
+					b.winlost - b.actual_stake + b.swinlost + b.mwinlost + b.awinlost - ((b.winlost - b.actual_stake) * ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0)) -- HouseWinloss
+					+ b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm / (1 - b.tpositiontaking) * ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0) END -- HouseComm
 					) AS HeadlineResult 
-				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - ISNULL(e.ExtraPT, 0))) AS HeadlineStock
+				,SUM(ABS(b.winlost - b.actual_stake) * (1 - b.tpositiontaking - ISNULL(CONVERT(DECIMAL(9,8), b.epositiontaking), 0))) AS HeadlineStock
 			FROM #tmpSuper ts
 				CROSS APPLY (
 					SELECT
@@ -200,6 +201,7 @@ BEGIN
 						,b.apositiontaking
 						,b.mpositiontaking
 						,b.tpositiontaking
+						,b.epositiontaking
 						,b.winlostdate
 					FROM dbo.bettrans b WITH (NOLOCK)
 						INNER JOIN #tblBetType bt ON b.bettype = bt.bettype
@@ -216,15 +218,6 @@ BEGIN
 								OR (b.bettype NOT IN (29, 2799) AND b.liveindicator = @IsLive)
 							)
 				) AS b
-				OUTER APPLY (
-					SELECT ag.ExtraPT
-					FROM dbo.Acc_GroupExtraPTSetting ag WITH (NOLOCK)
-					WHERE ts.srecommend = ag.SuperId
-						AND b.winlostdate BETWEEN ag.FromDate AND ag.ToDate
-						AND b.ProductID = ag.ProductId
-						AND ag.Sporttype = 0
-						AND ag.SubProduct = ''
-				) AS e
 			GROUP BY
 				b.srecommend
 				,b.matchid
