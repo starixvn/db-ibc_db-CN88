@@ -15,6 +15,7 @@ AS
 
 	Revisions:
 		- 20190722@Percy: Initialize SP [RedmineID: #116825]
+		- 20230301@Sophia: use Linked-server for bodb02 [redmine: #184200]
 */
 
 BEGIN
@@ -35,7 +36,7 @@ BEGIN
 	
 	IF @SubAccId <> 0
 	BEGIN
-		SELECT @IsAllDownline = ISNULL(IsAllDownline, 0) FROM bodb02.dbo.custSub WITH (NOLOCK) WHERE SubAccId = @SubAccId
+		SELECT @IsAllDownline = ISNULL(IsAllDownline, 0) FROM DBAGE.bodb02.dbo.custSub WITH (NOLOCK) WHERE SubAccId = @SubAccId
 	END
 	/* ===== End Sub Account ===== */
 
@@ -58,7 +59,7 @@ BEGIN
 			OR EXISTS (
 				SELECT 1
 				FROM dbo.MsgTarget s WITH (NOLOCK)
-					INNER JOIN bodb02.dbo.CS_SubAccManagement sa WITH (NOLOCK) ON s.TargetId = sa.DownlineId
+					INNER JOIN DBAGE.bodb02.dbo.CS_SubAccManagement sa WITH (NOLOCK) ON s.TargetId = sa.DownlineId
 				WHERE s.MessageId = m.MessageId AND sa.SubAccId = @SubAccId
 			)
 		)
@@ -73,7 +74,7 @@ BEGIN
 					SELECT m.MessageId FROM @Msg m WHERE mt.MessageId = m.MessageId
 				) AS m
 			WHERE EXISTS (
-				SELECT 1 FROM bodb02.dbo.CS_SubAccManagement sa WITH (NOLOCK)
+				SELECT 1 FROM DBAGE.bodb02.dbo.CS_SubAccManagement sa WITH (NOLOCK)
 				WHERE mt.TargetId = sa.DownlineId AND sa.SubAccId = @SubAccId
 				)
 		)
